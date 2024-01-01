@@ -54,8 +54,8 @@ class OrderbookClient {
         console.log('Batch orders cancelled:', tx);
     }
 
-    async replaceOrders(orderIds: number[], isBuy: boolean[], prices: number[]): Promise<void> {
-        const tx = await this.orderbook.replaceOrders(orderIds, isBuy, prices);
+    async replaceOrders(orderIds: number[], prices: number[]): Promise<void> {
+        const tx = await this.orderbook.replaceOrders(orderIds, prices);
         await tx.wait();
         console.log('Orders replaced:', tx);
     }
