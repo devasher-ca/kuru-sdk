@@ -11,11 +11,13 @@ class OrderStorageService {
 
         // Initialize the database connection
         this.db = new Pool(dbConfig);
+
+        // TODO: fetch historic event data and populate db
     }
 
     async saveOrder(orderId: number, ownerAddress: string, price: number, size: number, acceptableRange: number, isBuy: boolean) {
         const query = `
-            INSERT INTO orders (order_id, owner_address, price, size, acceptable_range, is_buy)
+            INSERT INTO orderbook (order_id, owner_address, price, size, acceptable_range, is_buy)
             VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (order_id) DO UPDATE
             SET owner_address = EXCLUDED.owner_address, price = EXCLUDED.price, size = EXCLUDED.size, acceptable_range = EXCLUDED.acceptable_range, is_buy = EXCLUDED.is_buy;
@@ -25,25 +27,29 @@ class OrderStorageService {
     }
 
     async deleteOrder(orderId: number) {
-        const query = `DELETE FROM orders WHERE order_id = $1;`;
+        const query = `DELETE FROM orderbook WHERE order_id = $1;`;
         await this.db.query(query, [orderId]);
     }
 
-    async listenForOrderEvents(): Promise<void> {
-        this.contract.on('OrderCreated', async (orderId, ownerAddress, price, size, acceptableRange, isBuy) => {
-            console.log(`OrderCreated event detected for orderId: ${orderId}`);
+    async listenForOrderEvents() {
+        this.contract.on('OrderCreated', async (orderId: number, ownerAddress: string, price: number, size: number, acceptableRange: number, isBuy: boolean) => {
+            console.log(`OrderCreated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
+
             await this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
         });
         
-        this.contract.on('OrderUpdated', async (orderId, ownerAddress, price, size, acceptableRange, isBuy) => {
-            console.log(`OrderUpdated event detected for orderId: ${orderId}`);
+        this.contract.on('OrderUpdated', async (orderId: number, ownerAddress: string, price: number, size: number, acceptableRange: number, isBuy: boolean) => {
+            console.log(`OrderUpdated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
+
             await this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
         });
         
-        this.contract.on('OrderCompletedOrCanceled', async (orderId) => {
-            console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderId}`);
+        this.contract.on('OrderCompletedOrCanceled', async (orderId, owner, isBuy) => {
+            console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderId} owner: ${owner} isBuy: ${isBuy}`);
+
             await this.deleteOrder(orderId);
         });
+        
     }
 }
 

@@ -1,14 +1,36 @@
+import fs from 'fs';
+
 import OrderbookService from '../src/orderbookService';
-import contractAbi from '../abi/CranklessOrderBook.json';
+import { Order } from '../src/orderbookService';
 
-const privateKey = 'f94f2358316ae919ed24243bcf55fd3638539676d30acab3d1b25b7717b5ae38';
-const rpcUrl = 'http://localhost:8545';
-const contractAddress = '0x5771c832D78fDf76A3DA918E4B7a49c062910639';
+const mapToObject = (map: Map<number, Order[]>) => {
+    const obj: { [key: string]: Order[] } = {};
+    for (let [key, value] of map) {
+        obj[key] = value;
+    }
+    return obj;
+};
 
-const sdkService = new OrderbookService(privateKey, rpcUrl, contractAddress, contractAbi.abi);
+const dbConfig = {
+    user: 'username',
+    host: 'localhost', // or the database server's address
+    database: 'orderbook',
+    password: 'password',
+    port: 5432,
+};
+
+const sdkService = new OrderbookService(dbConfig);
 
 // Example usage
 (async () => {
-    const buyPricePoints = await sdkService.getBuyPricePoints();
-    console.log(buyPricePoints);
+    const L3Orderbook = await sdkService.getL3OrderBook();
+
+    fs.writeFileSync('./tmp/L3Orderbook.json', JSON.stringify({
+        buyOrders: mapToObject(L3Orderbook.buyOrders),
+        sellOrders: mapToObject(L3Orderbook.sellOrders),
+    }));
+
+    const L2Orderbook = await sdkService.getL2OrderBook();
+
+    fs.writeFileSync('./tmp/L2Orderbook.json', JSON.stringify({L2Orderbook}));
 })();

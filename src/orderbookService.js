@@ -8,99 +8,75 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const ethers_1 = require("ethers");
-const OrderStorageService_1 = __importDefault(require("./OrderStorageService"));
+const pg_1 = require("pg");
 class OrderBookService {
-    constructor(privateKey, rpcUrl, contractAddress, contractABI) {
+    constructor(privateKey, rpcUrl, contractAddress, contractABI, dbConfig) {
         const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
         const wallet = new ethers_1.ethers.Wallet(privateKey, provider);
         this.contract = new ethers_1.ethers.Contract(contractAddress, contractABI, wallet);
-        this.orderStorageService = new OrderStorageService_1.default(rpcUrl, contractAddress, contractABI);
-        // start listening?
-        this.orderStorageService.listenForOrderEvents();
-    }
-    getBuyPricePoints() {
-        return __awaiter(this, void 0, void 0, function* () {
-            // TODO: use graphql query to get all price point keys
-            const buyPricePointsKeys = yield this.contract.getBuyPricePointsKeys();
-            const buyPricePoints = new Map();
-            for (const key of buyPricePointsKeys) {
-                const point = yield this.contract.buyPricePoints(key);
-                buyPricePoints.set(key, {
-                    totalCompletedOrCanceledOrders: point.totalCompletedOrCanceledOrders,
-                    totalOrdersAtPrice: point.totalOrdersAtPrice,
-                    executableSize: point.executableSize,
-                });
-            }
-            return buyPricePoints;
-        });
-    }
-    getSellPricePoints() {
-        return __awaiter(this, void 0, void 0, function* () {
-            // TODO: use graphql query to get all price point keys
-            const sellPricePointsKeys = yield this.contract.getSellPricePointsKeys();
-            const sellPricePoints = new Map();
-            for (const key of sellPricePointsKeys) {
-                const point = yield this.contract.sellPricePoints(key);
-                sellPricePoints.set(key, {
-                    totalCompletedOrCanceledOrders: point.totalCompletedOrCanceledOrders,
-                    totalOrdersAtPrice: point.totalOrdersAtPrice,
-                    executableSize: point.executableSize,
-                });
-            }
-            return sellPricePoints;
-        });
+        this.db = new pg_1.Pool(dbConfig);
     }
     getOrders() {
         return __awaiter(this, void 0, void 0, function* () {
-            // Assuming the contract has a method to fetch all orders
-            const orders = yield this.contract.getOrders();
-            return orders.map((order) => ({
-                ownerAddress: order.ownerAddress,
-                price: order.price,
-                size: order.size,
-                acceptableRange: order.acceptableRange,
-                isBuy: order.isBuy,
-            }));
+            try {
+                const res = yield this.db.query(`SELECT * FROM orderbook`);
+                return res.rows;
+            }
+            catch (error) {
+                console.error(`Error fetching data from orders:`, error);
+                throw error;
+            }
         });
     }
-    getOrderBook() {
+    getL3OrderBook() {
         return __awaiter(this, void 0, void 0, function* () {
-            const buyPricePointsMap = yield this.getBuyPricePoints();
-            const sellPricePointsMap = yield this.getSellPricePoints();
             const orders = yield this.getOrders();
-            const buyPricePoints = Array.from(buyPricePointsMap.entries())
-                .filter(([price, point]) => point.totalCompletedOrCanceledOrders < point.totalOrdersAtPrice)
-                .sort((a, b) => a[0] - b[0])
-                .map(([price, point]) => (Object.assign({ price }, point)));
-            const sellPricePoints = Array.from(sellPricePointsMap.entries())
-                .filter(([price, point]) => point.totalCompletedOrCanceledOrders < point.totalOrdersAtPrice)
-                .sort((a, b) => a[0] - b[0])
-                .map(([price, point]) => (Object.assign({ price }, point)));
-            const buyOrderMap = new Map();
-            const sellOrderMap = new Map();
-            orders.forEach(order => {
-                var _a, _b;
-                if (order.isBuy ? !buyOrderMap.has(order.price) : !sellOrderMap.has(order.price)) {
-                    order.isBuy ? buyOrderMap.set(order.price, []) : sellOrderMap.set(order.price, []);
+            const orderBook = {
+                buyOrders: new Map(),
+                sellOrders: new Map()
+            };
+            const addOrder = (order, orderMap) => {
+                var _a;
+                if (!orderMap.has(order.price)) {
+                    orderMap.set(order.price, []);
                 }
-                order.isBuy ? (_a = buyOrderMap.get(order.price)) === null || _a === void 0 ? void 0 : _a.push(order) : (_b = sellOrderMap.get(order.price)) === null || _b === void 0 ? void 0 : _b.push(order);
+                (_a = orderMap.get(order.price)) === null || _a === void 0 ? void 0 : _a.push(order);
+            };
+            const sortOrdersByRange = (ordersList) => {
+                ordersList.sort((a, b) => a.acceptable_range - b.acceptable_range);
+            };
+            orders.forEach(order => {
+                const targetMap = order.is_buy ? orderBook.buyOrders : orderBook.sellOrders;
+                addOrder(order, targetMap);
             });
-            buyOrderMap.forEach((ordersList, price) => {
-                ordersList.sort((a, b) => a.acceptableRange - b.acceptableRange);
-            });
-            sellOrderMap.forEach((ordersList, price) => {
-                ordersList.sort((a, b) => a.acceptableRange - b.acceptableRange);
-            });
+            orderBook.buyOrders.forEach(sortOrdersByRange);
+            orderBook.sellOrders.forEach(sortOrdersByRange);
             return {
-                buy: buyPricePoints,
-                sell: sellPricePoints,
-                buyOrders: buyOrderMap,
-                sellOrders: sellOrderMap,
+                buyOrders: Array.from(orderBook.buyOrders),
+                sellOrders: Array.from(orderBook.sellOrders)
+            };
+        });
+    }
+    getL2OrderBook() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const orders = yield this.getOrders();
+            const buys = new Map();
+            const sells = new Map();
+            orders.forEach(order => {
+                const orderMap = order.is_buy ? buys : sells;
+                const currentSize = orderMap.get(order.price) || 0;
+                // Ensure numerical addition
+                orderMap.set(order.price, currentSize + Number(order.size));
+            });
+            // Function to sort map entries by price in descending order
+            const sortMapDescending = (map) => {
+                return Array.from(map).sort((a, b) => b[0] - a[0]);
+            };
+            return {
+                buyOrders: sortMapDescending(buys),
+                sellOrders: sortMapDescending(sells),
             };
         });
     }

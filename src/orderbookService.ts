@@ -1,11 +1,12 @@
 import { ethers } from 'ethers';
+import { Pool } from 'pg';
 
 export interface Order {
-    ownerAddress: string;
+    owner_address: string;
     price: number;
     size: number;
-    acceptableRange: number;
-    isBuy: boolean;
+    acceptable_range: number;
+    is_buy: boolean;
 }
 
 export interface PricePoint {
@@ -15,101 +16,83 @@ export interface PricePoint {
 }
 
 class OrderBookService {
-    private contract: ethers.Contract;
+    private db: Pool;
 
-    constructor(privateKey: string, rpcUrl: string, contractAddress: string, contractABI: any) {
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const wallet = new ethers.Wallet(privateKey, provider);
-        this.contract = new ethers.Contract(contractAddress, contractABI, wallet);
-    }
+    constructor(dbConfig: any) {
 
-    async getBuyPricePoints(): Promise<Map<number, PricePoint>> {
-        // TODO: use graphql query to get all price point keys
-        const buyPricePointsKeys: number[] = await this.contract.getBuyPricePointsKeys();
-        const buyPricePoints = new Map<number, PricePoint>();
-    
-        for (const key of buyPricePointsKeys) {
-            const point: PricePoint = await this.contract.buyPricePoints(key);
-            buyPricePoints.set(key, {
-                totalCompletedOrCanceledOrders: point.totalCompletedOrCanceledOrders,
-                totalOrdersAtPrice: point.totalOrdersAtPrice,
-                executableSize: point.executableSize,
-            });
-        }
-    
-        return buyPricePoints;
+        this.db = new Pool(dbConfig);
     }
     
-    async getSellPricePoints(): Promise<Map<number, PricePoint>> {
-        // TODO: use graphql query to get all price point keys
-        const sellPricePointsKeys: number[] = await this.contract.getSellPricePointsKeys();
-        const sellPricePoints = new Map<number, PricePoint>();
-    
-        for (const key of sellPricePointsKeys) {
-            const point: PricePoint = await this.contract.sellPricePoints(key);
-            sellPricePoints.set(key, {
-                totalCompletedOrCanceledOrders: point.totalCompletedOrCanceledOrders,
-                totalOrdersAtPrice: point.totalOrdersAtPrice,
-                executableSize: point.executableSize,
-            });
-        }
-    
-        return sellPricePoints;
-    }
-    
-
     async getOrders(): Promise<Order[]> {
-        // Assuming the contract has a method to fetch all orders
-        const orders: Order[] = await this.contract.getOrders();
-        return orders.map((order: Order) => ({
-            ownerAddress: order.ownerAddress,
-            price: order.price,
-            size: order.size,
-            acceptableRange: order.acceptableRange,
-            isBuy: order.isBuy,
-        }));
+        try {
+            const res = await this.db.query(`SELECT * FROM orderbook`);
+            return res.rows;
+        } catch (error) {
+            console.error(`Error fetching data from orders:`, error);
+            throw error;
+        }
+
     }
 
-    async getOrderBook(): Promise<any> {
-        const buyPricePointsMap = await this.getBuyPricePoints();
-        const sellPricePointsMap = await this.getSellPricePoints();
-        const orders = await this.getOrders();
+    async getL3OrderBook(): Promise<any> {
+        const orders: Order[] = await this.getOrders();
     
-        const buyPricePoints = Array.from(buyPricePointsMap.entries())
-            .filter(([price, point]) => point.totalCompletedOrCanceledOrders < point.totalOrdersAtPrice)
-            .sort((a, b) => a[0] - b[0])
-            .map(([price, point]) => ({ price, ...point }));
+        const orderBook = {
+            buyOrders: new Map<number, Order[]>(),
+            sellOrders: new Map<number, Order[]>()
+        };
     
-        const sellPricePoints = Array.from(sellPricePointsMap.entries())
-            .filter(([price, point]) => point.totalCompletedOrCanceledOrders < point.totalOrdersAtPrice)
-            .sort((a, b) => a[0] - b[0])
-            .map(([price, point]) => ({ price, ...point }));
+        const addOrder = (order: Order, orderMap: Map<number, Order[]>) => {
+            if (!orderMap.has(order.price)) {
+                orderMap.set(order.price, []);
+            }
+            orderMap.get(order.price)?.push(order);
+        };
     
-        const buyOrderMap = new Map<number, Order[]>();
-        const sellOrderMap = new Map<number, Order[]>();
+        const sortOrdersByRange = (ordersList: Order[]) => {
+            ordersList.sort((a, b) => a.acceptable_range - b.acceptable_range);
+        };
     
         orders.forEach(order => {
-            if (order.isBuy ? !buyOrderMap.has(order.price) : !sellOrderMap.has(order.price)) {
-                order.isBuy ? buyOrderMap.set(order.price, []) : sellOrderMap.set(order.price, []);
-            }
-            order.isBuy ? buyOrderMap.get(order.price)?.push(order) : sellOrderMap.get(order.price)?.push(order);
+            const targetMap = order.is_buy ? orderBook.buyOrders : orderBook.sellOrders;
+            addOrder(order, targetMap);
         });
     
-        buyOrderMap.forEach((ordersList, price) => {
-            ordersList.sort((a, b) => a.acceptableRange - b.acceptableRange);
-        });
-
-        sellOrderMap.forEach((ordersList, price) => {
-            ordersList.sort((a, b) => a.acceptableRange - b.acceptableRange);
-        });
+        orderBook.buyOrders.forEach(sortOrdersByRange);
+        orderBook.sellOrders.forEach(sortOrdersByRange);
     
         return {
-            buy: buyPricePoints,
-            sell: sellPricePoints,
-            buyOrders: buyOrderMap,
-            sellOrders: sellOrderMap,
+            buyOrders: Array.from(orderBook.buyOrders),
+            sellOrders: Array.from(orderBook.sellOrders)
         };
     }
+    
+
+    async getL2OrderBook(): Promise<any> {
+        const orders: Order[] = await this.getOrders();
+    
+        const buys = new Map<number, number>();
+        const sells = new Map<number, number>();
+    
+        orders.forEach(order => {
+            const orderMap = order.is_buy ? buys : sells;
+            const currentSize = orderMap.get(order.price) || 0;
+            // Ensure numerical addition
+            orderMap.set(order.price, currentSize + Number(order.size));
+        });
+    
+        // Function to sort map entries by price in descending order
+        const sortMapDescending = (map: Map<number, number>) => {
+            return Array.from(map).sort((a, b) => b[0] - a[0]);
+        };
+    
+        return {
+            buyOrders: sortMapDescending(buys),
+            sellOrders: sortMapDescending(sells),
+        };
+    }
+    
+    
 }
 
 export default OrderBookService;
