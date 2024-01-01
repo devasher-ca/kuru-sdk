@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { Pool } from 'pg';
 
 export interface Order {
+    order_id: number,
     owner_address: string;
     price: number;
     size: number;
@@ -31,7 +32,31 @@ class OrderBookService {
             console.error(`Error fetching data from orders:`, error);
             throw error;
         }
+    }
 
+    async getOrderForUser(ownerAddress: string): Promise<Order[]> {
+        try {
+            const query = `SELECT * FROM orderbook WHERE owner_address = $1`;
+            const res = await this.db.query(query, [ownerAddress]);
+            return res.rows;
+        } catch (error) {
+            console.error(`Error fetching data for user ${ownerAddress}:`, error);
+            throw error;
+        }
+    }
+
+    async getOrder(orderId: number): Promise<Order | null> {
+        try {
+            const query = `SELECT * FROM orderbook WHERE order_id = $1`;
+            const res = await this.db.query(query, [orderId]);
+            if (res.rows.length === 0) {
+                return null;
+            }
+            return res.rows[0];
+        } catch (error) {
+            console.error(`Error fetching order with ID ${orderId}:`, error);
+            throw error;
+        }
     }
 
     async getL3OrderBook(): Promise<any> {
@@ -91,8 +116,12 @@ class OrderBookService {
             sellOrders: sortMapDescending(sells),
         };
     }
-    
-    
+
+    async isOrderActive(orderId: number): Promise<boolean> {
+        const order: Order | null = await this.getOrder(orderId);
+
+        return order != null;
+    }
 }
 
 export default OrderBookService;

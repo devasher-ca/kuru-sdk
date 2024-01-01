@@ -65,9 +65,9 @@ class OrderbookClient {
             console.log('Batch orders cancelled:', tx);
         });
     }
-    replaceOrders(orderIds, isBuy, prices) {
+    replaceOrders(orderIds, prices) {
         return __awaiter(this, void 0, void 0, function* () {
-            const tx = yield this.orderbook.replaceOrders(orderIds, isBuy, prices);
+            const tx = yield this.orderbook.replaceOrders(orderIds, prices);
             yield tx.wait();
             console.log('Orders replaced:', tx);
         });

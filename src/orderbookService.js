@@ -9,13 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const ethers_1 = require("ethers");
 const pg_1 = require("pg");
 class OrderBookService {
-    constructor(privateKey, rpcUrl, contractAddress, contractABI, dbConfig) {
-        const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
-        const wallet = new ethers_1.ethers.Wallet(privateKey, provider);
-        this.contract = new ethers_1.ethers.Contract(contractAddress, contractABI, wallet);
+    constructor(dbConfig) {
         this.db = new pg_1.Pool(dbConfig);
     }
     getOrders() {
@@ -26,6 +22,35 @@ class OrderBookService {
             }
             catch (error) {
                 console.error(`Error fetching data from orders:`, error);
+                throw error;
+            }
+        });
+    }
+    getOrderForUser(ownerAddress) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const query = `SELECT * FROM orderbook WHERE owner_address = $1`;
+                const res = yield this.db.query(query, [ownerAddress]);
+                return res.rows;
+            }
+            catch (error) {
+                console.error(`Error fetching data for user ${ownerAddress}:`, error);
+                throw error;
+            }
+        });
+    }
+    getOrder(orderId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const query = `SELECT * FROM orderbook WHERE order_id = $1`;
+                const res = yield this.db.query(query, [orderId]);
+                if (res.rows.length === 0) {
+                    return null;
+                }
+                return res.rows[0];
+            }
+            catch (error) {
+                console.error(`Error fetching order with ID ${orderId}:`, error);
                 throw error;
             }
         });
@@ -78,6 +103,12 @@ class OrderBookService {
                 buyOrders: sortMapDescending(buys),
                 sellOrders: sortMapDescending(sells),
             };
+        });
+    }
+    isOrderActive(orderId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const order = yield this.getOrder(orderId);
+            return order != null;
         });
     }
 }

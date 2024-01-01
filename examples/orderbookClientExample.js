@@ -27,5 +27,5 @@ const sdk = new orderbookClient_1.default(privateKey, rpcUrl, contractAddress, C
     yield sdk.placeMultipleBuyOrders([100, 150], [1000, 1500]);
     yield sdk.placeMultipleSellOrders([200, 250], [500, 750]);
     yield sdk.batchCancelOrders([3, 4], [true, false]);
-    yield sdk.replaceOrders([5, 6], [true, false], [110, 260]);
+    yield sdk.replaceOrders([5, 6], [110, 260]);
 }))();

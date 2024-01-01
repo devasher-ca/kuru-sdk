@@ -16,5 +16,5 @@ const sdk = new OrderbookClient(privateKey, rpcUrl, contractAddress, abi);
     await sdk.placeMultipleBuyOrders([100, 150], [1000, 1500]);
     await sdk.placeMultipleSellOrders([200, 250], [500, 750]);
     await sdk.batchCancelOrders([3, 4], [true, false]);
-    await sdk.replaceOrders([5, 6], [true, false], [110, 260]);
+    await sdk.replaceOrders([5, 6], [110, 260]);
 })();
