@@ -30,10 +30,10 @@ class OrderStorageService {
             yield this.db.query(query, [orderId, ownerAddress, price, size, acceptableRange, isBuy]);
         });
     }
-    deleteOrder(orderId) {
+    deleteOrders(orderIds) {
         return __awaiter(this, void 0, void 0, function* () {
-            const query = `DELETE FROM orderbook WHERE order_id = $1;`;
-            yield this.db.query(query, [orderId]);
+            const query = `DELETE FROM orderbook WHERE order_id = ANY($1);`;
+            yield this.db.query(query, [orderIds]);
         });
     }
     listenForOrderEvents() {
@@ -41,14 +41,17 @@ class OrderStorageService {
             this.contract.on('OrderCreated', (orderId, ownerAddress, price, size, acceptableRange, isBuy) => __awaiter(this, void 0, void 0, function* () {
                 console.log(`OrderCreated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
                 yield this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
+                console.log(`Order Saved: ${orderId}`);
             }));
             this.contract.on('OrderUpdated', (orderId, ownerAddress, price, size, acceptableRange, isBuy) => __awaiter(this, void 0, void 0, function* () {
                 console.log(`OrderUpdated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
                 yield this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
+                console.log(`Order Updated: ${orderId}`);
             }));
-            this.contract.on('OrderCompletedOrCanceled', (orderId, owner, isBuy) => __awaiter(this, void 0, void 0, function* () {
-                console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderId} owner: ${owner} isBuy: ${isBuy}`);
-                yield this.deleteOrder(orderId);
+            this.contract.on('OrdersCompletedOrCanceled', (orderIds) => __awaiter(this, void 0, void 0, function* () {
+                console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderIds}`);
+                yield this.deleteOrders(orderIds);
+                console.log(`Order Deleted: ${orderIds}`);
             }));
         });
     }

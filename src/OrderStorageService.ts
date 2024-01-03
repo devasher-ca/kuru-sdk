@@ -26,28 +26,31 @@ class OrderStorageService {
         await this.db.query(query, [orderId, ownerAddress, price, size, acceptableRange, isBuy]);
     }
 
-    async deleteOrder(orderId: number) {
-        const query = `DELETE FROM orderbook WHERE order_id = $1;`;
-        await this.db.query(query, [orderId]);
+    async deleteOrders(orderIds: number[]) {
+        const query = `DELETE FROM orderbook WHERE order_id = ANY($1);`;
+        await this.db.query(query, [orderIds]);
     }
-
+    
     async listenForOrderEvents() {
         this.contract.on('OrderCreated', async (orderId: number, ownerAddress: string, price: number, size: number, acceptableRange: number, isBuy: boolean) => {
             console.log(`OrderCreated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
 
             await this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
+            console.log(`Order Saved: ${orderId}`);
         });
         
         this.contract.on('OrderUpdated', async (orderId: number, ownerAddress: string, price: number, size: number, acceptableRange: number, isBuy: boolean) => {
             console.log(`OrderUpdated event detected for orderId: ${orderId} owner: ${ownerAddress} price: ${price} size: ${size} isBuy: ${isBuy}`);
 
             await this.saveOrder(orderId, ownerAddress, price, size, acceptableRange, isBuy);
+            console.log(`Order Updated: ${orderId}`);
         });
         
-        this.contract.on('OrderCompletedOrCanceled', async (orderId, owner, isBuy) => {
-            console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderId} owner: ${owner} isBuy: ${isBuy}`);
+        this.contract.on('OrdersCompletedOrCanceled', async (orderIds: number[]) => {
+            console.log(`OrderCompletedOrCanceled event detected for orderId: ${orderIds}`);
 
-            await this.deleteOrder(orderId);
+            await this.deleteOrders(orderIds);
+            console.log(`Order Deleted: ${orderIds}`);
         });
         
     }

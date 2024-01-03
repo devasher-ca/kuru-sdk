@@ -47,7 +47,7 @@ const sdkService = new orderbookService_1.default(dbConfig);
     if (zeroOrders.length != 0) {
         throw (0, console_1.error)("zero order has to be zero");
     }
-    const activeOrder = yield sdkService.isOrderActive(165);
+    const activeOrder = yield sdkService.isOrderActive(167);
     if (!activeOrder) {
         throw (0, console_1.error)("order has to be active");
     }
