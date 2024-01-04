@@ -54,4 +54,7 @@ const sdkService = new OrderbookService(dbConfig);
     if (inactiveOrder) {
         throw error("order has to be inactive");
     }
+
+    const orderIdsForSize = await sdkService.getBuyOrdersForSize(1000000000, 30);
+    console.log(orderIdsForSize);
 })();

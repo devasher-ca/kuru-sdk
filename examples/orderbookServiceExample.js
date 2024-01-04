@@ -55,4 +55,6 @@ const sdkService = new orderbookService_1.default(dbConfig);
     if (inactiveOrder) {
         throw (0, console_1.error)("order has to be inactive");
     }
+    const orderIdsForSize = yield sdkService.getBuyOrdersForSize(1000000000, 30);
+    console.log(orderIdsForSize);
 }))();
