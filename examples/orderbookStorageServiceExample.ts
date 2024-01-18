@@ -2,7 +2,7 @@ import OrderStorageService from '../src/OrderStorageService';
 import contractABI from '../abi/CranklessOrderBook.json';
 
 const rpcUrl = 'http://localhost:8545';
-const contractAddress = '0x5771c832D78fDf76A3DA918E4B7a49c062910639';
+const contractAddress = '0xa67eD9FFcAE32A1B6c63D8A5E469446FAa8a8704';
 
 const dbConfig = {
     user: 'username',

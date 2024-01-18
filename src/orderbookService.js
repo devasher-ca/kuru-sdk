@@ -201,6 +201,39 @@ class OrderBookService {
         });
     }
     /**
+     * Calculates the average buy price for a specified size.
+     *
+     * This function fetches all buy orders from the database. It then sorts these orders by price in ascending order.
+     * In cases where multiple orders have the same price, they are sorted by their acceptable range in ascending order.
+     * The function iterates over these sorted orders, summing up their sizes until it reaches or exceeds the specified 'size'.
+     * Simultaneously, it accumulates the total price of these orders and counts the number of orders considered.
+     * Finally, the function calculates the average price by dividing the total price by the number of orders.
+     * This average price is representative of the average cost per unit for the given 'size'.
+     *
+     * @param {number} size - The total size for which the average buy price is calculated.
+     * @returns {Promise<number>} - A promise that resolves to the average buy price for the specified size.
+     */
+    getAvgBuyPriceForSize(size) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const orders = yield this.getBuyOrders(); // Fetch only buy orders
+            // Sort buy orders by price (ascending), then by acceptable range (ascending)
+            const sortedBuyOrders = orders.sort((a, b) => {
+                return a.price === b.price ? a.acceptable_range - b.acceptable_range : b.price - a.price;
+            });
+            let accumulatedSize = 0;
+            let totalPrice = 0;
+            let totalOrders = 0;
+            for (const order of sortedBuyOrders) {
+                if (accumulatedSize >= size)
+                    break;
+                accumulatedSize += Number(order.size);
+                totalPrice += order.price;
+                totalOrders += 1;
+            }
+            return totalPrice / totalOrders;
+        });
+    }
+    /**
     * Fetches a list of sell order IDs that meet a target size and buffer percent criteria.
     * This method is used for providing order ids against which a market order would want to execute.
     * @param {number} size - The target size of orders to accumulate.

@@ -45,7 +45,7 @@ const sdkService = new OrderbookService(dbConfig);
         throw error("zero order has to be zero");
     }
 
-    const activeOrder = await sdkService.isOrderActive(167);
+    const activeOrder = await sdkService.isOrderActive(11);
     if (!activeOrder) {
         throw error("order has to be active");
     }

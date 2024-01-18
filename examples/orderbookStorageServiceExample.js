@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const OrderStorageService_1 = __importDefault(require("../src/OrderStorageService"));
 const CranklessOrderBook_json_1 = __importDefault(require("../abi/CranklessOrderBook.json"));
 const rpcUrl = 'http://localhost:8545';
-const contractAddress = '0x5771c832D78fDf76A3DA918E4B7a49c062910639';
+const contractAddress = '0xa67eD9FFcAE32A1B6c63D8A5E469446FAa8a8704';
 const dbConfig = {
     user: 'username',
     host: 'localhost', // or the database server's address
