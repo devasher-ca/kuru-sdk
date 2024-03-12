@@ -1,7 +1,7 @@
 import fs from 'fs';
 
-import OrderbookService from '../src/orderbookService';
-import { Order } from '../src/orderbookService';
+import OrderbookService from '../src/services/orderbookService';
+import { Order } from '../src/types/types';
 import { error } from 'console';
 
 const mapToObject = (map: Map<number, Order[]>) => {
@@ -54,7 +54,4 @@ const sdkService = new OrderbookService(dbConfig);
     if (inactiveOrder) {
         throw error("order has to be inactive");
     }
-
-    const orderIdsForSize = await sdkService.getBuyOrdersForSize(1000000000, 30);
-    console.log(orderIdsForSize);
 })();

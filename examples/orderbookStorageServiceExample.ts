@@ -1,8 +1,8 @@
-import OrderStorageService from '../src/OrderStorageService';
+import MarketListener from '../src/listener/marketsListener';
 import contractABI from '../abi/CranklessOrderBook.json';
 
 const rpcUrl = 'http://localhost:8545';
-const contractAddress = '0xa67eD9FFcAE32A1B6c63D8A5E469446FAa8a8704';
+const contractAddress = '0xc7D19947980db56C0a023D0d0DeED5E9353EF741';
 
 const dbConfig = {
     user: 'username',
@@ -13,7 +13,7 @@ const dbConfig = {
 };
 
 
-const sdk = new OrderStorageService(rpcUrl, contractAddress, contractABI.abi, dbConfig);
+const sdk = new MarketListener(rpcUrl, contractAddress, contractABI.abi, dbConfig);
 
 // Start listening for events
 sdk.listenForOrderEvents();

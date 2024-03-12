@@ -1,20 +1,5 @@
-import { ethers } from 'ethers';
 import { Pool } from 'pg';
-
-export interface Order {
-    order_id: number,
-    owner_address: string;
-    price: number;
-    size: number;
-    acceptable_range: number;
-    is_buy: boolean;
-}
-
-export interface PricePoint {
-    totalCompletedOrCanceledOrders: number;
-    totalOrdersAtPrice: number;
-    executableSize: number;
-}
+import { Order } from '../types/types';
 
 class OrderBookService {
     private db: Pool;
@@ -121,7 +106,7 @@ class OrderBookService {
         };
     
         const sortOrdersByRange = (ordersList: Order[]) => {
-            ordersList.sort((a, b) => a.acceptable_range - b.acceptable_range);
+            ordersList.sort((a, b) => a.order_id - b.order_id);
         };
     
         orders.forEach(order => {
@@ -183,37 +168,10 @@ class OrderBookService {
     }
 
     /**
-     * Fetches a list of buy order IDs that meet a target size and buffer percent criteria.
-     * This method is used for providing order ids against which a market order would want to execute.
-     * @param {number} size - The target size of orders to accumulate.
-     * @param {number} bufferPercent - The buffer percentage to apply to the target size.
-     * @returns {Promise<number[]>} A promise that resolves to an array of buy order IDs.
-     */
-    async getBuyOrdersForSize(size: number, bufferPercent: number): Promise<number[]> {
-        const orders = await this.getBuyOrders(); // Fetch only buy orders
-        const targetSize = size + (bufferPercent / 100) * size;
-        let accumulatedSize: number = 0;
-        let orderIds = [];
-    
-        // Sort buy orders by price (ascending), then by acceptable range (ascending)
-        const sortedBuyOrders = orders.sort((a, b) => {
-            return a.price === b.price ? a.acceptable_range - b.acceptable_range : b.price - a.price;
-        });
-    
-        for (const order of sortedBuyOrders) {
-            if (accumulatedSize >= targetSize) break;
-            accumulatedSize += Number(order.size);
-            orderIds.push(order.order_id);
-        }
-    
-        return orderIds;
-    }
-
-    /**
      * Calculates the average buy price for a specified size.
      *
      * This function fetches all buy orders from the database. It then sorts these orders by price in ascending order.
-     * In cases where multiple orders have the same price, they are sorted by their acceptable range in ascending order.
+     * In cases where multiple orders have the same price, they are sorted by their order Id in ascending order.
      * The function iterates over these sorted orders, summing up their sizes until it reaches or exceeds the specified 'size'.
      * Simultaneously, it accumulates the total price of these orders and counts the number of orders considered.
      * Finally, the function calculates the average price by dividing the total price by the number of orders.
@@ -225,51 +183,22 @@ class OrderBookService {
     async getAvgBuyPriceForSize(size: number): Promise<number> {
         const orders = await this.getBuyOrders(); // Fetch only buy orders
 
-        // Sort buy orders by price (ascending), then by acceptable range (ascending)
+        // Sort buy orders by price (ascending), then by order Id (ascending)
         const sortedBuyOrders = orders.sort((a, b) => {
-            return a.price === b.price ? a.acceptable_range - b.acceptable_range : b.price - a.price;
+            return a.price === b.price ? a.order_id - b.order_id : b.price - a.price;
         });
 
         let accumulatedSize: number = 0;
         let totalPrice: number = 0;
-        let totalOrders: number = 0;
 
         for (const order of sortedBuyOrders) {
             if (accumulatedSize >= size) break;
             accumulatedSize += Number(order.size);
             totalPrice += order.price;
-            totalOrders += 1;
         }
 
-        return totalPrice/totalOrders;
+        return totalPrice/size;
     }
-
-     /**
-     * Fetches a list of sell order IDs that meet a target size and buffer percent criteria.
-     * This method is used for providing order ids against which a market order would want to execute.
-     * @param {number} size - The target size of orders to accumulate.
-     * @param {number} bufferPercent - The buffer percentage to apply to the target size.
-     * @returns {Promise<number[]>} A promise that resolves to an array of sell order IDs.
-     */
-    async getSellOrdersForSize(size: number, bufferPercent: number): Promise<number[]> {
-        const orders = await this.getSellOrders(); // Fetch only sell orders
-        const targetSize = size + (bufferPercent / 100) * size;
-        let accumulatedSize = 0;
-        let orderIds = [];
-    
-        // Sort sell orders by price (descending), then by acceptable range (ascending)
-        const sortedSellOrders = orders.sort((a, b) => {
-            return a.price === b.price ? a.acceptable_range - b.acceptable_range : a.price - b.price;
-        });
-    
-        for (const order of sortedSellOrders) {
-            if (accumulatedSize >= targetSize) break;
-            accumulatedSize += order.size;
-            orderIds.push(order.order_id);
-        }
-    
-        return orderIds;
-    }    
 }
 
 export default OrderBookService;

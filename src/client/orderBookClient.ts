@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { Contract } from "ethers";
-import OrderBookService from "./orderbookService";
+import OrderBookService from "../services/orderbookService";
 
 class OrderbookClient {
 	private provider: ethers.JsonRpcProvider;
@@ -127,54 +127,22 @@ class OrderbookClient {
 		return estimatedGas;
 	}
 
-	async placeAggressiveLimit(
-		price: number,
-		size: number,
-		isBuy: boolean
-	): Promise<void> {
-		return isBuy
-			? this.addBuyOrder(price, size)
-			: this.addSellOrder(price, size);
-	}
-
 	async placeFillOrKill(
 		size: number,
-		bufferPercent: number,
 		isBuy: boolean
 	): Promise<number> {
-		const orderIds: number[] = isBuy
-			? (await this.orderbookService?.getSellOrdersForSize(
-					size,
-					bufferPercent
-			  )) || []
-			: (await this.orderbookService?.getBuyOrdersForSize(
-					size,
-					bufferPercent
-			  )) || [];
-
 		return isBuy
-			? this.placeAndExecuteMarketBuy(orderIds, size, true)
-			: this.placeAndExecuteMarketSell(orderIds, size, true);
+			? this.placeAndExecuteMarketBuy(size, true)
+			: this.placeAndExecuteMarketSell(size, true);
 	}
 
 	async placeMarket(
 		size: number,
-		bufferPercent: number,
 		isBuy: boolean
 	): Promise<number> {
-		const orderIds: number[] = isBuy
-			? (await this.orderbookService?.getSellOrdersForSize(
-					size,
-					bufferPercent
-			  )) || []
-			: (await this.orderbookService?.getBuyOrdersForSize(
-					size,
-					bufferPercent
-			  )) || [];
-
 		return isBuy
-			? this.placeAndExecuteMarketBuy(orderIds, size, false)
-			: this.placeAndExecuteMarketSell(orderIds, size, false);
+			? this.placeAndExecuteMarketBuy(size, false)
+			: this.placeAndExecuteMarketSell(size, false);
 	}
 
 	async addBuyOrder(price: number, size: number): Promise<void> {
@@ -230,12 +198,10 @@ class OrderbookClient {
 	}
 
 	async placeAndExecuteMarketBuy(
-		orderIds: number[],
 		size: number,
 		isFillOrKill: boolean
 	): Promise<number> {
 		const tx = await this.orderbook.placeAndExecuteMarketBuy(
-			orderIds,
 			size,
 			isFillOrKill
 		);
@@ -245,46 +211,16 @@ class OrderbookClient {
 	}
 
 	async placeAndExecuteMarketSell(
-		orderIds: number[],
 		size: number,
 		isFillOrKill: boolean
 	): Promise<number> {
 		const tx = await this.orderbook.placeAndExecuteMarketSell(
-			orderIds,
 			size,
 			isFillOrKill
 		);
 		await tx.wait();
 		console.log("Market sell order executed:", tx);
 		return tx.value; // Assuming the function returns the remaining size
-	}
-
-	async placeAggressiveLimitSell(
-		orderIds: number[],
-		size: number,
-		price: number
-	): Promise<void> {
-		const tx = await this.orderbook.placeAggressiveLimitSell(
-			orderIds,
-			size,
-			price
-		);
-		await tx.wait();
-		console.log("Aggressive limit sell order placed:", tx);
-	}
-
-	async placeAggressiveLimitBuy(
-		orderIds: number[],
-		size: number,
-		price: number
-	): Promise<void> {
-		const tx = await this.orderbook.placeAggressiveLimitBuy(
-			orderIds,
-			size,
-			price
-		);
-		await tx.wait();
-		console.log("Aggressive limit buy order placed:", tx);
 	}
 }
 
