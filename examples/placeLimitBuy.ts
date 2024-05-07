@@ -3,7 +3,6 @@ import MarginAccountClient from "../src/client/marginAccountClient";
 import orderBookAbi from "../abi/CranklessOrderBook.json";
 import marginAccountAbi from "../abi/MarginAccount.json";
 import erc20Abi from "../abi/IERC20.json";
-import OrderbookService from '../src/services/orderbookService';
 
 const userAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const privateKey =
@@ -31,14 +30,12 @@ const marginAccountSdk = new MarginAccountClient(
 	marginAccountAbi.abi
 );
 
-// Example usage
+
+const args = process.argv.slice(2);
+const price = parseFloat(args[0]);
+const quantity = parseFloat(args[1]);
+
 (async () => {
-	// await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 100, 18);
-	await sdk.addBuyOrder(1300, 2*10**10);
-	// await sdk.addSellOrder(200, 500);
-	// await sdk.placeMultipleBuyOrders([100, 150], [1000, 1500]);
-	// await sdk.placeMultipleSellOrders([200, 250], [500, 750]);
-	// await sdk.cancelOrders([3, 4], [true, false]);
-	// await sdk.replaceOrders([5, 6], [110, 260]);
-	// console.log(await sdk.estimateGasForLimitOrder(180000, 2 * 10 ** 8, true));
+	// await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 1000000, 18);
+	await sdk.addBuyOrder(price * 10**2, quantity * 10**10);
 })();

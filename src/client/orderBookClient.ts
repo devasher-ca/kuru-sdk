@@ -8,12 +8,8 @@ class OrderbookClient {
 	private orderbook: Contract;
     private baseToken: Contract;
     private quoteToken: Contract;
-	// we take an orderbook service and not a dbConfig here because we assume the orderbook service can have different storages.
-	// dbConfig is on of them that has been implemented currently, but the the storage service will be enhanced.
-	private orderbookService: OrderBookService | null;
 
 	constructor(
-		orderbookService: OrderBookService | null,
 		privateKey: string,
 		rpcUrl: string,
 		orderbookAddress: string,
@@ -42,20 +38,18 @@ class OrderbookClient {
             ERC20ABI,
             this.wallet,
         )
-
-		this.orderbookService = new OrderBookService(orderbookService);
 	}
 
     async approveBase(size: number): Promise<void> {
         const tx = await this.baseToken.approve(await this.orderbook.getAddress(), size);
 		await tx.wait();
-		console.log("Base tokens approved:", tx);
+		console.log("Base tokens approved:");
     }
 
     async approveQuote(size: number): Promise<void> {
         const tx = await this.quoteToken.approve(await this.orderbook.getAddress(), size);
 		await tx.wait();
-		console.log("Quote tokens approved", tx);
+		console.log("Quote tokens approved");
     }
 
     /**
@@ -148,13 +142,13 @@ class OrderbookClient {
 	async addBuyOrder(price: number, size: number): Promise<void> {
 		const tx = await this.orderbook.addBuyOrder(price, size);
 		await tx.wait();
-		console.log("Buy order added:", tx);
+		console.log("Buy order added:");
 	}
 
 	async addSellOrder(price: number, size: number): Promise<void> {
 		const tx = await this.orderbook.addSellOrder(price, size);
 		await tx.wait();
-		console.log("Sell order added:", tx);
+		console.log("Sell order added:");
 	}
 
 	async placeLimits(
@@ -173,7 +167,7 @@ class OrderbookClient {
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleBuyOrders(prices, sizes);
 		await tx.wait();
-		console.log("Multiple buy orders placed:", tx);
+		console.log("Multiple buy orders placed:");
 	}
 
 	async placeMultipleSellOrders(
@@ -182,19 +176,19 @@ class OrderbookClient {
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleSellOrders(prices, sizes);
 		await tx.wait();
-		console.log("Multiple sell orders placed:", tx);
+		console.log("Multiple sell orders placed:");
 	}
 
-	async cancelOrders(orderIds: number[], isBuy: boolean[]): Promise<void> {
-		const tx = await this.orderbook.batchCancelOrders(orderIds, isBuy);
+	async cancelOrders(orderIds: number[]): Promise<void> {
+		const tx = await this.orderbook.batchCancelOrders(orderIds);
 		await tx.wait();
-		console.log("Batch orders cancelled:", tx);
+		console.log("Batch orders cancelled:", orderIds);
 	}
 
 	async replaceOrders(orderIds: number[], prices: number[]): Promise<void> {
 		const tx = await this.orderbook.replaceOrders(orderIds, prices);
 		await tx.wait();
-		console.log("Orders replaced:", tx);
+		console.log("Orders replaced:");
 	}
 
 	async placeAndExecuteMarketBuy(
@@ -206,7 +200,7 @@ class OrderbookClient {
 			isFillOrKill
 		);
 		await tx.wait();
-		console.log("Market buy order executed:", tx);
+		console.log("Market buy order executed:");
 		return tx.value; // Assuming the function returns the remaining size
 	}
 
@@ -219,8 +213,37 @@ class OrderbookClient {
 			isFillOrKill
 		);
 		await tx.wait();
-		console.log("Market sell order executed:", tx);
+		console.log("Market sell order executed:");
 		return tx.value; // Assuming the function returns the remaining size
+	}
+
+	async getL2OrderBook() {
+		const data = await this.orderbook.getL2Book();
+
+		// Decode the data
+		let offset = 66;
+		const blockNumber = parseInt('0x' + data.slice(2, 66), 16);
+		let asks = {};
+		while (offset < data.length) {
+		  const price = parseInt('0x' + data.slice(offset, offset + 64), 16);
+		  offset += 64;  // Each uint24 is padded to 64 bytes
+		  if (price == 0) {
+			  break
+		  }
+		  const size = parseInt('0x' + data.slice(offset, offset + 64), 16);
+		  offset += 64; // Each uint96 is padded to 64 bytes
+		//   asks[price.toString()] = size.toString();
+		}
+	  
+		let bids = {};
+	  
+		while (offset < data.length) {
+		  const price = parseInt('0x' + data.slice(offset, offset + 64), 16);
+		  offset += 64;  // Each uint24 is padded to 64 bytes
+		  const size = parseInt('0x' + data.slice(offset, offset + 64), 16);
+		  offset += 64; // Each uint96 is padded to 64 bytes
+		//   bids[price.toString()] = size.toString();
+		}
 	}
 }
 

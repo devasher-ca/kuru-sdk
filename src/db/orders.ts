@@ -2,9 +2,11 @@ import { Pool } from "pg";
 
 class OrderStorageService {
 	private db: Pool;
+	private tableName: string;
 
-	constructor(dbConfig: any) {
+	constructor(marketAddress: string, dbConfig: any) {
 		this.db = new Pool(dbConfig);
+		this.tableName = `orders_${marketAddress}`;
 	}
 
 	async saveOrder(
@@ -15,7 +17,7 @@ class OrderStorageService {
 		isBuy: boolean
 	) {
 		const orderQuery = `
-            INSERT INTO orders (order_id, owner_address, size, price, is_buy)
+            INSERT INTO ${this.tableName} (order_id, owner_address, size, price, is_buy)
             VALUES ($1, $2, $3, $4, $5)
         `;
 
@@ -26,7 +28,7 @@ class OrderStorageService {
 
     async updateOrderSize(orderId: number, newSize: number) {
 		const query = `
-            UPDATE order 
+            UPDATE ${this.tableName} 
             SET size = $2
             WHERE order_id = $1;
         `;

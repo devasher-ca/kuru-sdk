@@ -3,9 +3,10 @@ import { Order } from '../types/types';
 
 class OrderBookService {
     private db: Pool;
+    private marketAddress: string;
 
-    constructor(dbConfig: any) {
-
+    constructor(marketAddress:string, dbConfig: any) {
+        this.marketAddress = marketAddress;
         this.db = new Pool(dbConfig);
     }
 
@@ -15,7 +16,7 @@ class OrderBookService {
      */
     async getOrders(): Promise<Order[]> {
         try {
-            const res = await this.db.query(`SELECT * FROM orderbook`);
+            const res = await this.db.query(`SELECT * FROM orderbook_${this.marketAddress}`);
             return res.rows;
         } catch (error) {
             console.error(`Error fetching data from orders:`, error);
@@ -29,7 +30,7 @@ class OrderBookService {
      */
     async getBuyOrders(): Promise<Order[]> {
         try {
-            const res = await this.db.query(`SELECT * FROM orderbook WHERE is_buy=true`);
+            const res = await this.db.query(`SELECT * FROM orderbook_${this.marketAddress} WHERE is_buy=true`);
             return res.rows;
         } catch (error) {
             console.error(`Error fetching data from orders:`, error);
@@ -43,7 +44,7 @@ class OrderBookService {
      */
     async getSellOrders(): Promise<Order[]> {
         try {
-            const res = await this.db.query(`SELECT * FROM orderbook WHERE is_buy=false`);
+            const res = await this.db.query(`SELECT * FROM orderbook_${this.marketAddress} WHERE is_buy=false`);
             return res.rows;
         } catch (error) {
             console.error(`Error fetching data from orders:`, error);
@@ -58,7 +59,7 @@ class OrderBookService {
      */
     async getOrderForUser(ownerAddress: string): Promise<Order[]> {
         try {
-            const query = `SELECT * FROM orderbook WHERE owner_address = $1`;
+            const query = `SELECT * FROM orderbook_${this.marketAddress} WHERE owner_address = $1`;
             const res = await this.db.query(query, [ownerAddress]);
             return res.rows;
         } catch (error) {
@@ -74,7 +75,7 @@ class OrderBookService {
      */
     async getOrder(orderId: number): Promise<Order | null> {
         try {
-            const query = `SELECT * FROM orderbook WHERE order_id = $1`;
+            const query = `SELECT * FROM orderbook_${this.marketAddress} WHERE order_id = $1`;
             const res = await this.db.query(query, [orderId]);
             if (res.rows.length === 0) {
                 return null;
@@ -135,24 +136,27 @@ class OrderBookService {
     async getL2OrderBook(): Promise<any> {
         const orders: Order[] = await this.getOrders();
     
-        const buys = new Map<number, number>();
-        const sells = new Map<number, number>();
+        const buys: { price: number; quantity: number }[] = [];
+        const sells: { price: number; quantity: number }[] = [];
     
         orders.forEach(order => {
-            const orderMap = order.is_buy ? buys : sells;
-            const currentSize = orderMap.get(order.price) || 0;
-            // Ensure numerical addition
-            orderMap.set(order.price, currentSize + Number(order.size));
+            const targetList = order.is_buy ? buys : sells;
+            const found = targetList.find(o => o.price === order.price);
+            if (found) {
+                found.quantity += Number(order.size);
+            } else {
+                targetList.push({ price: order.price, quantity: Number(order.size) });
+            }
         });
     
-        // Function to sort map entries by price in descending order
-        const sortMapDescending = (map: Map<number, number>) => {
-            return Array.from(map).sort((a, b) => b[0] - a[0]);
+        // Function to sort arrays by price in descending order
+        const sortArrayDescending = (array: { price: number; quantity: number }[]) => {
+            return array.sort((a, b) => b.price - a.price);
         };
     
         return {
-            buyOrders: sortMapDescending(buys),
-            sellOrders: sortMapDescending(sells),
+            sellOrders: sortArrayDescending(sells),
+            buyOrders: sortArrayDescending(buys),
         };
     }
 

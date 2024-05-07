@@ -3,9 +3,10 @@ import { Order } from '../types/types';
 
 class OrderService {
     private db: Pool;
+    private marketAddress: string;
 
-    constructor(dbConfig: any) {
-
+    constructor(marketAddress:string, dbConfig: any) {
+        this.marketAddress = marketAddress;
         this.db = new Pool(dbConfig);
     }
 
@@ -15,7 +16,7 @@ class OrderService {
      */
     async getOrdersForAddress(ownerAddress: string): Promise<Order[]> {
         try {
-            const res = await this.db.query(`SELECT * FROM orders WHERE owner_address = $1`, [ownerAddress]);
+            const res = await this.db.query(`SELECT * FROM orders_${this.marketAddress} WHERE owner_address = $1`, [ownerAddress]);
             return res.rows;
         } catch (error) {
             console.error(`Error fetching data from orders:`, error);

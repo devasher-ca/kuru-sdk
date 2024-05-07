@@ -13,12 +13,14 @@ CREATE TABLE IF NOT EXISTS orders (
     owner_address VARCHAR(255),
     size NUMERIC,
     price NUMERIC,
-    is_buy BOOLEAN
+    is_buy BOOLEAN,
+    tx_hash VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS trades (
     taker_address VARCHAR(255),
+    order_id NUMERIC,
     size NUMERIC,
-    is_buy BOOLEAN,
+    tx_hash VARCHAR(255),
     timestamp NUMERIC
 );

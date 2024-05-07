@@ -20,7 +20,9 @@ const dbConfig = {
     port: 5432,
 };
 
-const sdkService = new OrderbookService(dbConfig);
+const marketAddress = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
+
+const sdkService = new OrderbookService(marketAddress, dbConfig);
 
 // Example usage
 (async () => {

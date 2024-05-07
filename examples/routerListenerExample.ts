@@ -1,7 +1,7 @@
-import MarketListener from '../src/listener/marketsListener';
+import RouterListener from '../src/listener/routerListener';
 
 const rpcUrl = 'http://localhost:8545';
-const contractAddress = '0x3049C306C7d59cDc4925a083DA32C2870f5b9d0e';
+const contractAddress = '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9';
 
 const dbConfig = {
     user: 'username',
@@ -12,7 +12,7 @@ const dbConfig = {
 };
 
 
-const sdk = new MarketListener(rpcUrl, contractAddress, dbConfig);
+const sdk = new RouterListener(rpcUrl, contractAddress, dbConfig);
 
 // Start listening for events
-sdk.listenForOrderEvents();
+sdk.initialize();
