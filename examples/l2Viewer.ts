@@ -1,38 +1,44 @@
-import OrderbookService from '../src/services/orderbookService';
+import OrderbookClient from "../src/client/orderBookClient";
 
-const marketAddress = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
+export interface OrderBookData {
+    asks: Record<string, string>;
+    bids: Record<string, string>;
+    blockNumber: number;
+}
 
-const dbConfig = {
-    user: 'username',
-    host: 'localhost', // or the database server's address
-    database: 'orderbook',
-    password: 'password',
-    port: 5432,
-};
-
-const sdkService = new OrderbookService(marketAddress, dbConfig);
+const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const rpcUrl = "http://localhost:8545";
+const contractAddress = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
 
 class OrderbookWatcher {
-    private sdkService: OrderbookService;
+    private clientSdk: OrderbookClient;
     private lastOrderbookJson: string | null = null;
 
-    constructor(sdkService: OrderbookService) {
-        this.sdkService = sdkService;
+    constructor(clientSdk: OrderbookClient) {
+        this.clientSdk = clientSdk;
+    }
+
+    static async create(privateKey: string, rpcUrl: string, contractAddress: string): Promise<OrderbookWatcher> {
+        const clientSdk = await OrderbookClient.create(privateKey, rpcUrl, contractAddress);
+        return new OrderbookWatcher(clientSdk);
     }
 
     public startWatching(intervalMs: number = 500): void {
         setInterval(async () => {
             try {
-                const currentOrderbook = await this.sdkService.getL2OrderBook();
+                const currentOrderbook = await this.clientSdk.getL2OrderBook();
                 const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
+                    const asksArray = Object.entries(currentOrderbook.asks).map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
+                    const bidsArray = Object.entries(currentOrderbook.bids).map(([price, quantity]) => ({ price: parseFloat(price), quantity: parseFloat(quantity) }));
+
                     const maxBaseSize = Math.max(
-                        ...currentOrderbook.buyOrders.map((b: { quantity: any; }) => b.quantity),
-                        ...currentOrderbook.sellOrders.map((a: { quantity: any; }) => a.quantity)
+                        ...asksArray.map(a => a.quantity),
+                        ...bidsArray.map(b => b.quantity)
                     );
                     const maxBaseSizeLength = maxBaseSize.toString().length;
                     const printLine = (price: number, size: number, color: "red" | "green") => {
-                        const priceStr = price.toString();
+                        const priceStr = price.toFixed(2); // Assuming two decimal places for price
                         const sizeStr = size.toString().padStart(maxBaseSizeLength, " ");
                         console.log(
                           priceStr + " " + `\u001b[3${color === "green" ? 2 : 1}m` + sizeStr + "\u001b[0m"
@@ -43,21 +49,20 @@ class OrderbookWatcher {
                     console.log("=================================");
                     console.log("Asks");
                     console.log("=================================");
-                    for (const { price, quantity } of currentOrderbook.sellOrders) {
+                    asksArray.forEach(({ price, quantity }) => {
                         if (quantity != 0) {
                             printLine(price, quantity, "red");
                         }
-                    }
+                    });
 
-                    // console.log(`\n`);
                     console.log("=================================");
                     console.log("Bids");
                     console.log("=================================");
-                    for (const { price, quantity } of currentOrderbook.buyOrders) {
+                    bidsArray.forEach(({ price, quantity }) => {
                         if (quantity != 0) {
                             printLine(price, quantity, "green");
                         }
-                    }
+                    });
 
                     this.lastOrderbookJson = currentOrderbookJson;
                 }
@@ -68,5 +73,7 @@ class OrderbookWatcher {
     }
 }
 
-const watcher = new OrderbookWatcher(sdkService);
-watcher.startWatching(); // Default polling interval set to 500 milliseconds
+(async () => {
+    const watcher = await OrderbookWatcher.create(privateKey, rpcUrl, contractAddress);
+    watcher.startWatching(); // Default polling interval set to 500 milliseconds
+})();

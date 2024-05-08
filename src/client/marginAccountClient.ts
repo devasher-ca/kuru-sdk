@@ -1,6 +1,9 @@
 import { ethers } from 'ethers';
 import { Contract } from 'ethers';
+
 import erc20Abi from "../../abi/IERC20.json";
+import marginAccountAbi from "../../abi/MarginAccount.json";
+
 require('dotenv').config();
 
 class MarginAccountClient {
@@ -12,13 +15,12 @@ class MarginAccountClient {
         privateKey: string,
         rpcUrl: string,
 		marginAccountAddress: string,
-        marginAccountABI: any,
     ) {
         this.provider = new ethers.JsonRpcProvider(rpcUrl);
         this.wallet = new ethers.Wallet(privateKey, this.provider);
         this.marginAccount = new ethers.Contract(
             marginAccountAddress,
-            marginAccountABI,
+            marginAccountAbi.abi,
             this.wallet
         );
     }

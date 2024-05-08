@@ -1,8 +1,5 @@
 import OrderbookClient from "../src/client/orderBookClient";
 import MarginAccountClient from "../src/client/marginAccountClient";
-import orderBookAbi from "../abi/CranklessOrderBook.json";
-import marginAccountAbi from "../abi/MarginAccount.json";
-import erc20Abi from "../abi/IERC20.json";
 
 const userAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const privateKey =
@@ -13,29 +10,18 @@ const marginAccountAddress = "0x0165878A594ca255338adfa4d48449f69242Eb8F";
 const baseTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const quoteTokenAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
-const sdk = new OrderbookClient(
-	privateKey,
-	rpcUrl,
-	contractAddress,
-	orderBookAbi.abi,
-	baseTokenAddress,
-	quoteTokenAddress,
-	erc20Abi.abi
-);
-
-const marginAccountSdk = new MarginAccountClient(
-	privateKey,
-	rpcUrl,
-	marginAccountAddress,
-	marginAccountAbi.abi
-);
-
-
 const args = process.argv.slice(2);
 const price = parseFloat(args[0]);
 const quantity = parseFloat(args[1]);
 
 (async () => {
-	// await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 1000000, 18);
-	await sdk.addBuyOrder(price * 10**2, quantity * 10**10);
+	const clientSdk = await OrderbookClient.create(privateKey, rpcUrl, contractAddress);
+	const marginAccountSdk = new MarginAccountClient(
+		privateKey,
+		rpcUrl,
+		marginAccountAddress,
+	);
+
+	await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 1000000, 18);
+	await clientSdk.addBuyOrder(BigInt(price), BigInt(quantity));
 })();
