@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import { Contract } from "ethers";
 
-import {OrderBookData, MarketParams} from "../types/types";
-import orderbookAbi from "../../abi/CranklessOrderBook.json";
+import {OrderBookData, ActiveOrders, MarketParams} from "../types/types";
+import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
 
-class OrderbookClient {
+export class OrderbookClient {
 	private provider: ethers.JsonRpcProvider;
 	private wallet: ethers.Wallet;
 	private orderbook: Contract;
@@ -40,12 +40,12 @@ class OrderbookClient {
 
         const marketParamsData = await orderbook.getMarketParams();
         const marketParams: MarketParams = {
-            pricePrecision: marketParamsData[0],
-            sizePrecision: marketParamsData[1],
+            pricePrecision: Number(marketParamsData[0]),
+            sizePrecision: Number(marketParamsData[1]),
             baseAssetAddress: marketParamsData[2],
-            baseAssetDecimals: marketParamsData[3],
+            baseAssetDecimals: Number(marketParamsData[3]),
             quoteAssetAddress: marketParamsData[4],
-            quoteAssetDecimals: marketParamsData[5],
+            quoteAssetDecimals: Number(marketParamsData[5]),
         };
 
         const baseToken = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, wallet);
@@ -54,29 +54,29 @@ class OrderbookClient {
         return new OrderbookClient(provider, wallet, orderbook, baseToken, quoteToken, marketParams);
     }
 
-    async approveBase(size: bigint): Promise<void> {
-        const tx = await this.baseToken.approve(await this.orderbook.getAddress(), size * BigInt(10^this.marketParams.baseAssetDecimals));
+    async approveBase(size: number): Promise<void> {
+        const tx = await this.baseToken.approve(await this.orderbook.getAddress(), size * 10^this.marketParams.baseAssetDecimals);
 		await tx.wait();
 		console.log("Base tokens approved:");
     }
 
-    async approveQuote(size: bigint): Promise<void> {
-        const tx = await this.quoteToken.approve(await this.orderbook.getAddress(),  size * BigInt(10^this.marketParams.quoteAssetDecimals));
+    async approveQuote(size: number): Promise<void> {
+        const tx = await this.quoteToken.approve(await this.orderbook.getAddress(),  size * 10^this.marketParams.quoteAssetDecimals);
 		await tx.wait();
 		console.log("Quote tokens approved");
     }
 
     /**
 	 * @dev Estimates the gas required to place a limit order.
-	 * @param {bigint} size - The size of the order.
-	 * @returns {Promise<bigint>} - A promise that resolves to the estimated gas required for the transaction.
+	 * @param {number} size - The size of the order.
+	 * @returns {Promise<number>} - A promise that resolves to the estimated gas required for the transaction.
 	 */
 	async estimateGasForApproval(
-		size: bigint,
+		size: number,
         isBase: boolean
 	): Promise<bigint> {
 		// Encode the function call
-		const encodeData = isBase ? size * BigInt(10^this.marketParams.baseAssetDecimals) : size * BigInt(10^this.marketParams.quoteAssetDecimals);
+		const encodeData = isBase ? size * 10^this.marketParams.baseAssetDecimals : size * 10^this.marketParams.quoteAssetDecimals;
 		const data = this.quoteToken.interface.encodeFunctionData(
 			"approve",
 			[await this.orderbook.getAddress(), encodeData]
@@ -94,7 +94,7 @@ class OrderbookClient {
 		return estimatedGas;
 	}
 
-	async placeLimit(price: bigint, size: bigint, isBuy: boolean): Promise<void> {
+	async placeLimit(price: number, size: number, isBuy: boolean): Promise<void> {
 		return isBuy
 			? this.addBuyOrder(price, size)
 			: this.addSellOrder(price, size);
@@ -102,14 +102,14 @@ class OrderbookClient {
 
 	/**
 	 * @dev Estimates the gas required to place a limit order.
-	 * @param {bigint} price - The price at which the limit order is to be placed.
-	 * @param {bigint} size - The size of the order.
+	 * @param {number} price - The price at which the limit order is to be placed.
+	 * @param {number} size - The size of the order.
 	 * @param {boolean} isBuy - A boolean indicating whether it's a buy order (true) or sell order (false).
-	 * @returns {Promise<bigint>} - A promise that resolves to the estimated gas required for the transaction.
+	 * @returns {Promise<number>} - A promise that resolves to the estimated gas required for the transaction.
 	 */
 	async estimateGasForLimitOrder(
-		price: bigint,
-		size: bigint,
+		price: number,
+		size: number,
 		isBuy: boolean
 	): Promise<bigint> {
 		// Make sure the function name and arguments match the contract
@@ -135,38 +135,38 @@ class OrderbookClient {
 	}
 
 	async placeFillOrKill(
-		size: bigint,
+		size: number,
 		isBuy: boolean
-	): Promise<bigint> {
+	): Promise<number> {
 		return isBuy
 			? this.placeAndExecuteMarketBuy(size, true)
 			: this.placeAndExecuteMarketSell(size, true);
 	}
 
 	async placeMarket(
-		size: bigint,
+		size: number,
 		isBuy: boolean
-	): Promise<bigint> {
+	): Promise<number> {
 		return isBuy
 			? this.placeAndExecuteMarketBuy(size, false)
 			: this.placeAndExecuteMarketSell(size, false);
 	}
 
-	async addBuyOrder(price: bigint, size: bigint): Promise<void> {
-		const tx = await this.orderbook.addBuyOrder(price * this.marketParams.pricePrecision, size * this.marketParams.sizePrecision);
+	async addBuyOrder(price: number, size: number): Promise<void> {
+		const tx = await this.orderbook.addBuyOrder(Math.round(price * this.marketParams.pricePrecision), Math.round(size * this.marketParams.sizePrecision));
 		await tx.wait();
 		console.log("Buy order added:");
 	}
 
-	async addSellOrder(price: bigint, size: bigint): Promise<void> {
-		const tx = await this.orderbook.addSellOrder(price * this.marketParams.pricePrecision, size * this.marketParams.sizePrecision);
+	async addSellOrder(price: number, size: number): Promise<void> {
+		const tx = await this.orderbook.addSellOrder(Math.round(price * this.marketParams.pricePrecision), Math.round(size * this.marketParams.sizePrecision));
 		await tx.wait();
 		console.log("Sell order added:");
 	}
 
 	async placeLimits(
-		prices: bigint[],
-		sizes: bigint[],
+		prices: number[],
+		sizes: number[],
 		isBuy: boolean
 	): Promise<void> {
 		return isBuy
@@ -175,24 +175,24 @@ class OrderbookClient {
 	}
 
 	async placeMultipleBuyOrders(
-		prices: bigint[],
-		sizes: bigint[]
+		prices: number[],
+		sizes: number[]
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleBuyOrders(
-			prices.map(price => price * this.marketParams.pricePrecision),
-			sizes.map(size => size * this.marketParams.sizePrecision)
+			prices.map(price => Math.round(price * this.marketParams.pricePrecision)),
+			sizes.map(size => Math.round(size * this.marketParams.sizePrecision))
 		);
 		await tx.wait();
 		console.log("Multiple buy orders placed:");
 	}
 
 	async placeMultipleSellOrders(
-		prices: bigint[],
-		sizes: bigint[]
+		prices: number[],
+		sizes: number[]
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleSellOrders(
-			prices.map(price => price * this.marketParams.pricePrecision),
-			sizes.map(size => size * this.marketParams.sizePrecision)
+			prices.map(price => Math.round(price * this.marketParams.pricePrecision)),
+			sizes.map(size => Math.round(size * this.marketParams.sizePrecision))
 		);
 		await tx.wait();
 		console.log("Multiple sell orders placed:");
@@ -204,12 +204,20 @@ class OrderbookClient {
 		console.log("Batch orders cancelled:", orderIds);
 	}
 
+	async cancelAllOrders(maker: string): Promise<void> {
+		const activeOrders = await this.getActiveOrdersForMaker(maker);
+
+		await this.cancelOrders(activeOrders.orderIds);
+		
+		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+	}
+
 	async placeAndExecuteMarketBuy(
-		size: bigint,
+		size: number,
 		isFillOrKill: boolean
-	): Promise<bigint> {
+	): Promise<number> {
 		const tx = await this.orderbook.placeAndExecuteMarketBuy(
-			size * this.marketParams.sizePrecision,
+			Math.round(size * this.marketParams.sizePrecision),
 			isFillOrKill
 		);
 		await tx.wait();
@@ -218,17 +226,32 @@ class OrderbookClient {
 	}
 
 	async placeAndExecuteMarketSell(
-		size: bigint,
+		size: number,
 		isFillOrKill: boolean
-	): Promise<bigint> {
+	): Promise<number> {
 		const tx = await this.orderbook.placeAndExecuteMarketSell(
-			this.marketParams.sizePrecision,
+			Math.round(size * this.marketParams.sizePrecision),
 			isFillOrKill
 		);
 		await tx.wait();
 		console.log("Market sell order executed:");
 		return tx.value; // Assuming the function returns the remaining size
 	}
+
+	async getActiveOrdersForMaker(maker: string): Promise<ActiveOrders> {
+        const data = await this.orderbook.getActiveOrdersForAddress(maker);
+        let offset = 66;
+        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        let orderIds: number[] = [];
+        
+        while (offset < data.length) {
+            const orderId = parseInt(data.slice(offset, offset + 64), 16);
+            offset += 64; // Each uint24 is padded to 64 bytes
+            orderIds.push(orderId);
+        }
+
+        return { blockNumber, orderIds };
+    }
 
 	async getL2OrderBook(): Promise<OrderBookData> {
 		const data = await this.orderbook.getL2Book();
@@ -263,5 +286,3 @@ class OrderbookClient {
 		return { asks, bids, blockNumber };
 	}	
 }
-
-export default OrderbookClient;

@@ -1,4 +1,4 @@
-import OrderbookClient from "../src/client/orderBookClient";
+import * as KuruSdk from "../src";
 
 export interface OrderBookData {
     asks: Record<string, string>;
@@ -8,18 +8,18 @@ export interface OrderBookData {
 
 const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const rpcUrl = "http://localhost:8545";
-const contractAddress = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
+const contractAddress = "0xE9426DA3c9D65e52a28652eb24461d5561F12949";
 
 class OrderbookWatcher {
-    private clientSdk: OrderbookClient;
+    private clientSdk: KuruSdk.OrderbookClient;
     private lastOrderbookJson: string | null = null;
 
-    constructor(clientSdk: OrderbookClient) {
+    constructor(clientSdk: KuruSdk.OrderbookClient) {
         this.clientSdk = clientSdk;
     }
 
     static async create(privateKey: string, rpcUrl: string, contractAddress: string): Promise<OrderbookWatcher> {
-        const clientSdk = await OrderbookClient.create(privateKey, rpcUrl, contractAddress);
+        const clientSdk = await KuruSdk.OrderbookClient.create(privateKey, rpcUrl, contractAddress);
         return new OrderbookWatcher(clientSdk);
     }
 

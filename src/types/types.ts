@@ -6,9 +6,14 @@ export interface OrderBookData {
     blockNumber: number;
 }
 
+export interface ActiveOrders {
+    orderIds: number[];
+    blockNumber: number;
+}
+
 export interface MarketParams {
-    pricePrecision: bigint;
-    sizePrecision: bigint;
+    pricePrecision: number;
+    sizePrecision: number;
     baseAssetAddress: string;
     baseAssetDecimals: number;
     quoteAssetAddress: string;

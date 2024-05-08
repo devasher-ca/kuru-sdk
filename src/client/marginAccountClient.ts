@@ -6,7 +6,7 @@ import marginAccountAbi from "../../abi/MarginAccount.json";
 
 require('dotenv').config();
 
-class MarginAccountClient {
+export class MarginAccountClient {
     private provider: ethers.JsonRpcProvider;
     private wallet: ethers.Wallet;
     private marginAccount: Contract;
@@ -66,5 +66,3 @@ class MarginAccountClient {
         return parseFloat(ethers.formatEther(balance));
     }
 }
-
-export default MarginAccountClient;
