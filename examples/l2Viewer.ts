@@ -8,7 +8,7 @@ export interface OrderBookData {
 
 const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const rpcUrl = "http://localhost:8545";
-const contractAddress = "0xE9426DA3c9D65e52a28652eb24461d5561F12949";
+const contractAddress = "0xBffBa2d75440205dE93655eaa185c12D52d42D10";
 
 class OrderbookWatcher {
     private clientSdk: KuruSdk.OrderbookClient;

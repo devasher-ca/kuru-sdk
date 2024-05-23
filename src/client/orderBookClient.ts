@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { Contract } from "ethers";
 
-import {OrderBookData, ActiveOrders, MarketParams} from "../types/types";
+import {OrderBookData, ActiveOrders, MarketParams, Order} from "../types/types";
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
 
@@ -54,6 +54,10 @@ export class OrderbookClient {
         return new OrderbookClient(provider, wallet, orderbook, baseToken, quoteToken, marketParams);
     }
 
+	getMarketParams(): MarketParams {
+        return this.marketParams;
+    }
+
     async approveBase(size: number): Promise<void> {
         const tx = await this.baseToken.approve(await this.orderbook.getAddress(), size * 10^this.marketParams.baseAssetDecimals);
 		await tx.wait();
@@ -94,10 +98,10 @@ export class OrderbookClient {
 		return estimatedGas;
 	}
 
-	async placeLimit(price: number, size: number, isBuy: boolean): Promise<void> {
+	async placeLimit(price: number, size: number, isBuy: boolean, postOnly: boolean): Promise<boolean> {
 		return isBuy
-			? this.addBuyOrder(price, size)
-			: this.addSellOrder(price, size);
+			? this.addBuyOrder(price, size, postOnly)
+			: this.addSellOrder(price, size, postOnly);
 	}
 
 	/**
@@ -152,35 +156,70 @@ export class OrderbookClient {
 			: this.placeAndExecuteMarketSell(size, false);
 	}
 
-	async addBuyOrder(price: number, size: number): Promise<void> {
-		const tx = await this.orderbook.addBuyOrder(Math.round(price * this.marketParams.pricePrecision), Math.round(size * this.marketParams.sizePrecision));
-		await tx.wait();
-		console.log("Buy order added:");
-	}
+	async addBuyOrder(price: number, size: number, postOnly: boolean): Promise<boolean> {
+		try {
+			const tx = await this.orderbook.addBuyOrder(
+				Math.round(price * this.marketParams.pricePrecision),
+				Math.round(size * this.marketParams.sizePrecision),
+				postOnly
+			);
+			await tx.wait();
+			console.log("Buy order added:");
+			return true; // Return true if the transaction is successful
+		} catch (error: any) {
+			if (error.message.includes("OrderBook: Post only crossed the book")) {
+				console.error("Failed to add buy order: Post only crossed the book");
+				return false; // Return false if the specific error is caught
+			} else {
+				// Log and possibly rethrow or handle other types of errors differently
+				console.error(`An error occurred: ${error.message}`);
+				throw error; // Rethrow the error if it's not the specific case we're looking for
+			}
+		}
+	}	
 
-	async addSellOrder(price: number, size: number): Promise<void> {
-		const tx = await this.orderbook.addSellOrder(Math.round(price * this.marketParams.pricePrecision), Math.round(size * this.marketParams.sizePrecision));
-		await tx.wait();
-		console.log("Sell order added:");
+	async addSellOrder(price: number, size: number, postOnly: boolean): Promise<boolean> {
+		try {
+			const tx = await this.orderbook.addSellOrder(
+				Math.round(price * this.marketParams.pricePrecision),
+				Math.round(size * this.marketParams.sizePrecision),
+				postOnly
+			);
+			await tx.wait();
+			console.log("Sell order added:");
+			return true; // Return true if the transaction is successful
+		} catch (error: any) {
+			if (error.message.includes("OrderBook: Post only crossed the book")) {
+				console.error("Failed to add buy order: Post only crossed the book");
+				return false; // Return false if the specific error is caught
+			} else {
+				// Log and possibly rethrow or handle other types of errors differently
+				console.error(`An error occurred: ${error.message}`);
+				throw error; // Rethrow the error if it's not the specific case we're looking for
+			}
+		}
 	}
 
 	async placeLimits(
 		prices: number[],
 		sizes: number[],
-		isBuy: boolean
+		isBuy: boolean,
+		postOnly: boolean
 	): Promise<void> {
 		return isBuy
-			? this.placeMultipleBuyOrders(prices, sizes)
-			: this.placeMultipleSellOrders(prices, sizes);
+			? this.placeMultipleBuyOrders(prices, sizes, postOnly)
+			: this.placeMultipleSellOrders(prices, sizes, postOnly);
 	}
 
 	async placeMultipleBuyOrders(
 		prices: number[],
-		sizes: number[]
+		sizes: number[],
+		postOnly: boolean
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleBuyOrders(
 			prices.map(price => Math.round(price * this.marketParams.pricePrecision)),
-			sizes.map(size => Math.round(size * this.marketParams.sizePrecision))
+			sizes.map(size => Math.round(size * this.marketParams.sizePrecision)),
+			postOnly
 		);
 		await tx.wait();
 		console.log("Multiple buy orders placed:");
@@ -188,11 +227,13 @@ export class OrderbookClient {
 
 	async placeMultipleSellOrders(
 		prices: number[],
-		sizes: number[]
+		sizes: number[],
+		postOnly: boolean
 	): Promise<void> {
 		const tx = await this.orderbook.placeMultipleSellOrders(
 			prices.map(price => Math.round(price * this.marketParams.pricePrecision)),
-			sizes.map(size => Math.round(size * this.marketParams.sizePrecision))
+			sizes.map(size => Math.round(size * this.marketParams.sizePrecision)),
+			postOnly
 		);
 		await tx.wait();
 		console.log("Multiple sell orders placed:");
@@ -206,6 +247,22 @@ export class OrderbookClient {
 
 	async cancelAllOrders(maker: string): Promise<void> {
 		const activeOrders = await this.getActiveOrdersForMaker(maker);
+
+		await this.cancelOrders(activeOrders.orderIds);
+		
+		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+	}
+
+	async cancelAllBuys(maker: string): Promise<void> {
+		const activeOrders = await this.getActiveBuysForMaker(maker);
+
+		await this.cancelOrders(activeOrders.orderIds);
+		
+		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+	}
+
+	async cancelAllSells(maker: string): Promise<void> {
+		const activeOrders = await this.getActiveSellsForMaker(maker);
 
 		await this.cancelOrders(activeOrders.orderIds);
 		
@@ -240,6 +297,48 @@ export class OrderbookClient {
 
 	async getActiveOrdersForMaker(maker: string): Promise<ActiveOrders> {
         const data = await this.orderbook.getActiveOrdersForAddress(maker);
+        let offset = 66;
+        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        let orderIds: number[] = [];
+        
+        while (offset < data.length) {
+            const orderId = parseInt(data.slice(offset, offset + 64), 16);
+            offset += 64; // Each uint24 is padded to 64 bytes
+            orderIds.push(orderId);
+        }
+
+        return { blockNumber, orderIds };
+    }
+
+	async getOrder(orderId: number): Promise<Order> {
+		const order: Order = await this.orderbook.s_orders(orderId);
+
+		return order;
+	}
+
+	async isBuyOrder(orderId: number): Promise<boolean> {
+		const order: Order = await this.orderbook.s_orders(orderId);
+
+		return order.isBuy;
+	}
+
+	async getActiveBuysForMaker(maker: string): Promise<ActiveOrders> {
+        const data = await this.orderbook.getActiveBuysForAddress(maker);
+        let offset = 66;
+        const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
+        let orderIds: number[] = [];
+        
+        while (offset < data.length) {
+            const orderId = parseInt(data.slice(offset, offset + 64), 16);
+            offset += 64; // Each uint24 is padded to 64 bytes
+            orderIds.push(orderId);
+        }
+
+        return { blockNumber, orderIds };
+    }
+
+	async getActiveSellsForMaker(maker: string): Promise<ActiveOrders> {
+        const data = await this.orderbook.getActiveSellsForAddress(maker);
         let offset = 66;
         const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
         let orderIds: number[] = [];

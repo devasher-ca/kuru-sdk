@@ -4,7 +4,7 @@ export async function simpleMarketMaker(privateKeyPath: string) {
 	const userAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
     const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const rpcUrl = "http://localhost:8545";
-    const contractAddress = "0xE9426DA3c9D65e52a28652eb24461d5561F12949";
+    const contractAddress = "0xBffBa2d75440205dE93655eaa185c12D52d42D10";
 
 	// Frequency in milliseconds to update quotes
 	const QUOTE_REFRESH_FREQUENCY = 10000;
@@ -34,9 +34,9 @@ export async function simpleMarketMaker(privateKeyPath: string) {
 
         console.log(`Bid Price: ${bidPrice} \nAskPrice ${askPrice}`)
 
-		await clientSdk.addBuyOrder(bidPrice, 1);
+		await clientSdk.addBuyOrder(bidPrice, 1, false);
 
-        await clientSdk.addSellOrder(askPrice, 1);
+        await clientSdk.addSellOrder(askPrice, 1, false);
 
 		// Sleep for QUOTE_REFRESH_FREQUENCY milliseconds
 		await new Promise((r) => setTimeout(r, QUOTE_REFRESH_FREQUENCY));

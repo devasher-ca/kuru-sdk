@@ -11,6 +11,15 @@ export interface ActiveOrders {
     blockNumber: number;
 }
 
+export interface Order {
+    ownerAddress: string,
+    size: number,
+    prev: number,
+    next: number,
+    price: number
+    isBuy: boolean
+}
+
 export interface MarketParams {
     pricePrecision: number;
     sizePrecision: number;
@@ -18,4 +27,21 @@ export interface MarketParams {
     baseAssetDecimals: number;
     quoteAssetAddress: string;
     quoteAssetDecimals: number;
+}
+
+export interface OrderEvent {
+    orderId: number,
+    ownerAddress: string,
+    size: number,
+    price: number,
+    isBuy: boolean
+}
+
+export interface TradeEvent {
+    orderId: number,
+    isBuy: boolean,
+    price: number,
+    updatedSize: number,
+    takerAddress: string,
+    filledSize: number
 }
