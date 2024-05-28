@@ -1,0 +1,8 @@
+{
+    "userAddress" : "0x8dC168d5Aa8E07c09cF2289921f90Af2d5EEf40a",
+    "rpcUrl" : "https://virtual.mainnet.rpc.tenderly.co/ccdb3839-ae9f-4d57-84c9-0fa3f085aaea",
+    "contractAddress" : "0x3783d4D1ae0677820F524c06561C2623449f39FE",
+    "marginAccountAddress" : "0x498179163473b943A526eC9018f5B1013301487D",
+    "baseTokenAddress" : "0x848C5B92dB0216A1b8fD90b8a50AeaCD0100B5f1",
+    "quoteTokenAddress" : "0x8dEe6a66Ca0965E8Fd54eB688d09beE5bd3e7a69"
+}

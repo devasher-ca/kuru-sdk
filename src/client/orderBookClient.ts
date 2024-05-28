@@ -59,13 +59,13 @@ export class OrderbookClient {
     }
 
     async approveBase(size: number): Promise<void> {
-        const tx = await this.baseToken.approve(await this.orderbook.getAddress(), size * 10^this.marketParams.baseAssetDecimals);
+        const tx = await this.baseToken.approve(await this.orderbook.getAddress(), Math.round(size * 10**this.marketParams.baseAssetDecimals));
 		await tx.wait();
 		console.log("Base tokens approved:");
     }
 
     async approveQuote(size: number): Promise<void> {
-        const tx = await this.quoteToken.approve(await this.orderbook.getAddress(),  size * 10^this.marketParams.quoteAssetDecimals);
+        const tx = await this.quoteToken.approve(await this.orderbook.getAddress(),  Math.round(size * 10**this.marketParams.quoteAssetDecimals));
 		await tx.wait();
 		console.log("Quote tokens approved");
     }
@@ -80,7 +80,7 @@ export class OrderbookClient {
         isBase: boolean
 	): Promise<bigint> {
 		// Encode the function call
-		const encodeData = isBase ? size * 10^this.marketParams.baseAssetDecimals : size * 10^this.marketParams.quoteAssetDecimals;
+		const encodeData = isBase ? Math.round(size * 10**this.marketParams.baseAssetDecimals) : Math.round(size * 10**this.marketParams.quoteAssetDecimals);
 		const data = this.quoteToken.interface.encodeFunctionData(
 			"approve",
 			[await this.orderbook.getAddress(), encodeData]
@@ -118,7 +118,7 @@ export class OrderbookClient {
 	): Promise<bigint> {
 		// Make sure the function name and arguments match the contract
 		const functionName = isBuy ? "addBuyOrder" : "addSellOrder";
-		const args = [price * this.marketParams.pricePrecision, size * this.marketParams.sizePrecision];
+		const args = [Math.round(price * this.marketParams.pricePrecision), Math.round(size * this.marketParams.sizePrecision)];
 
 		// Encode the function call
 		const data = this.orderbook.interface.encodeFunctionData(

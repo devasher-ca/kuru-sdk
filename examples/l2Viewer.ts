@@ -1,14 +1,14 @@
 import * as KuruSdk from "../src";
+import * as KuruConfig from "./config.json";
 
+const {rpcUrl, contractAddress} = KuruConfig;
+
+const privateKey = process.env.PRIVATE_KEY as string;
 export interface OrderBookData {
     asks: Record<string, string>;
     bids: Record<string, string>;
     blockNumber: number;
 }
-
-const privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const rpcUrl = "http://localhost:8545";
-const contractAddress = "0xBffBa2d75440205dE93655eaa185c12D52d42D10";
 
 class OrderbookWatcher {
     private clientSdk: KuruSdk.OrderbookClient;

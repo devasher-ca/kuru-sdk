@@ -4,8 +4,6 @@ import { Contract } from 'ethers';
 import erc20Abi from "../../abi/IERC20.json";
 import marginAccountAbi from "../../abi/MarginAccount.json";
 
-require('dotenv').config();
-
 export class MarginAccountClient {
     private provider: ethers.JsonRpcProvider;
     private wallet: ethers.Wallet;
