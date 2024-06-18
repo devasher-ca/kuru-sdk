@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 export interface OrderBookData {
     asks: Record<string, string>;
@@ -7,7 +7,7 @@ export interface OrderBookData {
 }
 
 export interface ActiveOrders {
-    orderIds: number[];
+    orderIds: BigNumber[];
     blockNumber: number;
 }
 
@@ -21,27 +21,27 @@ export interface Order {
 }
 
 export interface MarketParams {
-    pricePrecision: number;
-    sizePrecision: number;
+    pricePrecision: BigNumber;
+    sizePrecision: BigNumber;
     baseAssetAddress: string;
-    baseAssetDecimals: number;
+    baseAssetDecimals: BigNumber;
     quoteAssetAddress: string;
-    quoteAssetDecimals: number;
+    quoteAssetDecimals: BigNumber;
 }
 
 export interface OrderEvent {
-    orderId: number,
+    orderId: BigNumber,
     ownerAddress: string,
-    size: number,
-    price: number,
+    size: BigNumber,
+    price: BigNumber,
     isBuy: boolean
 }
 
 export interface TradeEvent {
-    orderId: number,
+    orderId: BigNumber,
     isBuy: boolean,
-    price: number,
-    updatedSize: number,
+    price: BigNumber,
+    updatedSize: BigNumber,
     takerAddress: string,
-    filledSize: number
+    filledSize: BigNumber
 }

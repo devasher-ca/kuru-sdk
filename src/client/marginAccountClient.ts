@@ -5,7 +5,7 @@ import erc20Abi from "../../abi/IERC20.json";
 import marginAccountAbi from "../../abi/MarginAccount.json";
 
 export class MarginAccountClient {
-    private provider: ethers.JsonRpcProvider;
+    private provider: ethers.providers.JsonRpcProvider;
     private wallet: ethers.Wallet;
     private marginAccount: Contract;
 
@@ -14,7 +14,7 @@ export class MarginAccountClient {
         rpcUrl: string,
 		marginAccountAddress: string,
     ) {
-        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         this.wallet = new ethers.Wallet(privateKey, this.provider);
         this.marginAccount = new ethers.Contract(
             marginAccountAddress,
@@ -30,16 +30,16 @@ export class MarginAccountClient {
             this.wallet,
         )
 
-        const formattedAmount = ethers.parseUnits(amount.toString(), decimals);
-        const tx = await tokenContract.approve(this.marginAccount.getAddress(), formattedAmount);
+        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+        const tx = await tokenContract.approve(this.marginAccount.address, formattedAmount);
         await tx.wait();
         console.log(`Approval successful for ${formattedAmount.toString()} tokens`);
     }
 
     async deposit(userAddress: string, tokenAddress: string, amount: number, decimals: number): Promise<void> {
-        const formattedAmount = ethers.parseUnits(amount.toString(), decimals);
+        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
 
-        if (tokenAddress === ethers.ZeroAddress) { // Assuming ETH is the zero address
+        if (tokenAddress === ethers.constants.AddressZero) { // Assuming ETH is the zero address
             const tx = await this.marginAccount.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
             await tx.wait();
             console.log('ETH Deposit successful:', tx);
@@ -52,7 +52,7 @@ export class MarginAccountClient {
     }
 
     async withdraw(amount: number, tokenAddress: string, decimals: number): Promise<void> {
-        const formattedAmount = ethers.parseUnits(amount.toString(), decimals);
+        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
         const tx = await this.marginAccount.withdraw(formattedAmount, tokenAddress);
         await tx.wait();
         console.log('Withdraw successful:', tx);
@@ -60,7 +60,7 @@ export class MarginAccountClient {
 
     async getBalance(userAddress: string, tokenAddress: string): Promise<number> {
         const balance = await this.marginAccount.getBalance(userAddress, tokenAddress);
-        console.log(`Balance for ${userAddress}: ${ethers.formatEther(balance)} tokens`);
-        return parseFloat(ethers.formatEther(balance));
+        console.log(`Balance for ${userAddress}: ${ethers.utils.formatEther(balance)} tokens`);
+        return parseFloat(ethers.utils.formatEther(balance));
     }
 }

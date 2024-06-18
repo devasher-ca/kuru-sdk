@@ -1,3 +1,4 @@
+import { BigNumber } from "ethers";
 import * as KuruSdk from "../src";
 import * as KuruConfig from "./config.json";
 
@@ -19,6 +20,6 @@ const privateKey = process.env.PRIVATE_KEY as string;
 	await clientSdk.addSellOrder(200, 500, false);
 	await clientSdk.placeMultipleBuyOrders([100, 150], [1000, 1500], false);
 	await clientSdk.placeMultipleSellOrders([200, 250], [500, 750], false);
-	await clientSdk.cancelOrders([3, 4]);
+	await clientSdk.cancelOrders([BigNumber.from(3), BigNumber.from(4)]);
 	console.log(await clientSdk.estimateGasForLimitOrder(1800, 2, true));
 })();
