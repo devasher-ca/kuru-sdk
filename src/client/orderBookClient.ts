@@ -1,13 +1,20 @@
+import {
+    Multicall,
+    ContractCallResults,
+    ContractCallContext,
+} from 'ethereum-multicall';
+
 import { ethers, BigNumber } from "ethers";
 import { Contract } from "ethers";
 
 import {OrderBookData, ActiveOrders, MarketParams, Order} from "../types/types";
+import { extractErrorMessage } from "../utils";
+
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
 
 export class OrderbookClient {
 	private provider: ethers.providers.JsonRpcProvider;
-	private wallet: ethers.Wallet;
 	private orderbook: Contract;
     private baseToken: Contract;
     private quoteToken: Contract;
@@ -15,14 +22,12 @@ export class OrderbookClient {
 
 	private constructor(
         provider: ethers.providers.JsonRpcProvider,
-        wallet: ethers.Wallet,
         orderbook: ethers.Contract,
         baseToken: ethers.Contract,
         quoteToken: ethers.Contract,
         marketParams: MarketParams
     ) {
         this.provider = provider;
-        this.wallet = wallet;
         this.orderbook = orderbook;
         this.baseToken = baseToken;
         this.quoteToken = quoteToken;
@@ -37,29 +42,45 @@ export class OrderbookClient {
      * @returns A promise that resolves to an instance of OrderbookClient.
      */
     static async create(
-        privateKey: string,
-        rpcUrl: string,
-        orderbookAddress: string,
-    ): Promise<OrderbookClient> {
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-        const wallet = new ethers.Wallet(privateKey, provider);
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, wallet);
-
-        const marketParamsData = await orderbook.getMarketParams();
-        const marketParams: MarketParams = {
-            pricePrecision: BigNumber.from(marketParamsData[0]),
-            sizePrecision: BigNumber.from(marketParamsData[1]),
-            baseAssetAddress: marketParamsData[2],
-            baseAssetDecimals: BigNumber.from(marketParamsData[3]),
-            quoteAssetAddress: marketParamsData[4],
-            quoteAssetDecimals: BigNumber.from(marketParamsData[5]),
-        };
-
-        const baseToken = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, wallet);
-        const quoteToken = new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, wallet);
-
-        return new OrderbookClient(provider, wallet, orderbook, baseToken, quoteToken, marketParams);
-    }
+		privateKeyOrProvider: string | ethers.providers.JsonRpcProvider,
+		rpcUrlOrOrderbookAddress: string,
+		orderbookAddress?: string
+	): Promise<OrderbookClient> {
+		let provider: ethers.providers.JsonRpcProvider;
+		let signer: ethers.Signer;
+		let orderbookAddressFinal: string;
+	
+		if (typeof privateKeyOrProvider === 'string' && orderbookAddress) {
+			// Case 1: privateKey and rpcUrl are provided
+			provider = new ethers.providers.JsonRpcProvider(rpcUrlOrOrderbookAddress);
+			signer = new ethers.Wallet(privateKeyOrProvider, provider);
+			orderbookAddressFinal = orderbookAddress;
+		} else if (privateKeyOrProvider instanceof ethers.providers.JsonRpcProvider) {
+			// Case 2: provider and orderbookAddress are provided
+			provider = privateKeyOrProvider;
+			signer = provider.getSigner();
+			orderbookAddressFinal = rpcUrlOrOrderbookAddress;
+		} else {
+			throw new Error("Invalid arguments provided to create OrderbookClient");
+		}
+	
+		const orderbook = new ethers.Contract(orderbookAddressFinal, orderbookAbi.abi, signer);
+	
+		const marketParamsData = await orderbook.getMarketParams();
+		const marketParams: MarketParams = {
+			pricePrecision: BigNumber.from(marketParamsData[0]),
+			sizePrecision: BigNumber.from(marketParamsData[1]),
+			baseAssetAddress: marketParamsData[2],
+			baseAssetDecimals: BigNumber.from(marketParamsData[3]),
+			quoteAssetAddress: marketParamsData[4],
+			quoteAssetDecimals: BigNumber.from(marketParamsData[5]),
+		};
+	
+		const baseToken = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, signer);
+		const quoteToken = new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, signer);
+	
+		return new OrderbookClient(provider, orderbook, baseToken, quoteToken, marketParams);
+	}	
 
 	/**
      * @dev Returns the market parameters.
@@ -74,16 +95,23 @@ export class OrderbookClient {
      * @param size - The size of the tokens to approve.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-    async approveBase(size: number): Promise<void> {
-        const tx = await this.baseToken.approve(
-			this.orderbook.address,
-			ethers.utils.parseUnits(
-				size.toString(),
-				this.marketParams.baseAssetDecimals
-			)
-		);
-		await tx.wait();
-		console.log("Base tokens approved:");
+    async approveBase(size: number): Promise<void | Error> {
+        try {
+			const tx = await this.baseToken.approve(
+				this.orderbook.address,
+				ethers.utils.parseUnits(
+					size.toString(),
+					this.marketParams.baseAssetDecimals
+				)
+			);
+			await tx.wait();
+			console.log("Base tokens approved:");
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
     }
 
 	/**
@@ -91,16 +119,23 @@ export class OrderbookClient {
      * @param size - The size of the tokens to approve.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-    async approveQuote(size: number): Promise<void> {
-        const tx = await this.quoteToken.approve(
-			this.orderbook.address,
-			ethers.utils.parseUnits(
-				size.toString(),
-				this.marketParams.quoteAssetDecimals
-			)
-		);
-		await tx.wait();
-		console.log("Quote tokens approved");
+    async approveQuote(size: number): Promise<void | Error> {
+        try {
+			const tx = await this.quoteToken.approve(
+				this.orderbook.address,
+				ethers.utils.parseUnits(
+					size.toString(),
+					this.marketParams.quoteAssetDecimals
+				)
+			);
+			await tx.wait();
+			console.log("Quote tokens approved");
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
     }
 
     /**
@@ -111,24 +146,31 @@ export class OrderbookClient {
 	async estimateGasForApproval(
 		size: number,
         isBase: boolean
-	): Promise<BigNumber> {
-		// Encode the function call
-		const encodeData = isBase ? ethers.utils.parseUnits(size.toString(), this.marketParams.baseAssetDecimals) : ethers.utils.parseUnits(size.toString(), this.marketParams.quoteAssetDecimals);
-		const data = this.quoteToken.interface.encodeFunctionData(
-			"approve",
-			[this.orderbook.address, encodeData]
-		);
+	): Promise<BigNumber | Error> {
+		try {
+			// Encode the function call
+			const encodeData = isBase ? ethers.utils.parseUnits(size.toString(), this.marketParams.baseAssetDecimals) : ethers.utils.parseUnits(size.toString(), this.marketParams.quoteAssetDecimals);
+			const data = this.quoteToken.interface.encodeFunctionData(
+				"approve",
+				[this.orderbook.address, encodeData]
+			);
 
-		// Create the transaction object
-		const transaction = {
-			to: isBase ? this.baseToken.address : this.quoteToken.address,
-			data: data,
-		};
+			// Create the transaction object
+			const transaction = {
+				to: isBase ? this.baseToken.address : this.quoteToken.address,
+				data: data,
+			};
 
-		// Estimate gas
-		const estimatedGas = await this.provider.estimateGas(transaction);
+			// Estimate gas
+			const estimatedGas = await this.provider.estimateGas(transaction);
 
-		return estimatedGas;
+			return estimatedGas;
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -139,7 +181,7 @@ export class OrderbookClient {
      * @param postOnly - A boolean indicating whether the order should be post-only.
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
-	async placeLimit(price: number, size: number, isBuy: boolean, postOnly: boolean): Promise<boolean> {
+	async placeLimit(price: number, size: number, isBuy: boolean, postOnly: boolean): Promise<boolean | Error> {
 		return isBuy
 			? this.addBuyOrder(price, size, postOnly)
 			: this.addSellOrder(price, size, postOnly);
@@ -156,30 +198,37 @@ export class OrderbookClient {
 		price: number,
 		size: number,
 		isBuy: boolean
-	): Promise<BigNumber> {
-		// Make sure the function name and arguments match the contract
-		const functionName = isBuy ? "addBuyOrder" : "addSellOrder";
-		const args = [
-			ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
-			ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision))
-		];
+	): Promise<BigNumber | Error> {
+		try {
+			// Make sure the function name and arguments match the contract
+			const functionName = isBuy ? "addBuyOrder" : "addSellOrder";
+			const args = [
+				ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
+				ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision))
+			];
 
-		// Encode the function call
-		const data = this.orderbook.interface.encodeFunctionData(
-			functionName,
-			args
-		);
+			// Encode the function call
+			const data = this.orderbook.interface.encodeFunctionData(
+				functionName,
+				args
+			);
 
-		// Create the transaction object
-		const transaction = {
-			to: this.orderbook.address,
-			data: data,
-		};
+			// Create the transaction object
+			const transaction = {
+				to: this.orderbook.address,
+				data: data,
+			};
 
-		// Estimate gas
-		const estimatedGas = await this.provider.estimateGas(transaction);
+			// Estimate gas
+			const estimatedGas = await this.provider.estimateGas(transaction);
 
-		return estimatedGas;
+			return estimatedGas;
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -191,7 +240,7 @@ export class OrderbookClient {
 	async placeFillOrKill(
 		size: number,
 		isBuy: boolean
-	): Promise<number> {
+	): Promise<number | Error> {
 		return isBuy
 			? this.placeAndExecuteMarketBuy(size, true)
 			: this.placeAndExecuteMarketSell(size, true);
@@ -206,7 +255,7 @@ export class OrderbookClient {
 	async placeMarket(
 		size: number,
 		isBuy: boolean
-	): Promise<number> {
+	): Promise<number | Error> {
 		return isBuy
 			? this.placeAndExecuteMarketBuy(size, false)
 			: this.placeAndExecuteMarketSell(size, false);
@@ -219,7 +268,7 @@ export class OrderbookClient {
      * @param postOnly - A boolean indicating whether the order should be post-only.
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
-	async addBuyOrder(price: number, size: number, postOnly: boolean): Promise<boolean> {
+	async addBuyOrder(price: number, size: number, postOnly: boolean): Promise<boolean | Error> {
 		try {
 			const tx = await this.orderbook.addBuyOrder(
 				ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
@@ -229,16 +278,12 @@ export class OrderbookClient {
 			await tx.wait();
 			console.log("Buy order added:");
 			return true; // Return true if the transaction is successful
-		} catch (error: any) {
-			if (error.message.includes("OrderBook: Post only crossed the book")) {
-				console.error("Failed to add buy order: Post only crossed the book");
-				return false; // Return false if the specific error is caught
-			} else {
-				// Log and possibly rethrow or handle other types of errors differently
-				console.error(`An error occurred: ${error.message}`);
-				throw error; // Rethrow the error if it's not the specific case we're looking for
-			}
-		}
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}	
 
 	/**
@@ -248,7 +293,7 @@ export class OrderbookClient {
      * @param postOnly - A boolean indicating whether the order should be post-only.
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
-	async addSellOrder(price: number, size: number, postOnly: boolean): Promise<boolean> {
+	async addSellOrder(price: number, size: number, postOnly: boolean): Promise<boolean | Error> {
 		try {
 			const tx = await this.orderbook.addSellOrder(
 				ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
@@ -258,16 +303,12 @@ export class OrderbookClient {
 			await tx.wait();
 			console.log("Sell order added:");
 			return true; // Return true if the transaction is successful
-		} catch (error: any) {
-			if (error.message.includes("OrderBook: Post only crossed the book")) {
-				console.error("Failed to add buy order: Post only crossed the book");
-				return false; // Return false if the specific error is caught
-			} else {
-				// Log and possibly rethrow or handle other types of errors differently
-				console.error(`An error occurred: ${error.message}`);
-				throw error; // Rethrow the error if it's not the specific case we're looking for
-			}
-		}
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -283,7 +324,7 @@ export class OrderbookClient {
 		sizes: number[],
 		isBuy: boolean,
 		postOnly: boolean
-	): Promise<void> {
+	): Promise<void | Error> {
 		return isBuy
 			? this.placeMultipleBuyOrders(prices, sizes, postOnly)
 			: this.placeMultipleSellOrders(prices, sizes, postOnly);
@@ -300,14 +341,21 @@ export class OrderbookClient {
 		prices: number[],
 		sizes: number[],
 		postOnly: boolean
-	): Promise<void> {
-		const tx = await this.orderbook.placeMultipleBuyOrders(
-			prices.map(price => ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision))),
-			sizes.map(size => ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision))),
-			postOnly
-		);
-		await tx.wait();
-		console.log("Multiple buy orders placed:");
+	): Promise<void | Error> {
+		try {
+			const tx = await this.orderbook.placeMultipleBuyOrders(
+				prices.map(price => ethers.utils.parseUnits(price.toString(), this.log10BigNumber(this.marketParams.pricePrecision))),
+				sizes.map(size => ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision))),
+				postOnly
+			);
+			await tx.wait();
+			console.log("Multiple buy orders placed:");
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -321,24 +369,31 @@ export class OrderbookClient {
 		prices: number[],
 		sizes: number[],
 		postOnly: boolean
-	): Promise<void> {
-		const tx = await this.orderbook.placeMultipleSellOrders(
-			prices.map(
-				price => ethers.utils.parseUnits(
-					price.toString(),
-					this.log10BigNumber(this.marketParams.pricePrecision)
-				)
-			),
-			sizes.map(
-				size => ethers.utils.parseUnits(
-					size.toString(),
-					this.log10BigNumber(this.marketParams.sizePrecision)
-				)
-			),
-			postOnly
-		);
-		await tx.wait();
-		console.log("Multiple sell orders placed:");
+	): Promise<void | Error> {
+		try {
+			const tx = await this.orderbook.placeMultipleSellOrders(
+				prices.map(
+					price => ethers.utils.parseUnits(
+						price.toString(),
+						this.log10BigNumber(this.marketParams.pricePrecision)
+					)
+				),
+				sizes.map(
+					size => ethers.utils.parseUnits(
+						size.toString(),
+						this.log10BigNumber(this.marketParams.sizePrecision)
+					)
+				),
+				postOnly
+			);
+			await tx.wait();
+			console.log("Multiple sell orders placed:");
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -346,10 +401,17 @@ export class OrderbookClient {
      * @param orderIds - An array of order IDs to be cancelled.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-	async cancelOrders(orderIds: BigNumber[]): Promise<void> {
-		const tx = await this.orderbook.batchCancelOrders(orderIds);
-		await tx.wait();
-		console.log("Batch orders cancelled:", orderIds);
+	async cancelOrders(orderIds: BigNumber[]): Promise<void | Error> {
+		try {
+			const tx = await this.orderbook.batchCancelOrders(orderIds);
+			await tx.wait();
+			console.log("Batch orders cancelled:", orderIds);
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -357,12 +419,19 @@ export class OrderbookClient {
      * @param maker - The address of the maker whose orders should be cancelled.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-	async cancelAllOrders(maker: string): Promise<void> {
-		const activeOrders = await this.getActiveOrdersForMaker(maker);
+	async cancelAllOrders(maker: string): Promise<void| Error> {
+		try {
+			const activeOrders = await this.getActiveOrdersForMaker(maker);
 
-		await this.cancelOrders(activeOrders.orderIds);
-		
-		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+			await this.cancelOrders(activeOrders.orderIds);
+			
+			console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -370,12 +439,19 @@ export class OrderbookClient {
      * @param maker - The address of the maker whose buy orders should be cancelled.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-	async cancelAllBuys(maker: string): Promise<void> {
-		const activeOrders = await this.getActiveBuysForMaker(maker);
+	async cancelAllBuys(maker: string): Promise<void | Error> {
+		try {
+			const activeOrders = await this.getActiveBuysForMaker(maker);
 
-		await this.cancelOrders(activeOrders.orderIds);
-		
-		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+			await this.cancelOrders(activeOrders.orderIds);
+			
+			console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -383,12 +459,19 @@ export class OrderbookClient {
      * @param maker - The address of the maker whose sell orders should be cancelled.
      * @returns A promise that resolves when the transaction is confirmed.
      */
-	async cancelAllSells(maker: string): Promise<void> {
-		const activeOrders = await this.getActiveSellsForMaker(maker);
+	async cancelAllSells(maker: string): Promise<void | Error> {
+		try {
+			const activeOrders = await this.getActiveSellsForMaker(maker);
 
-		await this.cancelOrders(activeOrders.orderIds);
-		
-		console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+			await this.cancelOrders(activeOrders.orderIds);
+			
+			console.log(`Cancelled orderIds ${activeOrders.orderIds} for:`, maker);
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -400,14 +483,73 @@ export class OrderbookClient {
 	async placeAndExecuteMarketBuy(
 		quoteSize: number,
 		isFillOrKill: boolean
-	): Promise<number> {
-		const tx = await this.orderbook.placeAndExecuteMarketBuy(
-			ethers.utils.parseUnits(quoteSize.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
-			isFillOrKill
-		);
-		await tx.wait();
-		console.log("Market buy order executed:");
-		return tx.value;
+	): Promise<number | Error> {
+		try {
+			await this.approveQuote(quoteSize);
+
+			const tx = await this.orderbook.placeAndExecuteMarketBuy(
+				ethers.utils.parseUnits(quoteSize.toString(), this.log10BigNumber(this.marketParams.pricePrecision)),
+				isFillOrKill
+			);
+			await tx.wait();
+			console.log("Market buy order executed:");
+			return tx.value;
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
+	}
+
+	/**
+     * @dev Places and executes a market buy order using multicall.
+     * @param quoteSize - The size of the quote asset.
+     * @param isFillOrKill - A boolean indicating whether the order should be fill-or-kill.
+     * @returns A promise that resolves to the credited size.
+     */
+	async placeAndExecuteMarketBuyMulticall(
+		quoteSize: number,
+		isFillOrKill: boolean
+	): Promise<void | Error> {
+		try {
+			const multicall = new Multicall({ ethersProvider: this.provider, tryAggregate: true });
+			const quoteSizeInPrecision = ethers.utils.parseUnits(quoteSize.toString(), this.log10BigNumber(this.marketParams.pricePrecision));
+			const quoteSizeInDecimals = ethers.utils.parseUnits(
+				quoteSize.toString(),
+				this.marketParams.quoteAssetDecimals
+			);
+			
+			const calls: ContractCallContext[] = [
+				{
+					reference: 'approveQuote',
+					contractAddress: this.quoteToken.address,
+					abi: erc20Abi.abi,
+					calls: [{
+						reference: 'approveCall',
+						methodName: 'approve',
+						methodParameters: [this.orderbook.address, quoteSizeInDecimals]
+					}]
+				},
+				{
+					reference: 'placeMarketBuy',
+					contractAddress: this.orderbook.address,
+					abi: orderbookAbi.abi,
+					calls: [{
+						reference: 'marketBuyCall',
+						methodName: 'placeAndExecuteMarketBuy',
+						methodParameters: [quoteSizeInPrecision, isFillOrKill]
+					}]
+				}
+			];
+
+			const results: ContractCallResults = await multicall.call(calls);
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -419,14 +561,23 @@ export class OrderbookClient {
 	async placeAndExecuteMarketSell(
 		size: number,
 		isFillOrKill: boolean
-	): Promise<number> {
-		const tx = await this.orderbook.placeAndExecuteMarketSell(
-			ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision)),
-			isFillOrKill
-		);
-		await tx.wait();
-		console.log("Market sell order executed:");
-		return tx.value;
+	): Promise<number | Error> {
+		try {
+			await this.approveBase(size);
+
+			const tx = await this.orderbook.placeAndExecuteMarketSell(
+				ethers.utils.parseUnits(size.toString(), this.log10BigNumber(this.marketParams.sizePrecision)),
+				isFillOrKill
+			);
+			await tx.wait();
+			console.log("Market sell order executed:");
+			return tx.value;
+		} catch (e: any) {
+            if (!e.error) {
+                return new Error(e);
+            }
+            return extractErrorMessage(e.error.body);
+        }
 	}
 
 	/**
@@ -520,10 +671,10 @@ export class OrderbookClient {
 	
 		let offset = 66; // Start reading after the block number
 		const blockNumber = parseInt(data.slice(2, 66), 16); // The block number is stored in the first 64 bytes after '0x'
-	
-		let bids: Record<string, string> = {};
-		let asks: Record<string, string> = {};
-	
+
+		let bids: number[][] = [];
+		let asks: number[][] = [];
+
 		// Decode bids
 		while (offset < data.length) {
 			const price = parseInt(data.slice(offset, offset + 64), 16);
@@ -533,29 +684,28 @@ export class OrderbookClient {
 			}
 			const size = parseInt(data.slice(offset, offset + 64), 16);
 			offset += 64; // Skip over padding
-			bids[
-				ethers.utils.formatUnits(
-					price,
-					this.log10BigNumber(this.marketParams.pricePrecision)
-				)
-			] = ethers.utils.formatUnits(size, this.log10BigNumber(this.marketParams.sizePrecision));
+			bids.push([
+				parseFloat(ethers.utils.formatUnits(price, this.log10BigNumber(this.marketParams.pricePrecision))),
+				parseFloat(ethers.utils.formatUnits(size, this.log10BigNumber(this.marketParams.sizePrecision)))
+			]);
 		}
-	
+
 		// Decode asks
 		while (offset < data.length) {
 			const price = parseInt(data.slice(offset, offset + 64), 16);
 			offset += 64; // Skip over padding
+			if (price === 0) {
+				break; // Stop reading if price is zero
+			}
 			const size = parseInt(data.slice(offset, offset + 64), 16);
 			offset += 64; // Skip over padding
-			asks[
-				ethers.utils.formatUnits(
-					price,
-					this.log10BigNumber(this.marketParams.pricePrecision)
-				)
-			] = ethers.utils.formatUnits(size, this.log10BigNumber(this.marketParams.sizePrecision));
+			asks.push([
+				parseFloat(ethers.utils.formatUnits(price, this.log10BigNumber(this.marketParams.pricePrecision))),
+				parseFloat(ethers.utils.formatUnits(size, this.log10BigNumber(this.marketParams.sizePrecision)))
+			]);
 		}
-	
-		return { bids, asks, blockNumber };
+
+		return { bids: bids.reverse(), asks: asks.reverse(), blockNumber };
 	}
 
 	/**
@@ -572,9 +722,9 @@ export class OrderbookClient {
 		let receivedAmount = 0;
 		const orders = l2OrderBook.bids;
 
-		for (const [price, orderSize] of Object.entries(orders)) {
-			const orderSizeFloat = parseFloat(orderSize);
-			const priceFloat = parseFloat(price);
+		for (const [price, orderSize] of orders) {
+			const orderSizeFloat = orderSize;
+			const priceFloat = price;
 
 			if (remainingSize <= 0) {
 				break;
@@ -605,9 +755,9 @@ export class OrderbookClient {
 		let remainingQuote = quoteAmount;
 		let baseTokensReceived = 0;
 
-		for (const [price, orderSize] of Object.entries(l2OrderBook.asks)) {
-			const orderSizeFloat = parseFloat(orderSize);
-			const priceFloat = parseFloat(price);
+		for (const [price, orderSize] of l2OrderBook.asks) {
+			const orderSizeFloat = orderSize;
+			const priceFloat = price;
 
 			if (remainingQuote <= 0) {
 				break;
@@ -626,6 +776,7 @@ export class OrderbookClient {
 
 		return baseTokensReceived;
 	}
+
 
 	/**
      * @dev Calculates the base-10 logarithm of a BigNumber.

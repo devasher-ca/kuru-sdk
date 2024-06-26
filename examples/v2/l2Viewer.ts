@@ -1,9 +1,10 @@
-import * as KuruSdk from "../src";
-import * as KuruConfig from "./config.json";
+import { ethers } from "ethers";
+
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "../config.json";
 
 const { rpcUrl, contractAddress } = KuruConfig;
 
-const privateKey = process.env.PRIVATE_KEY as string;
 
 export interface OrderBookData {
     asks: number[][];
@@ -12,22 +13,21 @@ export interface OrderBookData {
 }
 
 class OrderbookWatcher {
-    private clientSdk: KuruSdk.OrderbookClient;
     private lastOrderbookJson: string | null = null;
 
-    constructor(clientSdk: KuruSdk.OrderbookClient) {
-        this.clientSdk = clientSdk;
-    }
-
-    static async create(privateKey: string, rpcUrl: string, contractAddress: string): Promise<OrderbookWatcher> {
-        const clientSdk = await KuruSdk.OrderbookClient.create(privateKey, rpcUrl, contractAddress);
-        return new OrderbookWatcher(clientSdk);
-    }
+    constructor() {}
 
     public startWatching(intervalMs: number = 500): void {
         setInterval(async () => {
             try {
-                const currentOrderbook = await this.clientSdk.getL2OrderBook();
+                const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+                const marketParams = await KuruSdk.getMarketParams(provider, contractAddress);
+
+                const currentOrderbook = await KuruSdk.getL2OrderBook(
+                    provider,
+                    contractAddress,
+                    marketParams
+                );
                 const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
                     const asksArray = currentOrderbook.asks.map(([price, quantity]) => ({ price, quantity }));
@@ -75,6 +75,6 @@ class OrderbookWatcher {
 }
 
 (async () => {
-    const watcher = await OrderbookWatcher.create(privateKey, rpcUrl, contractAddress);
+    const watcher = new OrderbookWatcher;
     watcher.startWatching(); // Default polling interval set to 500 milliseconds
 })();

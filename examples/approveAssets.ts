@@ -12,6 +12,6 @@ const privateKey = process.env.PRIVATE_KEY as string;
 		marginAccountAddress,
 	);
 
-	await marginAccountSdk.deposit(userAddress, baseTokenAddress, 1000000, 18);
-    await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 1000000, 18);
+	console.log(await marginAccountSdk.deposit(userAddress, baseTokenAddress, 1000000, 18));
+    console.log(await marginAccountSdk.deposit(userAddress, quoteTokenAddress, 1000000, 18));
 })();

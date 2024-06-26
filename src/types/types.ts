@@ -1,8 +1,8 @@
 import { BigNumber, ethers } from "ethers";
 
 export interface OrderBookData {
-    asks: Record<string, string>;
-    bids: Record<string, string>;
+    asks: number[][];
+    bids: number[][];
     blockNumber: number;
 }
 
