@@ -21,9 +21,9 @@ class OrderbookWatcher {
         setInterval(async () => {
             try {
                 const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-                const marketParams = await KuruSdk.getMarketParams(provider, contractAddress);
+                const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-                const currentOrderbook = await KuruSdk.getL2OrderBook(
+                const currentOrderbook = await KuruSdk.OrderBook.getL2OrderBook(
                     provider,
                     contractAddress,
                     marketParams

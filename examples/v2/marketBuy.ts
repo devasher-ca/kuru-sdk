@@ -8,8 +8,7 @@ const {rpcUrl, contractAddress} = KuruConfig;
 const privateKey = process.env.PRIVATE_KEY as string;
 
 const args = process.argv.slice(2);
-const price = parseFloat(args[0]);
-const size = parseFloat(args[1]);
+const size = parseFloat(args[0]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -17,15 +16,14 @@ const size = parseFloat(args[1]);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	await KuruSdk.GTC.placeLimit(
+	await KuruSdk.IOC.placeMarket(
         signer,
         contractAddress,
         marketParams,
         {
-            price,
             size,
-            isBuy: false,
-            postOnly: true
+            isBuy: true,
+            fillOrKill: true
         }
     );
 })();

@@ -11,7 +11,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
 	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-	const canceledOrders = await KuruSdk.cancelAllOrders(
+	const canceledOrders = await KuruSdk.OrderCanceler.cancelAllOrders(
 		signer,
 		contractAddress,
 		userAddress

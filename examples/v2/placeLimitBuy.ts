@@ -15,9 +15,9 @@ const size = parseFloat(args[1]);
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    const marketParams = await KuruSdk.getMarketParams(provider, contractAddress);
+    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	await KuruSdk.placeLimit(
+	await KuruSdk.GTC.placeLimit(
         signer,
         contractAddress,
         marketParams,

@@ -9,39 +9,41 @@ import { MarketParams, MARKET } from "../types";
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
 
-/**
- * @dev Places a market order (buy or sell) on the order book.
- * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
- * @param orderbookAddress - The address of the order book contract.
- * @param marketParams - The market parameters including price and size precision.
- * @param order - The market order object containing isBuy, size, and fillOrKill properties.
- * @returns A promise that resolves to the credited size.
- */
-export async function placeMarket(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-    orderbookAddress: string,
-    marketParams: MarketParams,
-    order: MARKET
-): Promise<number> {
-    const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+export abstract class IOC {
+    /**
+     * @dev Places a market order (buy or sell) on the order book.
+     * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param marketParams - The market parameters including price and size precision.
+     * @param order - The market order object containing isBuy, size, and fillOrKill properties.
+     * @returns A promise that resolves to the credited size.
+     */
+    static async placeMarket(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        marketParams: MarketParams,
+        order: MARKET
+    ): Promise<number> {
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-    return order.isBuy
-        ? placeAndExecuteMarketBuy(
-            providerOrSigner,
-            orderbook,
-            orderbookAddress,
-            marketParams,
-            order.size,
-            order.fillOrKill,
-        )
-        : placeAndExecuteMarketSell(
-            providerOrSigner,
-            orderbook,
-            orderbookAddress,
-            marketParams,
-            order.size,
-            order.fillOrKill,
-        );
+        return order.isBuy
+            ? placeAndExecuteMarketBuy(
+                providerOrSigner,
+                orderbook,
+                orderbookAddress,
+                marketParams,
+                order.size,
+                order.fillOrKill,
+            )
+            : placeAndExecuteMarketSell(
+                providerOrSigner,
+                orderbook,
+                orderbookAddress,
+                marketParams,
+                order.size,
+                order.fillOrKill,
+            );
+    }
 }
 
 // ======================== INTERNAL HELPER FUNCTIONS ========================

@@ -8,29 +8,30 @@ import { MarketParams, LIMIT } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 
-/**
- * @dev Places a limit order (buy or sell) on the order book.
- * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
- * @param orderbookAddress - The address of the order book contract.
- * @param marketParams - The market parameters including price and size precision.
- * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
- * @returns A promise that resolves to a boolean indicating success or failure.
- */
+export abstract class GTC {
+    /**
+     * @dev Places a limit order (buy or sell) on the order book.
+     * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param marketParams - The market parameters including price and size precision.
+     * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
+     * @returns A promise that resolves to a boolean indicating success or failure.
+     */
+    static async placeLimit(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        marketParams: MarketParams,
+        order: LIMIT
+    ): Promise<boolean> {
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-export async function placeLimit(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-    orderbookAddress: string,
-    marketParams: MarketParams,
-    order: LIMIT
-): Promise<boolean> {
-    const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
 
-    const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
-    const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
-
-    return order.isBuy
-        ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
-        : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
+        return order.isBuy
+            ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
+            : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
+    }
 }
 
 // ======================== INTERNAL HELPER FUNCTIONS ========================

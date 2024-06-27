@@ -12,7 +12,7 @@ const args = process.argv.slice(2);
 	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-	await KuruSdk.cancelOrders(
+	await KuruSdk.OrderCanceler.cancelOrders(
 		signer,
 		contractAddress,
 		args.map(arg => BigNumber.from(parseInt(arg)))

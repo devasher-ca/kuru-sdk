@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";
 
-const {rpcUrl, contractAddress} = KuruConfig;
+const {rpcUrl, baseTokenAddress, quoteTokenAddress} = KuruConfig;
 
 const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
@@ -11,14 +11,13 @@ const amount = parseFloat(args[0]);
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
-
-	const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
+    const bestPath = await KuruSdk.PathFinder.findBestPath(
         provider,
-        contractAddress,
-        marketParams,
+        baseTokenAddress,
+        quoteTokenAddress,
         amount
     );
 
-    console.log(estimate);
+    console.log(bestPath.route.path);
+    console.log(bestPath.output);
 })();

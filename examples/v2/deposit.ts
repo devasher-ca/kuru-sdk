@@ -11,21 +11,21 @@ const privateKey = process.env.PRIVATE_KEY as string;
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 	
-    await KuruSdk.deposit(
+    await KuruSdk.MarginDeposit.deposit(
 		signer,
         marginAccountAddress,
         userAddress,
         baseTokenAddress,
-        1000000,
+        100000,
         18
 	);
 
-    await KuruSdk.deposit(
+    await KuruSdk.MarginDeposit.deposit(
 		signer,
         marginAccountAddress,
         userAddress,
         quoteTokenAddress,
-        1000000,
+        100000,
         18
 	);
 })();
