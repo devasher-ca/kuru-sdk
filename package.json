@@ -1,5 +1,5 @@
 {
-  "name": "kuru-sdk",
+  "name": "@kuru-labs/kuru-sdk",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,7 +11,7 @@
     "build": "npx tsc"
   },
   "keywords": [],
-  "author": "",
+  "author": "Kuru Labs",
   "license": "ISC",
   "dependencies": {
     "ethereum-multicall": "^2.24.0",
