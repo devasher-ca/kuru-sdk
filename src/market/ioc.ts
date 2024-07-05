@@ -110,7 +110,7 @@ async function placeAndExecuteMarketSell(
     size: number,
     isFillOrKill: boolean,
 ): Promise<number> {
-    const tokenContract = new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, providerOrSigner);
+    const tokenContract = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, providerOrSigner);
 
     await approveToken(
         tokenContract,

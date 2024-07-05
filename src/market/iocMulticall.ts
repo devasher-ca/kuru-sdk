@@ -64,6 +64,7 @@ export abstract class IocMulticall {
             ];
 
             const results: ContractCallResults = await multicall.call(calls);
+            console.log(results.results.approveToken)
         } catch (e: any) {
             if (!e.error) {
                 throw e;
