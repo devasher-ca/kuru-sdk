@@ -62,7 +62,7 @@ async function addBuyOrder(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.body);
+        throw extractErrorMessage(e.error.error.body);
     }
 }	
 
@@ -92,6 +92,6 @@ async function addSellOrder(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.body);
+        throw extractErrorMessage(e.error.error.body);
     }
 }

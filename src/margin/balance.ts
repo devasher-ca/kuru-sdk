@@ -23,7 +23,7 @@ export abstract class MarginBalance {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.body);
+            throw extractErrorMessage(e.error.error.body);
         }
     }
 }

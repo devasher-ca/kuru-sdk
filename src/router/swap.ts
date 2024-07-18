@@ -54,7 +54,7 @@ export abstract class TokenSwap {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.body);
+            throw extractErrorMessage(e.error.error.body);
         }
     }
 }
@@ -81,6 +81,6 @@ async function approveToken(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.body);
+        throw extractErrorMessage(e.error.error.body);
     }
 }
