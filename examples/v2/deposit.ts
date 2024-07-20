@@ -17,7 +17,8 @@ const privateKey = process.env.PRIVATE_KEY as string;
         userAddress,
         baseTokenAddress,
         100000,
-        18
+        18,
+        true
 	);
 
     await KuruSdk.MarginDeposit.deposit(
@@ -26,6 +27,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
         userAddress,
         quoteTokenAddress,
         100000,
-        18
+        18,
+        true
 	);
 })();

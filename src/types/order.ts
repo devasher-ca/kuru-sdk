@@ -8,6 +8,7 @@ export interface LIMIT {
 }
 
 export interface MARKET {
+    approveTokens: boolean,
     isBuy: boolean,
     size: number,
     fillOrKill: boolean

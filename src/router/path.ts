@@ -23,6 +23,7 @@ export abstract class PathFinder {
                 tokenOut: ""
             },
             isBuy: [],
+            nativeSend: [],
             output: 0
         };
     
@@ -87,6 +88,7 @@ async function computeRouteOutput(
     let currentToken = route.tokenIn;
     let output : number = amountIn;
     let isBuy: boolean[] = [];
+    let nativeSend: boolean[] = [];
 
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
@@ -94,6 +96,7 @@ async function computeRouteOutput(
         // Fetch market parameters for the current orderbook
         const marketParams = await ParamFetcher.getMarketParams(providerOrSigner, orderbookAddress);
 
+        currentToken === ethers.constants.AddressZero ? nativeSend.push(true) : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
             // If the current token is the base token, we are selling base for quote
             output = await CostEstimator.estimateMarketSell(providerOrSigner, orderbookAddress, marketParams, output);
@@ -110,6 +113,7 @@ async function computeRouteOutput(
     return {
         route,
         output,
+        nativeSend,
         isBuy
     };
 }

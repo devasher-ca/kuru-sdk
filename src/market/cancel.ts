@@ -35,6 +35,24 @@ export abstract class OrderCanceler {
         }
     }
 
+    static async estimateGas(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        orderIds: BigNumber[]
+    ): Promise<BigNumber> {
+        try {
+            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
+            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(orderIds);
+            return gasEstimate;
+        } catch (e: any) {
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e.error.error.body);
+        }
+    }
+
     /**
      * @dev Cancels all orders for a specific maker.
      * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.

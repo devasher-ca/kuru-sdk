@@ -1,8 +1,8 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from "../utils";
+import { extractErrorMessage, approveToken, estimateApproveGas } from "../utils";
 
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
@@ -15,7 +15,8 @@ export abstract class MarginDeposit {
         userAddress: string,
         tokenAddress: string,
         amount: number,
-        decimals: number
+        decimals: number,
+        approveTokens: boolean,
     ): Promise<void> {
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
@@ -27,12 +28,13 @@ export abstract class MarginDeposit {
                 const tx = await marginAccount.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
                 await tx.wait();
             } else {
-                await approveToken(
-                    tokenContract,
-                    marginAccountAddress,
-                    amount,
-                    decimals
-                );
+                if (approveTokens) {
+                    await approveToken(
+                        tokenContract,
+                        marginAccountAddress,
+                        ethers.utils.parseUnits(amount.toString(), decimals),
+                    );
+                }
     
                 const tx = await marginAccount.deposit(userAddress, tokenAddress, formattedAmount);
                 await tx.wait();
@@ -44,25 +46,43 @@ export abstract class MarginDeposit {
             throw extractErrorMessage(e.error.error.body);
         }
     }
-}
 
-// ======================== INTERNAL HELPER FUNCTIONS ========================
+    static async estimateGas(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        marginAccountAddress: string,
+        userAddress: string,
+        tokenAddress: string,
+        amount: number,
+        decimals: number,
+        approveTokens: boolean,
+    ): Promise<BigNumber> {
+        try {
+            const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
+            const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
+    
+            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+    
+            let gasEstimate: BigNumber;
+            if (tokenAddress === ethers.constants.AddressZero) {
+                gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
+            } else {
+                if (approveTokens) {
+                    gasEstimate = await estimateApproveGas(
+                        tokenContract,
+                        marginAccountAddress,
+                        ethers.utils.parseUnits(amount.toString(), decimals),
+                    );
+                } else {
+                    gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount);
+                }
+            }
 
-async function approveToken(
-    tokenContract: ethers.Contract,
-    marginAccountAddress: string,
-    amount: number,
-    decimals: number
-): Promise<void> {
-    try {
-        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-        const tx = await tokenContract.approve(marginAccountAddress, formattedAmount);
-        await tx.wait();
-    } catch (e: any) {
-        if (!e.error) {
-            throw e;
+            return gasEstimate;
+        } catch (e: any) {
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e.error.error.body);
         }
-        throw extractErrorMessage(e.error.error.body);
-
     }
 }

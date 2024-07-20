@@ -28,6 +28,7 @@ const size = parseFloat(args[0]);
         size,
         18,
         18,
-        10
+        10,
+        true
     );
 })();

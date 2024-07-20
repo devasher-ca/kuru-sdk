@@ -50,6 +50,7 @@ async function main() {
                             marketParams,
                             {
                                 size: historicData[txIndex].from_amount,
+                                approveTokens: true,
                                 isBuy: historicData[txIndex].direction === 'buy',
                                 fillOrKill: false,
                             }

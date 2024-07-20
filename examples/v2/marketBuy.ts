@@ -21,6 +21,7 @@ const size = parseFloat(args[0]);
         contractAddress,
         marketParams,
         {
+            approveTokens: true,
             size,
             isBuy: true,
             fillOrKill: true

@@ -13,5 +13,6 @@ export interface Route {
 export interface RouteOutput {
     route: Route,
     isBuy: boolean[],
+    nativeSend: boolean[],
     output: number,
 }

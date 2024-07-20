@@ -32,6 +32,22 @@ export abstract class GTC {
             ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
             : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
     }
+
+    static async estimateGas(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        marketParams: MarketParams,
+        order: LIMIT
+    ): Promise<BigNumber> {
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
+        const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
+
+        return order.isBuy
+            ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
+            : estimateGasSell(orderbook, priceBn, sizeBn, order.postOnly);
+    }
 }
 
 // ======================== INTERNAL HELPER FUNCTIONS ========================
@@ -64,7 +80,28 @@ async function addBuyOrder(
         }
         throw extractErrorMessage(e.error.error.body);
     }
-}	
+}
+
+async function estimateGasBuy(
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
+): Promise<BigNumber> {
+    try {
+        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
+            price,
+            size,
+            postOnly
+        );
+        return gasEstimate;
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error.error.body);
+    }
+}
 
 /**
  * @dev Adds a sell limit order to the order book.
@@ -88,6 +125,27 @@ async function addSellOrder(
         );
         await tx.wait();
         return true; // Return true if the transaction is successful
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error.error.body);
+    }
+}
+
+async function estimateGasSell(
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
+): Promise<BigNumber> {
+    try {
+        const gasEstimate = await orderbook.estimateGas.addSellOrder(
+            price,
+            size,
+            postOnly
+        );
+        return gasEstimate;
     } catch (e: any) {
         if (!e.error) {
             throw e;
