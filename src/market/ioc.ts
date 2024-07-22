@@ -112,7 +112,8 @@ async function placeAndExecuteMarketBuy(
             ethers.utils.parseUnits(
                 quoteSize.toString(),
                 marketParams.quoteAssetDecimals
-            )
+            ),
+            providerOrSigner
         );
     }
 
