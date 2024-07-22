@@ -179,7 +179,8 @@ async function placeAndExecuteMarketSell(
             ethers.utils.parseUnits(
                 size.toString(),
                 marketParams.baseAssetDecimals
-            )
+            ),
+            providerOrSigner
         );
     }
 

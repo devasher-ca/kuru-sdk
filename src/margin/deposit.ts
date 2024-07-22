@@ -33,6 +33,7 @@ export abstract class MarginDeposit {
                         tokenContract,
                         marginAccountAddress,
                         ethers.utils.parseUnits(amount.toString(), decimals),
+                        providerOrSigner
                     );
                 }
     

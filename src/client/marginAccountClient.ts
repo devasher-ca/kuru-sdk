@@ -1,6 +1,5 @@
 import {
     Multicall,
-    ContractCallResults,
     ContractCallContext,
 } from 'ethereum-multicall';
 
@@ -87,7 +86,7 @@ export class MarginAccountClient {
                 }
             ];
 
-            const results: ContractCallResults = await multicall.call(contractCallContext);
+            await multicall.call(contractCallContext);
         }
     }
 

@@ -4,6 +4,15 @@ import { ethers, BigNumber } from "ethers";
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
 
+const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
+
+    if (providerOrSigner instanceof ethers.providers.JsonRpcProvider) {
+        return await providerOrSigner.getSigner().getAddress();
+    }
+
+    return await providerOrSigner.getAddress();
+}
+
 /**
  * @dev Approves a token for spending by the market contract.
  * @param tokenContract - The token contract instance.
@@ -14,9 +23,18 @@ import { extractErrorMessage } from "../utils";
 export async function approveToken(
     tokenContract: ethers.Contract,
     approveTo: string,
-    size: BigNumber
+    size: BigNumber,
+    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
 ): Promise<void> {
     try {
+        const ownerAddress = await getOwnerAddress(providerOrSigner);
+
+        const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
+
+        if (existingApproval.gte(size)) {
+            return;
+        }
+
         const tx = await tokenContract.approve(
             approveTo,
             size

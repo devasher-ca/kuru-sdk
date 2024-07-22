@@ -39,7 +39,8 @@ export abstract class TokenSwap {
                 await approveToken(
                     tokenContract,
                     routerAddress,
-                    tokenInAmount
+                    tokenInAmount,
+                    providerOrSigner
                 );
             }
         

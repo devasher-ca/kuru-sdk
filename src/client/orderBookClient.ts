@@ -1,6 +1,5 @@
 import {
     Multicall,
-    ContractCallResults,
     ContractCallContext,
 } from 'ethereum-multicall';
 
@@ -543,7 +542,7 @@ export class OrderbookClient {
 				}
 			];
 
-			const results: ContractCallResults = await multicall.call(calls);
+			await multicall.call(calls);
 		} catch (e: any) {
             if (!e.error) {
                 return new Error(e);

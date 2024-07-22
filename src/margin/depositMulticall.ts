@@ -2,7 +2,6 @@
 import { ethers } from "ethers";
 import {
     Multicall,
-    ContractCallResults,
     ContractCallContext,
 } from 'ethereum-multicall';
 
@@ -39,6 +38,6 @@ export abstract class MarginDepositMulticall {
             }
         ];
     
-        const results: ContractCallResults = await multicall.call(contractCallContext);
+        await multicall.call(contractCallContext);
     }
 }
