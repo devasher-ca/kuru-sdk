@@ -39,7 +39,7 @@ class OrderbookWatcher {
                     );
                     const maxBaseSizeLength = maxBaseSize.toString().length;
                     const printLine = (price: number, size: number, color: "red" | "green") => {
-                        const priceStr = price.toFixed(2); // Assuming two decimal places for price
+                        const priceStr = price.toString(); // Assuming two decimal places for price
                         const sizeStr = size.toString().padStart(maxBaseSizeLength, " ");
                         console.log(
                           priceStr + " " + `\u001b[3${color === "green" ? 2 : 1}m` + sizeStr + "\u001b[0m"

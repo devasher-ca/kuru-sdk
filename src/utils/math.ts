@@ -14,3 +14,7 @@ export function log10BigNumber(bn: BigNumber): number {
     const bnString = bn.toString();
     return bnString.length - 1;
 }
+
+export function mulDivRound(value: number, multiplier: number, divisor: number): number {
+    return Math.floor((value * multiplier + divisor / 2) / divisor);
+}

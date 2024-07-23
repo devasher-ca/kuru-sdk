@@ -791,3 +791,4 @@ export class OrderbookClient {
 		return bnString.length - 1;
 	}
 }
+
