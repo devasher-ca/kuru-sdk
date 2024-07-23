@@ -19,6 +19,7 @@ export abstract class TokenSwap {
         outTokenDecimals: number,
         slippageTolerance: number,
         approveTokens: boolean,
+        approvalCallback: (txHash: string | null) => void
     ): Promise<void> {
         try {
             const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
@@ -36,12 +37,16 @@ export abstract class TokenSwap {
             );
         
             if (approveTokens) {
-                await approveToken(
+                const txHash = await approveToken(
                     tokenContract,
                     routerAddress,
                     tokenInAmount,
                     providerOrSigner
                 );
+
+                if (approvalCallback) {
+                    approvalCallback(txHash);
+                }
             }
         
             const tx = await router.anyToAnySwap(

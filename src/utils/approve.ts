@@ -24,22 +24,24 @@ export async function approveToken(
     tokenContract: ethers.Contract,
     approveTo: string,
     size: BigNumber,
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
-): Promise<void> {
+    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+): Promise<string | null> {
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
 
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
 
         if (existingApproval.gte(size)) {
-            return;
+            return null;
         }
 
         const tx = await tokenContract.approve(
             approveTo,
             size
         );
-        await tx.wait();
+        const { transactionHash } = await tx.wait();
+
+        return transactionHash;
     } catch (e: any) {
         if (!e.error) {
             throw e;
