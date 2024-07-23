@@ -14,6 +14,9 @@ export abstract class PathFinder {
         amountIn: number,
     ): Promise<RouteOutput> {
         const pools = await PoolFetcher.getAllPools();
+
+        console.log({pools})
+
         const routes = computeAllRoutes(tokenIn, tokenOut, pools);
     
         let bestRoute : RouteOutput = {
@@ -92,6 +95,8 @@ async function computeRouteOutput(
 
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
+
+        console.log({orderbookAddress})
 
         // Fetch market parameters for the current orderbook
         const marketParams = await ParamFetcher.getMarketParams(providerOrSigner, orderbookAddress);

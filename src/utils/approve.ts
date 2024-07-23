@@ -29,20 +29,31 @@ export async function approveToken(
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
 
-        const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
+        // const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
 
-        if (existingApproval.gte(size)) {
-            return null;
-        }
+        // if (existingApproval.gte(size)) {
+        //     return null;
+        // }
+
+        console.log({
+            ownerAddress,
+            approveTo,
+            size
+        })
 
         const tx = await tokenContract.approve(
             approveTo,
             size
         );
+
+console.log({tx})
+
+
         const { transactionHash } = await tx.wait();
 
         return transactionHash;
     } catch (e: any) {
+        console.log({e})
         if (!e.error) {
             throw e;
         }

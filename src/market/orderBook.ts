@@ -110,7 +110,6 @@ async function getAmmPrices(
     }
 
     if (vaultParams.kuruAmmVault !== ethers.constants.AddressZero) {
-        const a =  ethers.utils.formatUnits(vaultBestBid, log10BigNumber(marketParams.pricePrecision));
         // Add vault bid orders to AMM prices
         for (let i = 0; i < 30; i++) {
             if (vaultBestBid === 0) break;

@@ -73,6 +73,11 @@ export class OrderbookClient {
 			baseAssetDecimals: BigNumber.from(marketParamsData[3]),
 			quoteAssetAddress: marketParamsData[4],
 			quoteAssetDecimals: BigNumber.from(marketParamsData[5]),
+			tickSize: new BigNumber(1, "0x"),
+			minSize: new BigNumber(1, "0x"),
+			maxSize: new BigNumber(1, "0x"),
+			takerFeeBps: new BigNumber(1, "0x"),
+			makerFeeBps: new BigNumber(1, "0x")
 		};
 	
 		const baseToken = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, signer);
