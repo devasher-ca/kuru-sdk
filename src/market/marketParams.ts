@@ -28,6 +28,11 @@ export abstract class ParamFetcher {
             baseAssetDecimals: BigNumber.from(marketParamsData[3]),
             quoteAssetAddress: marketParamsData[4],
             quoteAssetDecimals: BigNumber.from(marketParamsData[5]),
+            tickSize: BigNumber.from(marketParamsData[6]),
+            minSize: BigNumber.from(marketParamsData[7]),
+            maxSize: BigNumber.from(marketParamsData[8]),
+            takerFeeBps: BigNumber.from(marketParamsData[9]),
+            makerFeeBps: BigNumber.from(marketParamsData[10]),
         };
     }
 }

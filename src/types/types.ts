@@ -27,6 +27,20 @@ export interface MarketParams {
     baseAssetDecimals: BigNumber;
     quoteAssetAddress: string;
     quoteAssetDecimals: BigNumber;
+    tickSize: BigNumber;
+    minSize: BigNumber;
+    maxSize: BigNumber;
+    takerFeeBps: BigNumber;
+    makerFeeBps: BigNumber;
+}
+
+export interface VaultParams {
+    kuruAmmVault: string;
+    vaultBestBid: number;
+    bidPartiallyFilledSize: BigNumber;
+    vaultBestAsk: number;
+    askPartiallyFilledSize: BigNumber;
+    vaultOrderSize: BigNumber;
 }
 
 export interface OrderEvent {

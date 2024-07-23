@@ -1,4 +1,3 @@
-export * from "./client";
 export * from "./types";
 export * from "./listener";
 export * from "./market";
