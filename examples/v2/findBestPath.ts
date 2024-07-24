@@ -14,8 +14,8 @@ const amount = parseFloat(args[0]);
 
     const bestPath = await KuruSdk.PathFinder.findBestPath(
         provider,
-        "0x8a19cD50678340Bd28c39854571bE05EE6422b62",
-        "0xF1f398E10Fe3D8D8b5158bb2882bDAeEE706F395",
+        baseTokenAddress,
+        quoteTokenAddress,
         amount
     );
 
