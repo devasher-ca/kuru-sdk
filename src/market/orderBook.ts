@@ -99,11 +99,14 @@ async function getAmmPrices(
         vaultOrderSize: BigNumber.from(vaultParamsData[5]),
     };
 
-    let {vaultBestAsk, vaultBestBid, vaultOrderSize} = vaultParams;
+    let {vaultBestAsk, vaultBestBid, vaultOrderSize, bidPartiallyFilledSize, askPartiallyFilledSize} = vaultParams;
 
     let bids: number[][] = [];
     let asks: number[][] = [];
 
+    const vaultOrderSizeAsFloat = parseFloat(ethers.utils.formatUnits(vaultOrderSize, log10BigNumber(marketParams.sizePrecision)));
+    const firstBidOrderSizeAsFloat = parseFloat(ethers.utils.formatUnits(vaultOrderSize.sub(bidPartiallyFilledSize), log10BigNumber(marketParams.sizePrecision)));
+    const firstAskOrderSizeAsFloat = parseFloat(ethers.utils.formatUnits(vaultOrderSize.sub(askPartiallyFilledSize), log10BigNumber(marketParams.sizePrecision)));
 
     if (vaultOrderSize < marketParams.minSize) {
         return { bids, asks };
@@ -116,7 +119,7 @@ async function getAmmPrices(
             if (vaultBestBid === 0) break;
             bids.push([
                 parseFloat(ethers.utils.formatUnits(vaultBestBid, log10BigNumber(marketParams.pricePrecision))),
-                parseFloat(ethers.utils.formatUnits(vaultOrderSize, log10BigNumber(marketParams.sizePrecision)))
+                i === 0 ? firstBidOrderSizeAsFloat : vaultOrderSizeAsFloat
             ]);
             vaultBestBid = mulDivRound(vaultBestBid, 1000, 1003);
         }
@@ -126,7 +129,7 @@ async function getAmmPrices(
             if (vaultBestAsk >= Math.pow(2, 24) - 1) break;
             asks.push([
                 parseFloat(ethers.utils.formatUnits(vaultBestAsk, log10BigNumber(marketParams.pricePrecision))),
-                parseFloat(ethers.utils.formatUnits(vaultOrderSize, log10BigNumber(marketParams.sizePrecision)))
+                i === 0 ? firstAskOrderSizeAsFloat : vaultOrderSizeAsFloat
             ]);
             vaultBestAsk = mulDivRound(vaultBestAsk, 1003, 1000);
         }

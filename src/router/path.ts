@@ -24,7 +24,8 @@ export abstract class PathFinder {
             },
             isBuy: [],
             nativeSend: [],
-            output: 0
+            output: 0,
+            feeInBase: 0,
         };
     
         let bestOutput = 0;
@@ -87,6 +88,7 @@ async function computeRouteOutput(
 ): Promise<RouteOutput> {
     let currentToken = route.tokenIn;
     let output : number = amountIn;
+    let feeInBase : number = amountIn;
     let isBuy: boolean[] = [];
     let nativeSend: boolean[] = [];
 
@@ -108,13 +110,16 @@ async function computeRouteOutput(
             currentToken = pool.baseToken; // Update current token to base token
             isBuy.push(true);
         }
+
+        feeInBase = feeInBase * pool.takerFeeBps / 10000;
     }
 
     return {
         route,
         output,
         nativeSend,
-        isBuy
+        isBuy,
+        feeInBase
     };
 }
 
