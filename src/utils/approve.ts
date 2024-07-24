@@ -35,26 +35,16 @@ export async function approveToken(
             return null;
         }
 
-        console.log({
-            ownerAddress,
-            approveTo,
-            size,
-            existingApproval
-        })
-
         const tx = await tokenContract.approve(
             approveTo,
             size
         );
 
-console.log({tx})
-
-
         const { transactionHash } = await tx.wait();
 
         return transactionHash;
     } catch (e: any) {
-        console.log({e})
+        console.error({e})
         if (!e.error) {
             throw e;
         }
