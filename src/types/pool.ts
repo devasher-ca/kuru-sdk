@@ -2,6 +2,7 @@ export interface Pool {
     baseToken: string,
     quoteToken: string,
     orderbook: string,
+    takerFeeBps: number,
 }
 
 export interface Route {
@@ -15,4 +16,5 @@ export interface RouteOutput {
     isBuy: boolean[],
     nativeSend: boolean[],
     output: number,
+    feeInBase: number
 }
