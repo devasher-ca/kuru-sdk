@@ -37,6 +37,7 @@ export abstract class TokenSwap {
             );
         
             if (approveTokens) {
+                console.log("Approving tokens...");
                 const txHash = await approveToken(
                     tokenContract,
                     routerAddress,
@@ -47,8 +48,20 @@ export abstract class TokenSwap {
                 if (approvalCallback) {
                     approvalCallback(txHash);
                 }
+
+                console.log("Tokens approved");
             }
         
+
+            console.log("Swapping tokens...", { ...routeOutput });
+            console.log(
+                amountIn.toString(),
+                routeOutput.route.tokenIn.toString(),
+                routeOutput.route.tokenOut.toString(),
+                tokenInAmount,
+                minTokenOutAmount
+            )
+
             const tx = await router.anyToAnySwap(
                 routeOutput.route.path.map(pool => pool.orderbook),
                 routeOutput.isBuy,
@@ -59,8 +72,11 @@ export abstract class TokenSwap {
                 minTokenOutAmount
             );
 
-            await tx.wait();
+            console.log("Tokens swapped", tx);
+
+            return await tx.wait();
         } catch (e: any) {
+            console.log({e})
             if (!e.error) {
                 throw e;
             }

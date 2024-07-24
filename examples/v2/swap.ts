@@ -20,7 +20,7 @@ const size = parseFloat(args[0]);
         provider,
         baseTokenAddress,
         quoteTokenAddress,
-        1000
+        size
     );
 
     console.log(routeOutput.route.path);

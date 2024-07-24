@@ -29,16 +29,17 @@ export async function approveToken(
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
 
-        // const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
+        const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
 
-        // if (existingApproval.gte(size)) {
-        //     return null;
-        // }
+        if (existingApproval.gte(size)) {
+            return null;
+        }
 
         console.log({
             ownerAddress,
             approveTo,
-            size
+            size,
+            existingApproval
         })
 
         const tx = await tokenContract.approve(
