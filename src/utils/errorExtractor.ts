@@ -8,6 +8,7 @@ export function extractErrorMessage(jsonString: string): Error {
         }
         return new Error("Unknown error");
     } catch (e) {
+        console.error(e);
         return new Error("Invalid JSON string");
     }
 }
