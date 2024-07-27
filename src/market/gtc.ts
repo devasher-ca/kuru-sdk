@@ -1,5 +1,6 @@
 // ============ External Imports ============
 import { ethers, BigNumber } from "ethers";
+import {ContractReceipt} from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -22,7 +23,7 @@ export abstract class GTC {
         orderbookAddress: string,
         marketParams: MarketParams,
         order: LIMIT
-    ): Promise<boolean> {
+    ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
@@ -65,20 +66,19 @@ async function addBuyOrder(
     price: BigNumber,
     size: BigNumber,
     postOnly: boolean
-): Promise<boolean> {
+): Promise<ContractReceipt> {
     try {
         const tx = await orderbook.addBuyOrder(
             price,
             size,
             postOnly
         );
-        await tx.wait();
-        return true; // Return true if the transaction is successful
+        return await tx.wait();
     } catch (e: any) {
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error?.error?.body);
     }
 }
 
@@ -99,7 +99,7 @@ async function estimateGasBuy(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error?.error?.body);
     }
 }
 
@@ -116,20 +116,20 @@ async function addSellOrder(
     price: BigNumber,
     size: BigNumber,
     postOnly: boolean
-): Promise<boolean> {
+): Promise<ContractReceipt> {
     try {
         const tx = await orderbook.addSellOrder(
             price,
             size,
             postOnly
         );
-        await tx.wait();
-        return true; // Return true if the transaction is successful
+
+        return await tx.wait();
     } catch (e: any) {
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error?.error?.body);
     }
 }
 
@@ -150,6 +150,6 @@ async function estimateGasSell(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error?.error?.body);
     }
 }
