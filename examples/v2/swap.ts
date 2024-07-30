@@ -21,14 +21,16 @@ const size = parseFloat(args[0]);
         size
     );
 
-	await KuruSdk.TokenSwap.swap(
-        signer,
-        routerAddres,
-        routeOutput,
-        size,
-        18,
-        18,
-        10,
-        true
-    );
+    console.log({ routeOutput });
+
+	// await KuruSdk.TokenSwap.swap(
+    //     signer,
+    //     routerAddres,
+    //     routeOutput,
+    //     size,
+    //     18,
+    //     18,
+    //     10,
+    //     true
+    // );
 })();

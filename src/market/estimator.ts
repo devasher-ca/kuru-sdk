@@ -62,7 +62,13 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
+<<<<<<< Updated upstream
         quoteAmount: number
+=======
+        quoteAmount: number,
+        l2Book?: any,
+        contractVaultParams?: any
+>>>>>>> Stashed changes
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,
@@ -152,7 +158,13 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
+<<<<<<< Updated upstream
         baseTokenAmount: number
+=======
+        baseTokenAmount: number,
+        l2Book?: any,
+        contractVaultParams?: any
+>>>>>>> Stashed changes
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,

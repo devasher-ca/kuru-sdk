@@ -13,10 +13,12 @@ const amount = parseFloat(args[0]);
 
     const bestPath = await KuruSdk.PathFinder.findBestPath(
         provider,
-        baseTokenAddress,
         quoteTokenAddress,
+        baseTokenAddress,
         amount
     );
+    
+    console.log(bestPath)
 
     console.log(bestPath.route.path);
     console.log(bestPath.output);
