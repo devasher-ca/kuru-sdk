@@ -22,12 +22,15 @@ export abstract class GTC {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
+        slippageTolerance: number,
     ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
+        const size = (order.size * (100 - slippageTolerance) / 100)
+
         const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
-        const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(size.toString(), log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
             ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
@@ -38,12 +41,15 @@ export abstract class GTC {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
+        slippageTolerance: number,
     ): Promise<BigNumber> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
+        const size = (order.size * (100 - slippageTolerance) / 100)
+
         const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
-        const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(size.toString(), log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
             ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)

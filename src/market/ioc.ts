@@ -22,9 +22,12 @@ export abstract class IOC {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: MARKET
+        order: MARKET,
+        slippageTolerance: number,
     ): Promise<number> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
+        const size = (order.size * (100 - slippageTolerance) / 100)
 
         return order.isBuy
             ? placeAndExecuteMarketBuy(
@@ -33,7 +36,7 @@ export abstract class IOC {
                 orderbookAddress,
                 marketParams,
                 order.approveTokens,
-                order.size,
+                size,
                 order.fillOrKill,
             )
             : placeAndExecuteMarketSell(
@@ -42,7 +45,7 @@ export abstract class IOC {
                 orderbookAddress,
                 marketParams,
                 order.approveTokens,
-                order.size,
+                size,
                 order.fillOrKill,
             );
     }
@@ -51,16 +54,19 @@ export abstract class IOC {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: MARKET
+        order: MARKET,
+        slippageTolerance: number,
     ): Promise<BigNumber> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
+        const size = (order.size * (100 - slippageTolerance) / 100)
 
         if (order.approveTokens) {
             return estimateApproveGas(
                 new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, providerOrSigner),
                 orderbookAddress,
                 ethers.utils.parseUnits(
-                    order.size.toString(),
+                    size.toString(),
                     marketParams.quoteAssetDecimals
                 )
             );
@@ -70,13 +76,13 @@ export abstract class IOC {
             ? estimateGasBuy(
                 orderbook,
                 marketParams,
-                order.size,
+                size,
                 order.fillOrKill,
             )
             : estimateGasSell(
                 orderbook,
                 marketParams,
-                order.size,
+                size,
                 order.fillOrKill,
             );
     }
