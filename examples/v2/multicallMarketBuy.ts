@@ -23,7 +23,8 @@ const size = parseFloat(args[0]);
         {
             size,
             isBuy: true,
-            fillOrKill: true
+            fillOrKill: true,
+            approveTokens: false
         }
     );
 })();

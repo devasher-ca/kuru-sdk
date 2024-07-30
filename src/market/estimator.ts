@@ -19,11 +19,15 @@ export abstract class CostEstimator {
         orderbookAddress: string,
         marketParams: MarketParams,
         size: number,
+        l2Book?: any,
+        contractVaultParams?: any
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,
             orderbookAddress,
-            marketParams
+            marketParams,
+            l2Book,
+            contractVaultParams
         );
 
         let remainingSize = size;
@@ -62,12 +66,16 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        quoteAmount: number
+        quoteAmount: number,
+        l2Book: any,
+        contractVaultParams: any
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,
             orderbookAddress,
-            marketParams
+            marketParams,
+            l2Book,
+            contractVaultParams
         );
 
         let remainingQuote = quoteAmount;
@@ -107,12 +115,16 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        quoteAmount: number
+        quoteAmount: number,
+        l2Book?: any,
+        contractVaultParams?: any
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,
             orderbookAddress,
-            marketParams
+            marketParams,
+            l2Book,
+            contractVaultParams
         );
 
         let remainingQuote = quoteAmount;
@@ -152,12 +164,16 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        baseTokenAmount: number
+        baseTokenAmount: number,
+        l2Book: any,
+        contractVaultParams: any
     ): Promise<number> {
         const l2OrderBook = await OrderBook.getL2OrderBook(
             providerOrSigner,
             orderbookAddress,
-            marketParams
+            marketParams,
+            l2Book,
+            contractVaultParams
         );
 
         let remainingBase = baseTokenAmount;
