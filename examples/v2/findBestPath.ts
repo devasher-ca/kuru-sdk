@@ -9,17 +9,17 @@ const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
 
 (async () => {
-	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-	const bestPath = await KuruSdk.PathFinder.findBestPath(
-		provider,
-		quoteTokenAddress,
-		baseTokenAddress,
-		amount
-	);
+  const bestPath = await KuruSdk.PathFinder.findBestPath(
+    provider,
+    quoteTokenAddress,
+    baseTokenAddress,
+    amount
+  );
 
-	console.log(bestPath);
+  console.log(bestPath);
 
-	console.log(bestPath.route.path);
-	console.log(bestPath.output);
+  console.log(bestPath.route.path);
+  console.log(bestPath.output);
 })();
