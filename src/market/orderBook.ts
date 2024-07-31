@@ -19,10 +19,16 @@ export abstract class OrderBook {
     static async getL2OrderBook(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        marketParams: MarketParams
+        marketParams: MarketParams,
+        l2Book?: any,
+        contractVaultParams?: any
     ): Promise<OrderBookData> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
-        const data = await orderbook.getL2Book();
+
+        let data = l2Book;
+        if (!data) {
+            data = await orderbook.getL2Book();
+        }
 
         let offset = 66; // Start reading after the block number
         const blockNumber = parseInt(data.slice(2, 66), 16); // The block number is stored in the first 64 bytes after '0x'
@@ -61,7 +67,7 @@ export abstract class OrderBook {
         }
 
         // Get AMM Prices
-        const ammPrices = await getAmmPrices(providerOrSigner, orderbookAddress, marketParams);
+        const ammPrices = await getAmmPrices(providerOrSigner, orderbookAddress, marketParams, contractVaultParams);
 
         // Combine AMM Prices with Order Book Prices
         const combinedBids = combinePrices(bids, ammPrices.bids);
@@ -85,10 +91,17 @@ export abstract class OrderBook {
 async function getAmmPrices(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     orderbookAddress: string,
-    marketParams: MarketParams
+    marketParams: MarketParams,
+    contractVaultParams: any
 ): Promise<{ bids: number[][], asks: number[][] }> {
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
-    const vaultParamsData = await orderbook.getVaultParams();
+
+
+    let vaultParamsData = contractVaultParams;
+
+    if (!vaultParamsData) {
+        vaultParamsData = await orderbook.getVaultParams();
+    }
 
     const vaultParams: VaultParams = {
         kuruAmmVault: vaultParamsData[0],

@@ -18,11 +18,16 @@ export abstract class Orders {
     static async getActiveOrdersForMaker(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeOrdersForMaker: any
     ): Promise<ActiveOrders> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const data = await orderbook.getActiveOrdersForAddress(maker);
+        let data = activeOrdersForMaker;
+
+        if (!data) {
+            data = await orderbook.getActiveOrdersForAddress(maker);
+        }
         let offset = 66;
         const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
         let orderIds: BigNumber[] = [];
@@ -65,11 +70,17 @@ export abstract class Orders {
     static async getActiveBuysForMaker(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeBuysForMaker: any
     ): Promise<ActiveOrders> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const data = await orderbook.getActiveBuysForAddress(maker);
+        let data = activeBuysForMaker;
+        
+        if (!data) {
+            data = await orderbook.getActiveBuysForAddress(maker);
+        }
+
         let offset = 66;
         const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
         let orderIds: BigNumber[] = [];
@@ -93,11 +104,17 @@ export abstract class Orders {
     static async getActiveSellsForMaker(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeSellsForAddress: any
     ): Promise<ActiveOrders> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const data = await orderbook.getActiveSellsForAddress(maker);
+        let data = activeSellsForAddress;
+
+        if (!data) {
+            data = await orderbook.getActiveSellsForAddress(maker);
+        }
+
         let offset = 66;
         const blockNumber = parseInt(data.slice(2, 66), 16);  // Extracting the block number from data
         let orderIds: BigNumber[] = [];
