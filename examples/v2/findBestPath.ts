@@ -15,7 +15,8 @@ const amount = parseFloat(args[0]);
     provider,
     quoteTokenAddress,
     baseTokenAddress,
-    amount
+    amount,
+    "amountOut"
   );
 
   console.log(bestPath);

@@ -12,7 +12,7 @@ export abstract class PathFinder {
     tokenIn: string,
     tokenOut: string,
     amountIn: number,
-    amountType: "quote" | "base" = "base"
+    amountType: "amountOut" | "amountIn" = "amountIn"
   ): Promise<RouteOutput> {
     const pools = await PoolFetcher.getAllPools();
 
@@ -30,40 +30,15 @@ export abstract class PathFinder {
       feeInBase: 0,
     };
 
-    console.log(JSON.stringify(routes, null, 2));
+    let bestOutput = 0;
+    for (const route of routes) {
+      const routeOutput = await (amountType === "amountOut"
+        ? computeRouteInput(providerOrSigner, route, amountIn)
+        : computeRouteOutput(providerOrSigner, route, amountIn));
 
-    if (amountType === "quote") {
-      let bestInput = 0;
-
-      for (const route of routes.reverse()) {
-        const routeOutput = await computeRouteInput(
-          providerOrSigner,
-          route,
-          amountIn
-        );
-
-        console.log(JSON.stringify(routeOutput, null, 2));
-
-        if (routeOutput.output > bestInput) {
-          bestRoute = routeOutput;
-          bestInput = routeOutput.output;
-        }
-      }
-    } else {
-      let bestOutput = 0;
-      for (const route of routes) {
-        const routeOutput = await computeRouteOutput(
-          providerOrSigner,
-          route,
-          amountIn
-        );
-
-        console.log(JSON.stringify(routeOutput, null, 2));
-
-        if (routeOutput.output > bestOutput) {
-          bestRoute = routeOutput;
-          bestOutput = routeOutput.output;
-        }
+      if (routeOutput.output > bestOutput) {
+        bestRoute = routeOutput;
+        bestOutput = routeOutput.output;
       }
     }
 
@@ -133,7 +108,7 @@ async function computeRouteInput(
       : nativeSend.push(false);
     if (currentToken === pool.baseToken) {
       // If the current token is the base token, we are selling base for quote
-      output = await CostEstimator.estimateRequiredQuoteForBuy(
+      output = await CostEstimator.estimateRequiredBaseForSell(
         providerOrSigner,
         orderbookAddress,
         marketParams,
@@ -143,7 +118,7 @@ async function computeRouteInput(
       isBuy.push(false);
     } else {
       // If the current token is the quote token, we are buying base with quote
-      output = await CostEstimator.estimateRequiredBaseForSell(
+      output = await CostEstimator.estimateRequiredQuoteForBuy(
         providerOrSigner,
         orderbookAddress,
         marketParams,
