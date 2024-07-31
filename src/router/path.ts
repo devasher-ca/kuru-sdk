@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { ParamFetcher, CostEstimator } from "../market";
 import { PoolFetcher } from "../pools";
 import { Pool, Route, RouteOutput } from "../types/pool";
+import orderbookAbi from "../../abi/OrderBook.json";
 
 export abstract class PathFinder {
   static async findBestPath(
@@ -103,6 +104,15 @@ async function computeRouteInput(
       orderbookAddress
     );
 
+    const orderbook = new ethers.Contract(
+      orderbookAddress,
+      orderbookAbi.abi,
+      providerOrSigner
+    );
+
+    const l2Book = await orderbook.getL2Book();
+    const vaultParams = await orderbook.getVaultParams();
+
     currentToken === ethers.constants.AddressZero
       ? nativeSend.push(true)
       : nativeSend.push(false);
@@ -112,7 +122,9 @@ async function computeRouteInput(
         providerOrSigner,
         orderbookAddress,
         marketParams,
-        output
+        output,
+        l2Book,
+        vaultParams
       );
       currentToken = pool.quoteToken; // Update current token to quote token
       isBuy.push(false);
@@ -122,7 +134,9 @@ async function computeRouteInput(
         providerOrSigner,
         orderbookAddress,
         marketParams,
-        output
+        output,
+        l2Book,
+        vaultParams
       );
       currentToken = pool.baseToken; // Update current token to base token
       isBuy.push(true);
