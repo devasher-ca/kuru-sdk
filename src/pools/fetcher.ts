@@ -2,7 +2,7 @@
 import { Pool } from "../types/pool";
 
 // ============ Config Imports ============
-// import pools from "./pools.config.json";
+import pools from "./pools.config.json";
 
 export abstract class PoolFetcher {
   static async getAllPools(): Promise<Pool[]> {
