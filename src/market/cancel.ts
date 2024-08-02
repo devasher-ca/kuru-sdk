@@ -63,13 +63,15 @@ export abstract class OrderCanceler {
     static async cancelAllOrders(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeOrdersForMaker: any
     ): Promise<ActiveOrders> {
         try {
             const activeOrders = await Orders.getActiveOrdersForMaker(
                 providerOrSigner,
                 orderbookAddress,
-                maker
+                maker,
+                activeOrdersForMaker
             );
 
             await this.cancelOrders(
@@ -97,13 +99,15 @@ export abstract class OrderCanceler {
     static async cancelAllBuys(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeBuysForMaker: any
     ): Promise<ActiveOrders> {
         try {
             const activeOrders = await Orders.getActiveBuysForMaker(
                 providerOrSigner,
                 orderbookAddress,
-                maker
+                maker,
+                activeBuysForMaker
             );
 
             await this.cancelOrders(
@@ -131,13 +135,15 @@ export abstract class OrderCanceler {
     static async cancelAllSells(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        maker: string
+        maker: string,
+        activeSellsForMaker: any
     ): Promise<ActiveOrders> {
         try {
             const activeOrders = await Orders.getActiveSellsForMaker(
                 providerOrSigner,
                 orderbookAddress,
-                maker
+                maker,
+                activeSellsForMaker
             );
 
             await this.cancelOrders(

@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, ContractReceipt, ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, approveToken, estimateApproveGas } from "../utils";
@@ -17,7 +17,7 @@ export abstract class MarginDeposit {
         amount: number,
         decimals: number,
         approveTokens: boolean,
-    ): Promise<void> {
+    ): Promise<ContractReceipt> {
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
             const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
@@ -26,18 +26,19 @@ export abstract class MarginDeposit {
     
             if (tokenAddress === ethers.constants.AddressZero) {
                 const tx = await marginAccount.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
-                await tx.wait();
+                return await tx.wait();
             } else {
                 if (approveTokens) {
                     await approveToken(
                         tokenContract,
                         marginAccountAddress,
                         ethers.utils.parseUnits(amount.toString(), decimals),
+                        providerOrSigner
                     );
                 }
     
                 const tx = await marginAccount.deposit(userAddress, tokenAddress, formattedAmount);
-                await tx.wait();
+                return await tx.wait();
             }
         } catch (e: any) {
             if (!e.error) {

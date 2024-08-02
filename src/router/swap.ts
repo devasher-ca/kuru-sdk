@@ -19,6 +19,7 @@ export abstract class TokenSwap {
         outTokenDecimals: number,
         slippageTolerance: number,
         approveTokens: boolean,
+        approvalCallback: (txHash: string | null) => void
     ): Promise<void> {
         try {
             const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
@@ -36,13 +37,18 @@ export abstract class TokenSwap {
             );
         
             if (approveTokens) {
-                await approveToken(
+                const txHash = await approveToken(
                     tokenContract,
                     routerAddress,
-                    tokenInAmount
+                    tokenInAmount,
+                    providerOrSigner
                 );
+
+                if (approvalCallback) {
+                    approvalCallback(txHash);
+                }
             }
-        
+
             const tx = await router.anyToAnySwap(
                 routeOutput.route.path.map(pool => pool.orderbook),
                 routeOutput.isBuy,
@@ -53,8 +59,9 @@ export abstract class TokenSwap {
                 minTokenOutAmount
             );
 
-            await tx.wait();
+            return await tx.wait();
         } catch (e: any) {
+            console.error({e})
             if (!e.error) {
                 throw e;
             }

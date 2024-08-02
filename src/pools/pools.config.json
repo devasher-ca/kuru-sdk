@@ -1,12 +1,7 @@
 [
     {
-        "baseToken": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-        "quoteToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-        "orderbook": "0xa550e550AfD95eC8a2812093D4F24059b62C4946"
-    },
-    {
-        "baseToken": "0x851356ae760d987E095750cCeb3bC6014560891C",
-        "quoteToken": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-        "orderbook": "0xd3115e18E3Bdf12AB30a5068ec4f65Ca3802648a"
+        "baseToken": "0xb2a98D81030801c10Ed89585d41e14cE4692a84A",
+        "quoteToken": "0xd6b989303f7C05a94b0b8c21C136B818F3e67491",
+        "orderbook": "0x8A76449f10C890D7770FDC055b5076390a36e3AA"
     }
 ]

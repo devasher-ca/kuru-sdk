@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { ContractReceipt, ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
@@ -14,13 +14,13 @@ export abstract class MarginWithdraw {
         tokenAddress: string,
         amount: number,
         decimals: number
-    ): Promise<void> {
+    ): Promise<ContractReceipt> {
         try {
             const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
     
             const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
             const tx = await marginAccount.withdraw(formattedAmount, tokenAddress);
-            await tx.wait();
+            return await tx.wait();
         } catch (e: any) {
             if (!e.error) {
                 throw e;
