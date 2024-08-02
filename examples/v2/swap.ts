@@ -24,7 +24,7 @@ const size = parseFloat(args[0]);
 
   await KuruSdk.TokenSwap.swap(
     signer,
-    routerAddres,
+    routerAddress,
     routeOutput,
     size,
     18,

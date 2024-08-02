@@ -36,11 +36,12 @@ export interface MarketParams {
 
 export interface VaultParams {
     kuruAmmVault: string;
-    vaultBestBid: number;
+    vaultBestBid: BigNumber;
     bidPartiallyFilledSize: BigNumber;
-    vaultBestAsk: number;
+    vaultBestAsk: BigNumber;
     askPartiallyFilledSize: BigNumber;
-    vaultOrderSize: BigNumber;
+    vaultBidOrderSize: BigNumber;
+    vaultAskOrderSize: BigNumber;
 }
 
 export interface OrderEvent {

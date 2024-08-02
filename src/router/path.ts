@@ -13,9 +13,12 @@ export abstract class PathFinder {
     tokenIn: string,
     tokenOut: string,
     amountIn: number,
-    amountType: "amountOut" | "amountIn" = "amountIn"
+    amountType: "amountOut" | "amountIn" = "amountIn",
+    pools?: any
   ): Promise<RouteOutput> {
-    const pools = await PoolFetcher.getAllPools();
+    if (!pools) {
+      pools = await PoolFetcher.getAllPools();
+    }
 
     const routes = computeAllRoutes(tokenIn, tokenOut, pools);
 

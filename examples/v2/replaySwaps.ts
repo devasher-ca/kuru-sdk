@@ -12,9 +12,9 @@ const privateKey = process.env.PRIVATE_KEY as string;
 const speedUpFactor = 5;
 
 interface HistoricData {
-    block_timestamp: number;
-    from_amount: number;
-    direction: string;
+    BLOCK_TIMESTAMP: number;
+    SWAP_FROM_AMOUNT: number;
+    SWAP_FROM_MINT: string;
 }
 
 async function main() {
@@ -27,13 +27,18 @@ async function main() {
     const historicData: HistoricData[] = [];
 
     // Read and parse CSV file
-    fs.createReadStream(path.resolve(__dirname, "jup_clean.csv"))
+    fs.createReadStream(path.resolve(__dirname, "billy_trades.csv"))
         .pipe(csvParser())
         .on("data", (data) => {
+            const isBuy = data.SWAP_FROM_MINT === 'So11111111111111111111111111111111111111112';
+            let size = isBuy ? parseFloat(parseFloat(data.SWAP_FROM_AMOUNT).toFixed(6)) : parseFloat((parseFloat(data.SWAP_FROM_AMOUNT)/100).toFixed(2));
+            if (!isBuy && size == 0) {
+                size = 1;
+            }
             historicData.push({
-                block_timestamp: parseInt(data.block_timestamp),
-                from_amount: parseFloat(parseFloat(data.from_amount).toFixed(2)),
-                direction: data.direction,
+                BLOCK_TIMESTAMP: parseInt(data.BLOCK_TIMESTAMP),
+                SWAP_FROM_AMOUNT: size,
+                SWAP_FROM_MINT: data.SWAP_FROM_MINT,
             });
         })
         .on("end", async () => {
@@ -42,27 +47,24 @@ async function main() {
             const startTime = Date.now();
             // Main processing loop
             while (txIndex < historicData.length) {
-                if ((Date.now() - startTime) * speedUpFactor >= historicData[txIndex].block_timestamp) {
-                    try {
-                        await KuruSdk.IOC.placeMarket(
-                            signer,
-                            contractAddress,
-                            marketParams,
-                            {
-                                size: historicData[txIndex].from_amount,
-                                approveTokens: true,
-                                isBuy: historicData[txIndex].direction === 'buy',
-                                fillOrKill: false,
-                            }
-                        );
+                console.log(txIndex);
+                try {
+                    await KuruSdk.IOC.placeMarket(
+                        signer,
+                        contractAddress,
+                        marketParams,
+                        {
+                            size: historicData[txIndex].SWAP_FROM_AMOUNT,
+                            approveTokens: true,
+                            isBuy: historicData[txIndex].SWAP_FROM_MINT === 'So11111111111111111111111111111111111111112',
+                            fillOrKill: false,
+                        }
+                    );
 
-                        txIndex += 1;
-                    } catch (error) {
-                        console.error(`Transaction failed for index ${txIndex}, retrying...`, error);
-                        continue; // Retry the same transaction
-                    }
-                } else {
-                    console.log("Waiting lol!!");
+                    txIndex += 1;
+                } catch (error) {
+                    console.error(`Transaction failed for index ${txIndex}, retrying...`, error);
+                    continue; // Retry the same transaction
                 }
             }
         });
