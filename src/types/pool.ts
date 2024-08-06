@@ -1,20 +1,19 @@
 export interface Pool {
-    baseToken: string,
-    quoteToken: string,
-    orderbook: string,
-    takerFeeBps: number,
+    baseToken: string;
+    quoteToken: string;
+    orderbook: string;
 }
 
 export interface Route {
-    path: Pool[],
-    tokenIn: string,
-    tokenOut: string,
+    path: Pool[];
+    tokenIn: string;
+    tokenOut: string;
 }
 
 export interface RouteOutput {
-    route: Route,
-    isBuy: boolean[],
-    nativeSend: boolean[],
-    output: number,
-    feeInBase: number
+    route: Route;
+    isBuy: boolean[];
+    nativeSend: boolean[];
+    output: number;
+    feeInBase: number;
 }
