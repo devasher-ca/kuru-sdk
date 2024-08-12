@@ -15,18 +15,20 @@ export class ERC20 {
     }
 
     async getTokenDetails() {
-        const [name, symbol, decimals] = await Promise.all<
+        const [name, symbol, decimals, totalSupply] = await Promise.all<
             [string, string, number]
         >([
             this.contract.name(),
             this.contract.symbol(),
             this.contract.decimals(),
+            this.contract.totalSupply(),
         ]);
 
         return {
             name,
             symbol,
             decimals,
+            totalSupply,
         };
     }
 }
