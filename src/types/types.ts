@@ -12,12 +12,12 @@ export interface ActiveOrders {
 }
 
 export interface Order {
-    ownerAddress: string,
-    size: number,
-    prev: number,
-    next: number,
-    price: number
-    isBuy: boolean
+    ownerAddress: string;
+    size: number;
+    prev: number;
+    next: number;
+    price: number;
+    isBuy: boolean;
 }
 
 export interface MarketParams {
@@ -45,18 +45,18 @@ export interface VaultParams {
 }
 
 export interface OrderEvent {
-    orderId: BigNumber,
-    ownerAddress: string,
-    size: BigNumber,
-    price: BigNumber,
-    isBuy: boolean
+    orderId: BigNumber;
+    ownerAddress: string;
+    size: BigNumber;
+    price: BigNumber;
+    isBuy: boolean;
 }
 
 export interface TradeEvent {
-    orderId: BigNumber,
-    isBuy: boolean,
-    price: BigNumber,
-    updatedSize: BigNumber,
-    takerAddress: string,
-    filledSize: BigNumber
+    orderId: BigNumber;
+    isBuy: boolean;
+    price: BigNumber;
+    updatedSize: BigNumber;
+    takerAddress: string;
+    filledSize: BigNumber;
 }

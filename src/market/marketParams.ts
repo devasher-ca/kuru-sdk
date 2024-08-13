@@ -16,9 +16,13 @@ export abstract class ParamFetcher {
      */
     static async getMarketParams(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-        orderbookAddress: string,
+        orderbookAddress: string
     ): Promise<MarketParams> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         const marketParamsData = await orderbook.getMarketParams();
         return {

@@ -10,65 +10,72 @@ import { MarketParams, LIMIT } from "../types";
 import orderbookAbi from "../../abi/OrderBook.json";
 
 export abstract class GTC {
-  /**
-   * @dev Places a limit order (buy or sell) on the order book.
-   * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
-   * @param orderbookAddress - The address of the order book contract.
-   * @param marketParams - The market parameters including price and size precision.
-   * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
-   * @returns A promise that resolves to a boolean indicating success or failure.
-   */
-  static async placeLimit(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-    orderbookAddress: string,
-    marketParams: MarketParams,
-    order: LIMIT
-  ): Promise<ContractReceipt> {
-    const orderbook = new ethers.Contract(
-      orderbookAddress,
-      orderbookAbi.abi,
-      providerOrSigner
-    );
+    /**
+     * @dev Places a limit order (buy or sell) on the order book.
+     * @param providerOrSigner - The ethers.js provider or signer to interact with the blockchain.
+     * @param orderbookAddress - The address of the order book contract.
+     * @param marketParams - The market parameters including price and size precision.
+     * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
+     * @returns A promise that resolves to a boolean indicating success or failure.
+     */
+    static async placeLimit(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        marketParams: MarketParams,
+        order: LIMIT
+    ): Promise<ContractReceipt> {
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
-    const priceBn: BigNumber = ethers.utils.parseUnits(
-      order.price.toString(),
-      log10BigNumber(marketParams.pricePrecision)
-    );
-    const sizeBn: BigNumber = ethers.utils.parseUnits(
-      order.size.toString(),
-      log10BigNumber(marketParams.sizePrecision)
-    );
+        const clippedPrice = order.price.toFixed(
+            log10BigNumber(marketParams.pricePrecision)
+        );
+        const clippedSize = order.size.toFixed(
+            log10BigNumber(marketParams.sizePrecision)
+        );
 
-    return order.isBuy
-      ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
-      : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
-  }
+        const priceBn: BigNumber = ethers.utils.parseUnits(
+            clippedPrice.toString(),
+            log10BigNumber(marketParams.pricePrecision)
+        );
+        const sizeBn: BigNumber = ethers.utils.parseUnits(
+            clippedSize.toString(),
+            log10BigNumber(marketParams.sizePrecision)
+        );
 
-  static async estimateGas(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-    orderbookAddress: string,
-    marketParams: MarketParams,
-    order: LIMIT
-  ): Promise<BigNumber> {
-    const orderbook = new ethers.Contract(
-      orderbookAddress,
-      orderbookAbi.abi,
-      providerOrSigner
-    );
+        return order.isBuy
+            ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
+            : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
+    }
 
-    const priceBn: BigNumber = ethers.utils.parseUnits(
-      order.price.toString(),
-      log10BigNumber(marketParams.pricePrecision)
-    );
-    const sizeBn: BigNumber = ethers.utils.parseUnits(
-      order.size.toString(),
-      log10BigNumber(marketParams.sizePrecision)
-    );
+    static async estimateGas(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        marketParams: MarketParams,
+        order: LIMIT
+    ): Promise<BigNumber> {
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
-    return order.isBuy
-      ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
-      : estimateGasSell(orderbook, priceBn, sizeBn, order.postOnly);
-  }
+        const priceBn: BigNumber = ethers.utils.parseUnits(
+            order.price.toString(),
+            log10BigNumber(marketParams.pricePrecision)
+        );
+        const sizeBn: BigNumber = ethers.utils.parseUnits(
+            order.size.toString(),
+            log10BigNumber(marketParams.sizePrecision)
+        );
+
+        return order.isBuy
+            ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
+            : estimateGasSell(orderbook, priceBn, sizeBn, order.postOnly);
+    }
 }
 
 // ======================== INTERNAL HELPER FUNCTIONS ========================
@@ -82,41 +89,41 @@ export abstract class GTC {
  * @returns A promise that resolves to a boolean indicating success or failure.
  */
 async function addBuyOrder(
-  orderbook: ethers.Contract,
-  price: BigNumber,
-  size: BigNumber,
-  postOnly: boolean
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
 ): Promise<ContractReceipt> {
-  try {
-    const tx = await orderbook.addBuyOrder(price, size, postOnly);
-    return await tx.wait();
-  } catch (e: any) {
-    if (!e.error) {
-      throw e;
+    try {
+        const tx = await orderbook.addBuyOrder(price, size, postOnly);
+        return await tx.wait();
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error?.error?.body);
     }
-    throw extractErrorMessage(e.error?.error?.body);
-  }
 }
 
 async function estimateGasBuy(
-  orderbook: ethers.Contract,
-  price: BigNumber,
-  size: BigNumber,
-  postOnly: boolean
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
 ): Promise<BigNumber> {
-  try {
-    const gasEstimate = await orderbook.estimateGas.addBuyOrder(
-      price,
-      size,
-      postOnly
-    );
-    return gasEstimate;
-  } catch (e: any) {
-    if (!e.error) {
-      throw e;
+    try {
+        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
+            price,
+            size,
+            postOnly
+        );
+        return gasEstimate;
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error?.error?.body);
     }
-    throw extractErrorMessage(e.error?.error?.body);
-  }
 }
 
 /**
@@ -128,40 +135,40 @@ async function estimateGasBuy(
  * @returns A promise that resolves to a boolean indicating success or failure.
  */
 async function addSellOrder(
-  orderbook: ethers.Contract,
-  price: BigNumber,
-  size: BigNumber,
-  postOnly: boolean
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
 ): Promise<ContractReceipt> {
-  try {
-    const tx = await orderbook.addSellOrder(price, size, postOnly);
+    try {
+        const tx = await orderbook.addSellOrder(price, size, postOnly);
 
-    return await tx.wait();
-  } catch (e: any) {
-    if (!e.error) {
-      throw e;
+        return await tx.wait();
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error?.error?.body);
     }
-    throw extractErrorMessage(e.error?.error?.body);
-  }
 }
 
 async function estimateGasSell(
-  orderbook: ethers.Contract,
-  price: BigNumber,
-  size: BigNumber,
-  postOnly: boolean
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
 ): Promise<BigNumber> {
-  try {
-    const gasEstimate = await orderbook.estimateGas.addSellOrder(
-      price,
-      size,
-      postOnly
-    );
-    return gasEstimate;
-  } catch (e: any) {
-    if (!e.error) {
-      throw e;
+    try {
+        const gasEstimate = await orderbook.estimateGas.addSellOrder(
+            price,
+            size,
+            postOnly
+        );
+        return gasEstimate;
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e.error?.error?.body);
     }
-    throw extractErrorMessage(e.error?.error?.body);
-  }
 }
