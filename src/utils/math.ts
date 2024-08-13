@@ -15,6 +15,10 @@ export function log10BigNumber(bn: BigNumber): number {
     return bnString.length - 1;
 }
 
-export function mulDivRound(value: BigNumber, multiplier: BigNumber, divisor: BigNumber): BigNumber {
-    return (value.mul(multiplier).add(divisor.div(2))).div(divisor);
+export function mulDivRound(
+    value: BigNumber,
+    multiplier: BigNumber,
+    divisor: BigNumber
+): BigNumber {
+    return value.mul(multiplier).add(divisor.div(2)).div(divisor);
 }

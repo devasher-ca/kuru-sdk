@@ -14,7 +14,7 @@ export abstract class PathFinder {
         tokenOut: string,
         amountIn: number,
         amountType: "amountOut" | "amountIn" = "amountIn",
-        pools?: any
+        pools?: Pool[]
     ): Promise<RouteOutput> {
         if (!pools) {
             pools = await PoolFetcher.getAllPools();
