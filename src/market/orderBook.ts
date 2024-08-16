@@ -2,7 +2,7 @@
 import { ethers, BigNumber } from "ethers";
 
 // ============ Internal Imports ============
-import { OrderBookData, MarketParams, VaultParams } from "../types";
+import { OrderBookData, WssOrderEvent, WssCanceledOrderEvent, MarketParams, VaultParams, WssTradeEvent } from "../types";
 import { log10BigNumber, mulDivRound } from "../utils";
 
 // ============ Config Imports ============
@@ -78,6 +78,134 @@ export abstract class OrderBook {
         combinedAsks.sort((a, b) => b[0] - a[0]);
 
         return { bids: combinedBids, asks: combinedAsks, blockNumber };
+    }
+
+    static reconcileOrderCreated(
+        existingOrderBook: OrderBookData,
+        marketParams: MarketParams,
+        orderEvent: WssOrderEvent
+    ): OrderBookData {
+        // Convert size and price to floating-point numbers
+        const orderSize = parseFloat(
+            ethers.utils.formatUnits(orderEvent.size, log10BigNumber(marketParams.sizePrecision))
+        );
+        const orderPrice = parseFloat(
+            ethers.utils.formatUnits(orderEvent.price, log10BigNumber(marketParams.pricePrecision))
+        );
+    
+        // Create a deep copy of the existing orderbook
+        const newOrderBook: OrderBookData = JSON.parse(JSON.stringify(existingOrderBook));
+    
+        // Determine which side of the book to update
+        const sideToUpdate = orderEvent.isBuy ? newOrderBook.bids : newOrderBook.asks;
+    
+        // Find if there's an existing order at this price
+        const existingOrderIndex = sideToUpdate.findIndex(([price, _]) => price === orderPrice);
+    
+        if (existingOrderIndex !== -1) {
+            // If an order at this price exists, update its size
+            sideToUpdate[existingOrderIndex][1] += orderSize;
+        } else {
+            // If no order at this price exists, add a new order
+            sideToUpdate.push([orderPrice, orderSize]);
+    
+            // Re-sort the order book
+            if (orderEvent.isBuy) {
+                newOrderBook.bids.sort((a, b) => b[0] - a[0]); // Sort bids in descending order
+            } else {
+                newOrderBook.asks.sort((a, b) => a[0] - b[0]); // Sort asks in ascending order
+            }
+        }
+    
+        // Update the block number
+        newOrderBook.blockNumber = orderEvent.blockNumber.toNumber();
+    
+        return newOrderBook;
+    }
+
+    static reconcileCanceledOrders(
+        existingOrderBook: OrderBookData,
+        marketParams: MarketParams,
+        canceledOrderEvent: WssCanceledOrderEvent
+    ): OrderBookData {
+        // Create a deep copy of the existing orderbook
+        const newOrderBook: OrderBookData = JSON.parse(JSON.stringify(existingOrderBook));
+    
+        for (const canceledOrder of canceledOrderEvent.canceledOrdersData) {
+            // Convert size and price to floating-point numbers
+            const orderSize = parseFloat(
+                ethers.utils.formatUnits(canceledOrder.size, log10BigNumber(marketParams.sizePrecision))
+            );
+            const orderPrice = parseFloat(
+                ethers.utils.formatUnits(canceledOrder.price, log10BigNumber(marketParams.pricePrecision))
+            );
+    
+            // Determine which side of the book to update
+            const sideToUpdate = canceledOrder.isbuy ? newOrderBook.bids : newOrderBook.asks;
+    
+            // Find the existing order at this price
+            const existingOrderIndex = sideToUpdate.findIndex(([price, _]) => price === orderPrice);
+    
+            if (existingOrderIndex !== -1) {
+                // If an order at this price exists, reduce its size
+                sideToUpdate[existingOrderIndex][1] -= orderSize;
+    
+                // If the size becomes zero or negative, remove the order
+                if (sideToUpdate[existingOrderIndex][1] <= 0) {
+                    sideToUpdate.splice(existingOrderIndex, 1);
+                }
+            }
+            // If the order doesn't exist in our book, we don't need to do anything
+        }
+    
+        // Update the block number
+        newOrderBook.blockNumber = parseInt(canceledOrderEvent.canceledOrdersData[0].blocknumber, 16);
+    
+        return newOrderBook;
+    }
+
+    static reconcileTradeEvent(
+        existingOrderBook: OrderBookData,
+        marketParams: MarketParams,
+        tradeEvent: WssTradeEvent
+    ): OrderBookData {
+        // Create a deep copy of the existing orderbook
+        const newOrderBook: OrderBookData = JSON.parse(JSON.stringify(existingOrderBook));
+    
+        // Convert price and size to floating-point numbers
+        let tradePrice = parseFloat(
+            ethers.utils.formatUnits(tradeEvent.price, 18) // price is in 10^18 precision
+        );
+        
+        // Clip the price to pricePrecision decimal places
+        const pricePrecisionDecimals = log10BigNumber(marketParams.pricePrecision);
+        tradePrice = parseFloat(tradePrice.toFixed(pricePrecisionDecimals));
+    
+        const filledSize = parseFloat(
+            ethers.utils.formatUnits(tradeEvent.filledSize, log10BigNumber(marketParams.sizePrecision))
+        );
+    
+        // Determine which side of the book to update
+        const sideToUpdate = tradeEvent.isBuy ? newOrderBook.asks : newOrderBook.bids;
+    
+        // Find the existing order at this price
+        const existingOrderIndex = sideToUpdate.findIndex(([price, _]) => price === tradePrice);
+    
+        if (existingOrderIndex !== -1) {
+            // If an order at this price exists, reduce its size
+            sideToUpdate[existingOrderIndex][1] -= filledSize;
+    
+            // If the size becomes zero or negative, remove the order
+            if (sideToUpdate[existingOrderIndex][1] <= 0) {
+                sideToUpdate.splice(existingOrderIndex, 1);
+            }
+        }
+        // If the order doesn't exist in our book, we don't need to do anything
+    
+        // Update the block number
+        newOrderBook.blockNumber = parseInt(tradeEvent.blockNumber, 16);
+    
+        return newOrderBook;
     }
 }
 

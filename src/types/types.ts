@@ -6,6 +6,49 @@ export interface OrderBookData {
     blockNumber: number;
 }
 
+export interface WssOrderEvent {
+    orderId: number;
+    owner: string;
+    size: BigNumber;
+    price: BigNumber;
+    isBuy: boolean;
+    blockNumber: BigNumber;
+    transactionHash: string;
+    triggerTime: number;
+}
+
+export interface CanceledOrder {
+    orderid: number;
+    owner: string;
+    size: string;
+    price: string;
+    isbuy: boolean;
+    remainingsize: string;
+    iscanceled: boolean;
+    blocknumber: string;
+    transactionhash: string;
+    triggertime: string;
+}
+
+export interface WssCanceledOrderEvent {
+    orderIds: number[];
+    makerAddress: string;
+    canceledOrdersData: CanceledOrder[];
+}
+
+export interface WssTradeEvent {
+    orderId: number;
+    makerAddress: string;
+    isBuy: boolean;
+    price: string;
+    updatedSize: string;
+    takerAddress: string;
+    filledSize: string;
+    blockNumber: string;
+    transactionHash: string;
+    triggerTime: number;
+}
+
 export interface ActiveOrders {
     orderIds: BigNumber[];
     blockNumber: number;
