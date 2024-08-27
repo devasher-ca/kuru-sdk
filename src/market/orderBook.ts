@@ -67,7 +67,7 @@ export abstract class OrderBook {
         }
 
         // Get AMM Prices
-        const ammPrices = await getAmmPrices(providerOrSigner, orderbookAddress, marketParams, contractVaultParams);
+        const ammPrices = await getAmmPrices(providerOrSigner, orderbookAddress, marketParams, blockNumber, contractVaultParams);
 
         // Combine AMM Prices with Order Book Prices
         const combinedBids = combinePrices(bids, ammPrices.bids);
@@ -220,15 +220,23 @@ async function getAmmPrices(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     orderbookAddress: string,
     marketParams: MarketParams,
+    blockNumber: number,
     contractVaultParams: any
 ): Promise<{ bids: number[][], asks: number[][] }> {
     const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-
     let vaultParamsData = contractVaultParams;
 
     if (!vaultParamsData) {
-        vaultParamsData = await orderbook.getVaultParams();
+        vaultParamsData = await providerOrSigner.call(
+            {
+                to: orderbookAddress,
+                data: orderbook.interface.encodeFunctionData("getVaultParams")
+            },
+            blockNumber
+        );
+
+        vaultParamsData = orderbook.interface.decodeFunctionResult("getVaultParams", vaultParamsData);
     }
 
     const vaultParams: VaultParams = {
