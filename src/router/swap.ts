@@ -71,7 +71,10 @@ export abstract class TokenSwap {
                 routeOutput.route.tokenIn,
                 routeOutput.route.tokenOut,
                 tokenInAmount,
-                minTokenOutAmount
+                minTokenOutAmount,
+                {
+                    value: routeOutput.nativeSend ? tokenInAmount : 0,
+                }
             );
 
             return await tx.wait();

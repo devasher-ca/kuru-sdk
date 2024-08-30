@@ -5,18 +5,20 @@ import IERC20 from "../../abi/IERC20.json";
 export class ERC20 {
     private contract: ethers.Contract;
 
-    constructor(rpcUrl: string, contractAddress: string) {
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    constructor(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        contractAddress: string
+    ) {
         this.contract = new ethers.Contract(
             contractAddress,
             IERC20.abi,
-            provider
+            providerOrSigner
         );
     }
 
     async getTokenDetails() {
         const [name, symbol, decimals, totalSupply] = await Promise.all<
-            [string, string, number]
+            [string, string, number, number]
         >([
             this.contract.name(),
             this.contract.symbol(),
@@ -28,7 +30,7 @@ export class ERC20 {
             name,
             symbol,
             decimals,
-            totalSupply,
+            totalSupply: totalSupply.toString(),
         };
     }
 }
