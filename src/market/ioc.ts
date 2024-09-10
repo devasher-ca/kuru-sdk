@@ -113,20 +113,21 @@ async function placeAndExecuteMarketBuy(
   quoteSize: number,
   isFillOrKill: boolean
 ): Promise<number> {
-  const tokenContract = new ethers.Contract(
-    marketParams.quoteAssetAddress,
-    erc20Abi.abi,
-    providerOrSigner
+  const parsedQuoteSize = ethers.utils.parseUnits(
+    quoteSize.toString(),
+    marketParams.quoteAssetDecimals
   );
 
-  if (approveTokens) {
+  if (approveTokens && marketParams.quoteAssetAddress !== ethers.constants.AddressZero) {
+    const tokenContract = new ethers.Contract(
+      marketParams.quoteAssetAddress,
+      erc20Abi.abi,
+      providerOrSigner
+    );
     await approveToken(
       tokenContract,
       marketAddress,
-      ethers.utils.parseUnits(
-        quoteSize.toString(),
-        marketParams.quoteAssetDecimals
-      ),
+      parsedQuoteSize,
       providerOrSigner
     );
   }
@@ -137,7 +138,10 @@ async function placeAndExecuteMarketBuy(
         quoteSize.toString(),
         log10BigNumber(marketParams.pricePrecision)
       ),
-      isFillOrKill
+      isFillOrKill,
+      {
+        value: marketParams.quoteAssetAddress === ethers.constants.AddressZero ? parsedQuoteSize : 0
+      }
     );
     await tx.wait();
     return tx.value;
@@ -191,17 +195,21 @@ async function placeAndExecuteMarketSell(
   size: number,
   isFillOrKill: boolean
 ): Promise<number> {
-  const tokenContract = new ethers.Contract(
-    marketParams.baseAssetAddress,
-    erc20Abi.abi,
-    providerOrSigner
+  const parsedSize = ethers.utils.parseUnits(
+    size.toString(),
+    marketParams.baseAssetDecimals
   );
 
-  if (approveTokens) {
+  if (approveTokens && marketParams.baseAssetAddress !== ethers.constants.AddressZero) {
+    const tokenContract = new ethers.Contract(
+      marketParams.baseAssetAddress,
+      erc20Abi.abi,
+      providerOrSigner
+    );
     await approveToken(
       tokenContract,
       marketAddress,
-      ethers.utils.parseUnits(size.toString(), marketParams.baseAssetDecimals),
+      parsedSize,
       providerOrSigner
     );
   }
@@ -212,7 +220,10 @@ async function placeAndExecuteMarketSell(
         size.toString(),
         log10BigNumber(marketParams.sizePrecision)
       ),
-      isFillOrKill
+      isFillOrKill,
+      {
+        value: marketParams.baseAssetAddress === ethers.constants.AddressZero ? parsedSize : 0
+      }
     );
     await tx.wait();
     return tx.value;

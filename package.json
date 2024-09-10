@@ -1,5 +1,5 @@
 {
-    "name": "@abhikumar_98/kuru-sdk",
+    "name": "@kuru-labs/kuru-sdk",
     "version": "1.0.9",
     "description": "",
     "main": "dist/index.js",

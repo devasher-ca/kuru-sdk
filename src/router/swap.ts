@@ -73,7 +73,7 @@ export abstract class TokenSwap {
                 tokenInAmount,
                 minTokenOutAmount,
                 {
-                    value: routeOutput.nativeSend ? tokenInAmount : 0,
+                    value: routeOutput.nativeSend[0] ? tokenInAmount : 0,
                 }
             );
 
