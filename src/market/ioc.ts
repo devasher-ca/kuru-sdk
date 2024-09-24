@@ -43,6 +43,7 @@ export abstract class IOC {
           marketParams,
           order.approveTokens,
           order.size,
+          order.isMargin,
           order.fillOrKill
         )
       : placeAndExecuteMarketSell(
@@ -52,6 +53,7 @@ export abstract class IOC {
           marketParams,
           order.approveTokens,
           order.size,
+          order.isMargin,
           order.fillOrKill
         );
   }
@@ -87,8 +89,8 @@ export abstract class IOC {
     }
 
     return order.isBuy
-      ? estimateGasBuy(orderbook, marketParams, size, order.fillOrKill)
-      : estimateGasSell(orderbook, marketParams, size, order.fillOrKill);
+      ? estimateGasBuy(orderbook, marketParams, size, order.isMargin, order.fillOrKill)
+      : estimateGasSell(orderbook, marketParams, size, order.isMargin, order.fillOrKill);
   }
 }
 
@@ -111,6 +113,7 @@ async function placeAndExecuteMarketBuy(
   marketParams: MarketParams,
   approveTokens: boolean,
   quoteSize: number,
+  isMargin: boolean,
   isFillOrKill: boolean
 ): Promise<number> {
   const parsedQuoteSize = ethers.utils.parseUnits(
@@ -139,6 +142,7 @@ async function placeAndExecuteMarketBuy(
         log10BigNumber(marketParams.pricePrecision)
       ),
       isFillOrKill,
+      isMargin,
       {
         value: marketParams.quoteAssetAddress === ethers.constants.AddressZero ? parsedQuoteSize : 0
       }
@@ -157,6 +161,7 @@ async function estimateGasBuy(
   orderbook: ethers.Contract,
   marketParams: MarketParams,
   quoteSize: number,
+  isMargin: boolean,
   isFillOrKill: boolean
 ): Promise<BigNumber> {
   try {
@@ -165,6 +170,7 @@ async function estimateGasBuy(
         quoteSize.toString(),
         log10BigNumber(marketParams.pricePrecision)
       ),
+      isMargin,
       isFillOrKill
     );
     return gasEstimate;
@@ -193,6 +199,7 @@ async function placeAndExecuteMarketSell(
   marketParams: MarketParams,
   approveTokens: boolean,
   size: number,
+  isMargin: boolean,
   isFillOrKill: boolean
 ): Promise<number> {
   const parsedSize = ethers.utils.parseUnits(
@@ -221,6 +228,7 @@ async function placeAndExecuteMarketSell(
         log10BigNumber(marketParams.sizePrecision)
       ),
       isFillOrKill,
+      isMargin,
       {
         value: marketParams.baseAssetAddress === ethers.constants.AddressZero ? parsedSize : 0
       }
@@ -239,6 +247,7 @@ async function estimateGasSell(
   orderbook: ethers.Contract,
   marketParams: MarketParams,
   size: number,
+  isMargin: boolean,
   isFillOrKill: boolean
 ): Promise<BigNumber> {
   try {
@@ -247,6 +256,7 @@ async function estimateGasSell(
         size.toString(),
         log10BigNumber(marketParams.sizePrecision)
       ),
+      isMargin,
       isFillOrKill
     );
 
