@@ -43,7 +43,7 @@ export abstract class IOC {
           marketParams,
           order.approveTokens,
           order.size,
-          order.isMargin,
+          order.isMargin ?? false,
           order.fillOrKill
         )
       : placeAndExecuteMarketSell(
@@ -53,7 +53,7 @@ export abstract class IOC {
           marketParams,
           order.approveTokens,
           order.size,
-          order.isMargin,
+          order.isMargin ?? false,
           order.fillOrKill
         );
   }
@@ -89,8 +89,8 @@ export abstract class IOC {
     }
 
     return order.isBuy
-      ? estimateGasBuy(orderbook, marketParams, size, order.isMargin, order.fillOrKill)
-      : estimateGasSell(orderbook, marketParams, size, order.isMargin, order.fillOrKill);
+      ? estimateGasBuy(orderbook, marketParams, size, order.isMargin ?? false, order.fillOrKill ?? false)
+      : estimateGasSell(orderbook, marketParams, size, order.isMargin ?? false, order.fillOrKill ?? false);
   }
 }
 

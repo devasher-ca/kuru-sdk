@@ -32,11 +32,10 @@ const privateKey = process.env.PRIVATE_KEY as string;
     console.log("Quote token approved");
 
     // Deposit into vault
-    const depositReceipt = await KuruSdk.Vault.depositWithAmounts(
+    const depositReceipt = await KuruSdk.Vault.depositBasedOnAmount1(
         baseAmount,
-        quoteAmount,
-        contractAddress,
         vaultAddress,
+        contractAddress,
         signer,
         true
     );

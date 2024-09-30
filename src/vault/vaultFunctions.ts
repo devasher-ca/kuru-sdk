@@ -96,15 +96,24 @@ export abstract class Vault {
         const amount2 = await this.calculateAmount2ForAmount1(amount1, marketAddress, signer);
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
 
-        if (shouldApprove) {
-            const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
-            const token1Address = marketParams.baseAssetAddress;
-            const token2Address = marketParams.quoteAssetAddress;
+        const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
+        const token1Address = marketParams.baseAssetAddress;
+        const token2Address = marketParams.quoteAssetAddress;
+
+        let overrides = {};
+        if (token1Address === ethers.constants.AddressZero) {
+            overrides = { ...overrides, value: amount1 };
+        } else if (shouldApprove) {
             await this.approveToken(token1Address, vaultAddress, amount1, signer);
+        }
+
+        if (token2Address === ethers.constants.AddressZero) {
+            overrides = { ...overrides, value: amount2 };
+        } else if (shouldApprove) {
             await this.approveToken(token2Address, vaultAddress, amount2, signer);
         }
 
-        const tx = await vault.deposit(amount1, amount2, await signer.getAddress());
+        const tx = await vault.deposit(amount1, amount2, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
@@ -125,17 +134,26 @@ export abstract class Vault {
         shouldApprove: boolean = false
     ): Promise<ContractReceipt> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const { amount1, amount2 } = await this.calculateDepositForShares(shares, vaultAddress, signer);
+        const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
+        const token1Address = marketParams.baseAssetAddress;
+        const token2Address = marketParams.quoteAssetAddress;
 
-        if (shouldApprove) {
-            const { amount1, amount2 } = await this.calculateDepositForShares(shares, vaultAddress, signer);
-            const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
-            const token1Address = marketParams.baseAssetAddress;
-            const token2Address = marketParams.quoteAssetAddress;
+        let overrides = {};
+
+        if (token1Address === ethers.constants.AddressZero) {
+            overrides = { ...overrides, value: amount1 };
+        } else if (shouldApprove) {
             await this.approveToken(token1Address, vaultAddress, amount1, signer);
+        }
+
+        if (token2Address === ethers.constants.AddressZero) {
+            overrides = { ...overrides, value: amount2 };
+        } else if (shouldApprove) {
             await this.approveToken(token2Address, vaultAddress, amount2, signer);
         }
 
-        const tx = await vault.mint(shares, await signer.getAddress());
+        const tx = await vault.mint(shares, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
@@ -196,15 +214,25 @@ export abstract class Vault {
     ): Promise<ContractReceipt> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
 
-        if (shouldApprove) {
-            const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
-            const token1Address = marketParams.baseAssetAddress;
-            const token2Address = marketParams.quoteAssetAddress;
+        const marketParams: MarketParams = await ParamFetcher.getMarketParams(signer, marketAddress);
+        const token1Address = marketParams.baseAssetAddress;
+        const token2Address = marketParams.quoteAssetAddress;
+
+        let overrides: ethers.PayableOverrides = {};
+        
+        if (token1Address === ethers.constants.AddressZero) {
+            overrides.value = amount1;
+        } else if (shouldApprove) {
             await this.approveToken(token1Address, vaultAddress, amount1, signer);
+        }
+        
+        if (token2Address === ethers.constants.AddressZero) {
+            overrides.value = amount2;
+        } else if (shouldApprove) {
             await this.approveToken(token2Address, vaultAddress, amount2, signer);
         }
 
-        const tx = await vault.deposit(amount1, amount2, await signer.getAddress());
+        const tx = await vault.deposit(amount1, amount2, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
