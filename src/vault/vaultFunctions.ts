@@ -9,6 +9,22 @@ import vaultAbi from "../../abi/Vault.json";
 
 export abstract class Vault {
     /**
+     * Return the shares owned by an address in a vault
+     * @param vaultAddress The address of vault contract
+     * @param signer The signer to use for the transaction
+     * @returns A promise resolving to the number of shares of an address in a vault
+     */
+
+    static async getVaultShares(
+        vaultAddress: string,
+        signer: ethers.Signer
+    ): Promise<BigNumber> {
+        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const address = await signer.getAddress();
+        return await vault.balanceOf(address);
+    }
+    
+    /**
      * Calculate the amount of tokens needed to deposit for a given number of shares
      * @param shares The number of shares to mint
      * @param vaultAddress The address of the vault contract
