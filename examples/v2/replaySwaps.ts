@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
 import * as KuruSdk from "../../src";
@@ -58,6 +58,8 @@ async function main() {
                             approveTokens: true,
                             isBuy: historicData[txIndex].SWAP_FROM_MINT === 'So11111111111111111111111111111111111111112',
                             fillOrKill: false,
+                            minAmountOut: BigNumber.from(0),
+                            isMargin: false
                         }
                     );
 
