@@ -33,6 +33,7 @@ export abstract class VaultParamFetcher {
             askPartiallyFilledSize: BigNumber.from(vaultParamsData[4]),
             vaultBidOrderSize: BigNumber.from(vaultParamsData[5]),
             vaultAskOrderSize: BigNumber.from(vaultParamsData[6]),
+            spread: BigNumber.from(vaultParamsData[7])
         };
     }
 }

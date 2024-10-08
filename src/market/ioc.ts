@@ -146,7 +146,6 @@ async function placeAndExecuteMarketBuy(
       minAmountOut,
       isMargin,
       isFillOrKill,
-      isMargin,
       {
         value: marketParams.quoteAssetAddress === ethers.constants.AddressZero ? parsedQuoteSize : 0
       }
@@ -237,7 +236,6 @@ async function placeAndExecuteMarketSell(
       minAmountOut,
       isMargin,
       isFillOrKill,
-      isMargin,
       {
         value: marketParams.baseAssetAddress === ethers.constants.AddressZero ? parsedSize : 0
       }
