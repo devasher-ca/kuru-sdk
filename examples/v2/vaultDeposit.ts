@@ -2,7 +2,14 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "../config.json";
 
-const { rpcUrl, vaultAddress, contractAddress, baseTokenAddress, quoteTokenAddress } = KuruConfig;
+const {
+    rpcUrl,
+    vaultAddress,
+    contractAddress,
+    baseTokenAddress,
+    quoteTokenAddress,
+    marginAccountAddress,
+} = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
@@ -13,10 +20,30 @@ const privateKey = process.env.PRIVATE_KEY as string;
     const baseAmount = ethers.utils.parseEther("100");
     const quoteAmount = ethers.utils.parseEther("0.1");
 
+    console.log("Vault liquidity");
+
+    const { token1, token2 } = await KuruSdk.Vault.getVaultLiquidity(
+        vaultAddress,
+        contractAddress,
+        marginAccountAddress,
+        signer
+    );
+
+    console.log(
+        `Token1: ${token1.address},
+        balance: ${token1.balance.toString()}`
+    );
+    console.log(
+        `Token2: ${token2.address},
+        balance: ${token2.balance.toString()}`
+    );
+
     // Approve base token
     const baseToken = new ethers.Contract(
         baseTokenAddress,
-        ["function approve(address spender, uint256 amount) public returns (bool)"],
+        [
+            "function approve(address spender, uint256 amount) public returns (bool)",
+        ],
         signer
     );
     await (await baseToken.approve(vaultAddress, baseAmount)).wait();
@@ -25,7 +52,9 @@ const privateKey = process.env.PRIVATE_KEY as string;
     // Approve quote token
     const quoteToken = new ethers.Contract(
         quoteTokenAddress,
-        ["function approve(address spender, uint256 amount) public returns (bool)"],
+        [
+            "function approve(address spender, uint256 amount) public returns (bool)",
+        ],
         signer
     );
     await (await quoteToken.approve(vaultAddress, quoteAmount)).wait();
@@ -39,7 +68,10 @@ const privateKey = process.env.PRIVATE_KEY as string;
         signer,
         true
     );
-    console.log("Initial deposit successful. Transaction hash:", depositReceipt.transactionHash);
+    console.log(
+        "Initial deposit successful. Transaction hash:",
+        depositReceipt.transactionHash
+    );
 
     // Get vault balance (shares)
     const vault = new ethers.Contract(
@@ -57,7 +89,10 @@ const privateKey = process.env.PRIVATE_KEY as string;
         vaultAddress,
         signer
     );
-    console.log("Withdrawal successful. Transaction hash:", withdrawReceipt.transactionHash);
+    console.log(
+        "Withdrawal successful. Transaction hash:",
+        withdrawReceipt.transactionHash
+    );
 
     // Deposit again using token1 function
     const token1Amount = ethers.utils.parseEther("100");
@@ -68,5 +103,8 @@ const privateKey = process.env.PRIVATE_KEY as string;
         signer,
         true
     );
-    console.log("Second deposit successful. Transaction hash:", secondDepositReceipt.transactionHash);
+    console.log(
+        "Second deposit successful. Transaction hash:",
+        secondDepositReceipt.transactionHash
+    );
 })().catch(console.error);
