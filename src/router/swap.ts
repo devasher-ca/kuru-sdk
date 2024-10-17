@@ -84,7 +84,7 @@ export abstract class TokenSwap {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.error.body);
+            throw extractErrorMessage(e.error);
         }
     }
 
@@ -146,7 +146,7 @@ export abstract class TokenSwap {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.error.body);
+            throw extractErrorMessage(e.error);
         }
     }
 }

@@ -186,7 +186,7 @@ async function placeAndExecuteMarketBuy(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -214,7 +214,7 @@ async function estimateGasBuy(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -293,7 +293,7 @@ async function placeAndExecuteMarketSell(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -322,6 +322,6 @@ async function estimateGasSell(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error.error.body);
+        throw extractErrorMessage(e.error);
     }
 }
