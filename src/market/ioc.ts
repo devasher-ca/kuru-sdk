@@ -42,7 +42,7 @@ export abstract class IOC {
                   orderbookAddress,
                   marketParams,
                   order.approveTokens,
-                  order.minAmountOut,
+                  order.size,
                   order.minAmountOut,
                   order.isMargin ?? false,
                   order.fillOrKill
