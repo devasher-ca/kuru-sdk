@@ -51,7 +51,9 @@ export abstract class CostEstimator {
       }
     }
 
-    return receivedAmount;
+    // Apply taker fee to the output (quote tokens)
+    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+    return receivedAmount * (1 - takerFeeBps);
   }
 
   /**
@@ -70,6 +72,9 @@ export abstract class CostEstimator {
     l2Book: any,
     contractVaultParams: any
   ): Promise<number> {
+    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+    const grossQuoteAmount = quoteAmount / (1 - takerFeeBps);
+
     const l2OrderBook = await OrderBook.getL2OrderBook(
       providerOrSigner,
       orderbookAddress,
@@ -78,7 +83,7 @@ export abstract class CostEstimator {
       contractVaultParams
     );
 
-    let remainingQuote = quoteAmount;
+    let remainingQuote = grossQuoteAmount;
     let requiredBaseTokens = 0;
 
     for (const [price, orderSize] of l2OrderBook.bids) {
@@ -149,7 +154,9 @@ export abstract class CostEstimator {
       }
     }
 
-    return baseTokensReceived;
+    // Apply taker fee to the output (base tokens)
+    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+    return baseTokensReceived * (1 - takerFeeBps);
   }
 
   /**
@@ -168,6 +175,9 @@ export abstract class CostEstimator {
     l2Book: any,
     contractVaultParams: any
   ): Promise<number> {
+    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+    const grossBaseTokenAmount = baseTokenAmount / (1 - takerFeeBps);
+
     const l2OrderBook = await OrderBook.getL2OrderBook(
       providerOrSigner,
       orderbookAddress,
@@ -176,7 +186,7 @@ export abstract class CostEstimator {
       contractVaultParams
     );
 
-    let remainingBase = baseTokenAmount;
+    let remainingBase = grossBaseTokenAmount;
     let requiredQuoteTokens = 0;
 
     for (const [price, orderSize] of l2OrderBook.asks.reverse()) {

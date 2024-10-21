@@ -101,7 +101,7 @@ async function addBuyOrder(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error?.error?.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -122,7 +122,7 @@ async function estimateGasBuy(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error?.error?.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -148,7 +148,7 @@ async function addSellOrder(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error?.error?.body);
+        throw extractErrorMessage(e.error);
     }
 }
 
@@ -169,6 +169,6 @@ async function estimateGasSell(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error?.error?.body);
+        throw extractErrorMessage(e.error);
     }
 }
