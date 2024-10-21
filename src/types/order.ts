@@ -1,21 +1,23 @@
-import { BigNumber } from "ethers"
+import { BigNumber } from "ethers";
 
 export interface LIMIT {
-    price: number,
-    size: number,
-    isBuy: boolean,
-    postOnly: boolean
+    price: number;
+    size: number;
+    isBuy: boolean;
+    postOnly: boolean;
 }
 
 export interface MARKET {
-    approveTokens: boolean,
-    isBuy: boolean,
-    size: number,
-    fillOrKill: boolean
+    approveTokens: boolean;
+    isBuy: boolean;
+    size: number;
+    minAmountOut: number;
+    isMargin: boolean;
+    fillOrKill: boolean;
 }
 
 export interface BATCH {
-    limitOrders: LIMIT[],
-    cancelOrders: BigNumber[],
-    postOnly: boolean
+    limitOrders: LIMIT[];
+    cancelOrders: BigNumber[];
+    postOnly: boolean;
 }

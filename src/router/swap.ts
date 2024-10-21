@@ -43,11 +43,12 @@ export abstract class TokenSwap {
                 inTokenDecimals
             );
 
+            const clippedOutput = Number(
+                (routeOutput.output * (100 - slippageTolerance)) / 100
+            ).toFixed(outTokenDecimals);
+
             const minTokenOutAmount = ethers.utils.parseUnits(
-                (
-                    (routeOutput.output * (100 - slippageTolerance)) /
-                    100
-                ).toString(),
+                clippedOutput.toString(),
                 outTokenDecimals
             );
 
@@ -83,7 +84,7 @@ export abstract class TokenSwap {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.error.body);
+            throw extractErrorMessage(e.error);
         }
     }
 
@@ -145,7 +146,7 @@ export abstract class TokenSwap {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error.error.body);
+            throw extractErrorMessage(e.error);
         }
     }
 }
