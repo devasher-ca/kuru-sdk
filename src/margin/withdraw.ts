@@ -25,7 +25,7 @@ export abstract class MarginWithdraw {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 }

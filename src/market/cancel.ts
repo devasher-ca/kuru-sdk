@@ -31,7 +31,7 @@ export abstract class OrderCanceler {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 
@@ -49,7 +49,7 @@ export abstract class OrderCanceler {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 
@@ -85,7 +85,7 @@ export abstract class OrderCanceler {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 
@@ -121,7 +121,7 @@ export abstract class OrderCanceler {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 
@@ -157,7 +157,7 @@ export abstract class OrderCanceler {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 }

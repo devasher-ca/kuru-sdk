@@ -44,7 +44,7 @@ export abstract class MarginDeposit {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 
@@ -83,7 +83,7 @@ export abstract class MarginDeposit {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 }

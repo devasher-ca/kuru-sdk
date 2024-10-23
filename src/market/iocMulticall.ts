@@ -69,7 +69,7 @@ export abstract class IocMulticall {
             if (!e.error) {
                 throw e;
             }
-            throw extractErrorMessage(e.error);
+            throw extractErrorMessage(e);
         }
     }
 }

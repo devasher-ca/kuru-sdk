@@ -48,7 +48,7 @@ export async function approveToken(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error);
+        throw extractErrorMessage(e);
     }
 }
 
@@ -67,6 +67,6 @@ export async function estimateApproveGas(
         if (!e.error) {
             throw e;
         }
-        throw extractErrorMessage(e.error);
+        throw extractErrorMessage(e);
     }
 }
