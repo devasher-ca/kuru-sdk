@@ -17,15 +17,19 @@ const size = parseFloat(args[1]);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	await KuruSdk.GTC.placeLimit(
-        signer,
-        contractAddress,
-        marketParams,
-        {
-            price,
-            size,
-            isBuy: false,
-            postOnly: true
-        }
-    );
+	try {
+        await KuruSdk.GTC.placeLimit(
+            signer,
+            contractAddress,
+            marketParams,
+            {
+                price,
+                size,
+                isBuy: false,
+                postOnly: true
+            }
+        );
+    } catch(e) {
+        console.log(e);
+    }
 })();
