@@ -63,12 +63,19 @@ export abstract class GTC {
             providerOrSigner
         );
 
+        const clippedPrice = order.price.toFixed(
+            log10BigNumber(marketParams.pricePrecision)
+        );
+        const clippedSize = order.size.toFixed(
+            log10BigNumber(marketParams.sizePrecision)
+        );
+
         const priceBn: BigNumber = ethers.utils.parseUnits(
-            order.price.toString(),
+            clippedPrice.toString(),
             log10BigNumber(marketParams.pricePrecision)
         );
         const sizeBn: BigNumber = ethers.utils.parseUnits(
-            order.size.toString(),
+            clippedSize.toString(),
             log10BigNumber(marketParams.sizePrecision)
         );
 
