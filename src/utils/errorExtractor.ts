@@ -92,6 +92,32 @@ export function extractErrorMessage(error: any): ParsedError {
             };
         }
 
+        // Case: Handle Privy wallet error format
+        if (jsonObj?.body && jsonObj?.error?.data) {
+            const bodyError = parseJsonBody(jsonObj.body);
+            if (bodyError?.error?.data) {
+                const knownError = searchForErrorCode(bodyError.error.data);
+                if (knownError) {
+                    return {
+                        message: knownError,
+                        code: bodyError.error.code,
+                        details: bodyError.error.message,
+                        originalError: jsonObj
+                    };
+                }
+            }
+            // Try direct error data if body parsing fails
+            const knownError = searchForErrorCode(jsonObj.error.data);
+            if (knownError) {
+                return {
+                    message: knownError,
+                    code: jsonObj.error.code,
+                    details: bodyError?.error?.message || "Unknown error",
+                    originalError: jsonObj
+                };
+            }
+        }
+
         // Case 1: Already parsed error with known error code
         if (jsonObj?.message && jsonObj?.originalError?.error?.body) {
             const bodyError = parseJsonBody(jsonObj.originalError.error.body);

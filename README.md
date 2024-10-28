@@ -22,7 +22,8 @@ Example `config.json`:
     "baseTokenAddress": "your-base-token-address",
     "quoteTokenAddress": "your-quote-token-address",
     "routerAddress": "your-router-address",
-    "userAddress": "your-user-address"
+    "userAddress": "your-user-address",
+    "vaultAddress": "your-vault-address"
 }
 ```
 
@@ -39,23 +40,30 @@ To cancel orders using the Kuru SDK:
 
 ```typescript
 import { ethers, BigNumber } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "../config.json";
 
-const { rpcUrl, contractAddress } = KuruConfig;
+const {rpcUrl, contractAddress} = KuruConfig;
+
 const privateKey = process.env.PRIVATE_KEY as string;
 
 const args = process.argv.slice(2);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    await KuruSdk.OrderCanceler.cancelOrders(
-        signer,
-        contractAddress,
-        args.map(arg => BigNumber.from(parseInt(arg)))
-    );
+    try {
+        const txReceipt = await KuruSdk.OrderCanceler.cancelOrders(
+            signer,
+            contractAddress,
+            args.map(arg => BigNumber.from(parseInt(arg)))
+        );
+
+        console.log("Transaction hash:", txReceipt.transactionHash);
+    } catch (err: any) {
+        console.error("Error:", err);
+    }
 })();
 ```
 
@@ -65,33 +73,32 @@ To deposit tokens into a margin account:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { userAddress, rpcUrl, marginAccountAddress, baseTokenAddress, quoteTokenAddress } = KuruConfig;
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "../config.json";
+
+const {userAddress, rpcUrl, marginAccountAddress, baseTokenAddress} = KuruConfig;
+
 const privateKey = process.env.PRIVATE_KEY as string;
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
-
-    await KuruSdk.MarginDeposit.deposit(
-        signer,
-        marginAccountAddress,
-        userAddress,
-        baseTokenAddress,
-        100000,
-        18
-    );
-
-    await KuruSdk.MarginDeposit.deposit(
-        signer,
-        marginAccountAddress,
-        userAddress,
-        quoteTokenAddress,
-        100000,
-        18
-    );
+	
+    try {
+        const receipt = await KuruSdk.MarginDeposit.deposit(
+            signer,
+            marginAccountAddress,
+            userAddress,
+            baseTokenAddress,
+            10000,
+            18,
+            true
+        );
+        console.log("Transaction hash:", receipt.transactionHash);
+    } catch (error: any) {
+        console.error("Error depositing:", error);
+    }
 })();
 ```
 
@@ -101,25 +108,40 @@ To estimate the required base for a sell operation:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { rpcUrl, contractAddress } = KuruConfig;
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
+import orderbookAbi from "../../abi/OrderBook.json";
+
+const {rpcUrl, contractAddress, userAddress} = KuruConfig;
+
 const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-    const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
-        provider,
-        contractAddress,
-        marketParams,
-        amount
-    );
+    const orderbook = new ethers.Contract(contractAddress, orderbookAbi.abi, provider);
+    const l2Book = await orderbook.getL2Book(userAddress);
+    const vaultParams = await orderbook.getVaultParams();
+    
 
-    console.log(`Estimated required base: ${estimate}`);
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
+			provider,
+			contractAddress,
+			marketParams,
+			amount,
+			l2Book,
+			vaultParams
+		);
+
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating required base for sell:", error);
+	}
 })();
 ```
 
@@ -129,25 +151,32 @@ To estimate the buy amount:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { rpcUrl, contractAddress } = KuruConfig;
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
+
+const {rpcUrl, contractAddress} = KuruConfig;
+
 const args = process.argv.slice(2);
-const size = parseFloat(args[0]);
+const amount = parseFloat(args[0]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-    const estimate = await KuruSdk.CostEstimator.estimateBuy(
-        provider,
-        contractAddress,
-        marketParams,
-        size
-    );
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
+			provider,
+			contractAddress,
+			marketParams,
+			amount
+		);
 
-    console.log(`Estimated buy: ${estimate}`);
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating market buy:", error);
+	}
 })();
 ```
 
@@ -157,23 +186,33 @@ To find the best path for a swap:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { rpcUrl, baseTokenAddress, quoteTokenAddress } = KuruConfig;
-const size = parseFloat(process.argv[2]);
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
+
+const { rpcUrl } = KuruConfig;
+
+const args = process.argv.slice(2);
+const amount = parseFloat(args[0]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-    const bestPath = await KuruSdk.PathFinder.findBestPath(
-        provider,
-        baseTokenAddress,
-        quoteTokenAddress,
-        size
-    );
+    try {
+        const bestPath = await KuruSdk.PathFinder.findBestPath(
+            provider,
+            <fromTokenAddress>,
+            <toTokenAddress>,
+            amount,
+            "amountIn"
+        );
 
-    console.log(`Best path: ${bestPath}`);
+        console.log(bestPath);
+        console.log(bestPath.route.path);
+        console.log(bestPath.output);
+    } catch (error) {
+        console.error("Error finding best path:", error);
+    }
 })();
 ```
 
@@ -183,28 +222,38 @@ To perform a market buy:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
+
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
 
 const { rpcUrl, contractAddress } = KuruConfig;
+
 const privateKey = process.env.PRIVATE_KEY as string;
-const size = parseFloat(process.argv[2]);
+
+const args = process.argv.slice(2);
+const size = parseFloat(args[0]);
+const minAmountOut = parseFloat(args[1]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
-
-    await KuruSdk.IOC.placeMarket(
-        signer,
-        contractAddress,
-        marketParams,
-        {
+    try {
+        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
+            provider,
+            contractAddress
+        );
+        const receipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
+            approveTokens: true,
             size,
             isBuy: true,
-            fillOrKill: true
-        }
-    );
+            minAmountOut,
+            isMargin: false,
+            fillOrKill: true,
+        });
+        console.log("Transaction hash:", receipt.transactionHash);
+    } catch (error) {
+        console.error("Error placing market buy order:", error);
+    }
 })();
 ```
 
@@ -214,11 +263,14 @@ To place a limit buy order:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { rpcUrl, contractAddress } = KuruConfig;
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
+
+const {rpcUrl, contractAddress} = KuruConfig;
+
 const privateKey = process.env.PRIVATE_KEY as string;
+
 const args = process.argv.slice(2);
 const price = parseFloat(args[0]);
 const size = parseFloat(args[1]);
@@ -226,19 +278,25 @@ const size = parseFloat(args[1]);
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
+
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-    await KuruSdk.GTC.placeLimit(
-        signer,
-        contractAddress,
-        marketParams,
-        {
-            price,
-            size,
-            isBuy: true,
-            postOnly: true
-        }
-    );
+    try {
+        const receipt = await KuruSdk.GTC.placeLimit(
+            signer,
+            contractAddress,
+            marketParams,
+            {
+                price,
+                size,
+                isBuy: true,
+                postOnly: true
+            }
+        );
+        console.log("Transaction hash:", receipt.transactionHash);
+    } catch (error) {
+        console.error("Error placing limit buy order:", error);
+    }
 })();
 ```
 
@@ -248,32 +306,46 @@ To perform a token swap:
 
 ```typescript
 import { ethers } from "ethers";
-import * as KuruSdk from "@kuru-labs/kuru-sdk";
-import * as KuruConfig from "./config.json";
 
-const { rpcUrl, routerAddress, baseTokenAddress, quoteTokenAddress } = KuruConfig;
+import * as KuruSdk from "../../src";
+import * as KuruConfig from "./../config.json";
+
+const { rpcUrl, routerAddress, baseTokenAddress, quoteTokenAddress } =
+  KuruConfig;
+
 const privateKey = process.env.PRIVATE_KEY as string;
-const size = parseFloat(process.argv[2]);
+
+const args = process.argv.slice(2);
+const size = parseFloat(args[0]);
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const signer = new ethers.Wallet(privateKey, provider);
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+  const signer = new ethers.Wallet(privateKey, provider);
 
+  try {
     const routeOutput = await KuruSdk.PathFinder.findBestPath(
-        provider,
-        baseTokenAddress,
-        quoteTokenAddress,
-        size
+      provider,
+      baseTokenAddress,
+      quoteTokenAddress,
+      size
     );
 
-    await KuruSdk.TokenSwap.swap(
-        signer,
-        routerAddress,
-        routeOutput,
-        size,
-        18,
-        18,
-        10
+    const receipt = await KuruSdk.TokenSwap.swap(
+      signer,
+      routerAddress,
+      routeOutput,
+      size,
+      18,
+      18,
+      10,
+      true,
+      (txHash: string | null) => {
+        console.log(`Transaction hash: ${txHash}`);
+      }
     );
+    console.log("Transaction hash:", receipt.transactionHash);
+  } catch (error) {
+    console.error("Error performing swap:", error);
+  }
 })();
 ```

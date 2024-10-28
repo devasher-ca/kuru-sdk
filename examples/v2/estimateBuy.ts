@@ -13,12 +13,16 @@ const amount = parseFloat(args[0]);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
-        provider,
-        contractAddress,
-        marketParams,
-        amount
-    );
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
+			provider,
+			contractAddress,
+			marketParams,
+			amount
+		);
 
-    console.log(estimate);
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating market buy:", error);
+	}
 })();

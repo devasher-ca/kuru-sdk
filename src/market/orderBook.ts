@@ -27,7 +27,7 @@ export abstract class OrderBook {
 
         let data = l2Book;
         if (!data) {
-            data = await orderbook.getL2Book();
+            data = await orderbook.getL2Book({from: ethers.constants.AddressZero});
         }
 
         let offset = 66; // Start reading after the block number
@@ -231,7 +231,8 @@ async function getAmmPrices(
         vaultParamsData = await providerOrSigner.call(
             {
                 to: orderbookAddress,
-                data: orderbook.interface.encodeFunctionData("getVaultParams")
+                data: orderbook.interface.encodeFunctionData("getVaultParams"),
+                from: ethers.constants.AddressZero
             },
             blockNumber
         );
@@ -267,7 +268,7 @@ async function getAmmPrices(
     if (vaultParams.kuruAmmVault !== ethers.constants.AddressZero) {
         let spreadConstant = spread.div(BigNumber.from(10));
         // Add vault bid orders to AMM prices
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 300; i++) {
             if (vaultBestBid.isZero()) break;
             bids.push([
                 parseFloat(ethers.utils.formatUnits(vaultBestBid, 18)),
@@ -279,7 +280,7 @@ async function getAmmPrices(
         }
 
         // Add vault ask orders to AMM prices
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 300; i++) {
             if (vaultBestAsk.gte(ethers.constants.MaxUint256)) break;
             asks.push([
                 parseFloat(ethers.utils.formatUnits(vaultBestAsk, 18)),

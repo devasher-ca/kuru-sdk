@@ -12,9 +12,15 @@ const args = process.argv.slice(2);
 	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-	await KuruSdk.OrderCanceler.cancelOrders(
-		signer,
-		contractAddress,
-		args.map(arg => BigNumber.from(parseInt(arg)))
-	);
+    try {
+        const txReceipt = await KuruSdk.OrderCanceler.cancelOrders(
+            signer,
+            contractAddress,
+            args.map(arg => BigNumber.from(parseInt(arg)))
+        );
+
+        console.log("Transaction hash:", txReceipt.transactionHash);
+    } catch (err: any) {
+        console.error("Error:", err);
+    }
 })();

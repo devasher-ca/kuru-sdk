@@ -22,7 +22,7 @@ export abstract class Vault {
     ): Promise<BigNumber> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
         const address = await signer.getAddress();
-        return await vault.balanceOf(address);
+        return await vault.balanceOf(address, {from: ethers.constants.AddressZero});
     }
 
     /**
@@ -51,11 +51,13 @@ export abstract class Vault {
 
         const token1 = await marginAccount.getBalance(
             vaultAddress,
-            baseAssetAddress
+            baseAssetAddress,
+            {from: ethers.constants.AddressZero}
         );
         const token2 = await marginAccount.getBalance(
             vaultAddress,
-            quoteAssetAddress
+            quoteAssetAddress,
+            {from: ethers.constants.AddressZero}
         );
 
         return {
@@ -83,7 +85,7 @@ export abstract class Vault {
         signer: ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        const [amount1, amount2] = await vault.previewMint(shares);
+        const [amount1, amount2] = await vault.previewMint(shares, {from: ethers.constants.AddressZero});
         return { amount1, amount2 };
     }
 
@@ -100,7 +102,7 @@ export abstract class Vault {
         signer: ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        const [amount1, amount2] = await vault.previewRedeem(shares);
+        const [amount1, amount2] = await vault.previewRedeem(shares, {from: ethers.constants.AddressZero});
         return { amount1, amount2 };
     }
 
@@ -119,7 +121,7 @@ export abstract class Vault {
         signer: ethers.Signer
     ): Promise<BigNumber> {
         const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        return await vault.previewDeposit(amount1, amount2);
+        return await vault.previewDeposit(amount1, amount2, {from: ethers.constants.AddressZero});
     }
 
     /**

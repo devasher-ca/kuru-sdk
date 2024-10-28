@@ -23,7 +23,7 @@ export abstract class ParamFetcher {
             orderbookAbi.abi,
             providerOrSigner
         );
-        const marketParamsData = await orderbook.getMarketParams();
+        const marketParamsData = await orderbook.getMarketParams({from: ethers.constants.AddressZero});
         return {
             pricePrecision: BigNumber.from(marketParamsData[0]),
             sizePrecision: BigNumber.from(marketParamsData[1]),

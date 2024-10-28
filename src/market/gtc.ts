@@ -1,6 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
-import { ContractReceipt } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -149,7 +148,6 @@ async function addSellOrder(
 ): Promise<ContractReceipt> {
     try {
         const tx = await orderbook.addSellOrder(price, size, postOnly);
-
         return await tx.wait();
     } catch (e: any) {
         if (!e.error) {

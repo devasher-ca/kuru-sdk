@@ -20,10 +20,10 @@ export class ERC20 {
         const [name, symbol, decimals, totalSupply] = await Promise.all<
             [string, string, number, number]
         >([
-            this.contract.name(),
-            this.contract.symbol(),
-            this.contract.decimals(),
-            this.contract.totalSupply(),
+            this.contract.name({from: ethers.constants.AddressZero}),
+            this.contract.symbol({from: ethers.constants.AddressZero}),
+            this.contract.decimals({from: ethers.constants.AddressZero}),
+            this.contract.totalSupply({from: ethers.constants.AddressZero}),
         ]);
 
         return {

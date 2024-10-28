@@ -19,14 +19,18 @@ const amount = parseFloat(args[0]);
     const vaultParams = await orderbook.getVaultParams();
     
 
-	const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
-        provider,
-        contractAddress,
-        marketParams,
-        amount,
-        l2Book,
-        vaultParams
-    );
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
+			provider,
+			contractAddress,
+			marketParams,
+			amount,
+			l2Book,
+			vaultParams
+		);
 
-    console.log(estimate);
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating required base for sell:", error);
+	}
 })();

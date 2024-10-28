@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
@@ -22,7 +22,7 @@ export abstract class OrderBatcher {
         orderbookAddress: string,
         marketParams: MarketParams,
         batchUpdate: BATCH
-    ): Promise<void> {
+    ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         // Initialize arrays for buy and sell prices and sizes
@@ -55,8 +55,7 @@ export abstract class OrderBatcher {
                 batchUpdate.cancelOrders,
                 batchUpdate.postOnly
             );
-
-            await tx.wait();
+            return await tx.wait();
         } catch (e: any) {
             if (!e.error) {
                 throw e;
