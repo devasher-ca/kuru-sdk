@@ -14,10 +14,14 @@ export abstract class PathFinder {
         tokenOut: string,
         amountIn: number,
         amountType: "amountOut" | "amountIn" = "amountIn",
+        poolFetcher?: PoolFetcher,
         pools?: Pool[]
     ): Promise<RouteOutput> {
         if (!pools) {
-            pools = await PoolFetcher.getAllPools();
+            if (!poolFetcher) {
+                throw new Error("Either pools or poolFetcher must be provided");
+            }
+            pools = await poolFetcher.getAllPools();
         }
 
         const routes = computeAllRoutes(tokenIn, tokenOut, pools);
