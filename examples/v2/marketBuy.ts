@@ -1,4 +1,4 @@
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";

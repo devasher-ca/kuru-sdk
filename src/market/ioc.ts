@@ -140,7 +140,7 @@ async function placeAndExecuteMarketBuy(
 
     const parsedMinAmountOut = ethers.utils.parseUnits(
         minAmountOut.toString(),
-        marketParams.quoteAssetDecimals
+        marketParams.baseAssetDecimals
     );
 
     if (
@@ -246,7 +246,7 @@ async function placeAndExecuteMarketSell(
 
     const parsedMinAmountOut = ethers.utils.parseUnits(
         minAmountOut.toString(),
-        marketParams.baseAssetDecimals
+        marketParams.quoteAssetDecimals
     );
 
     if (

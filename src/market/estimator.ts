@@ -4,6 +4,11 @@ import { ethers } from "ethers";
 // ============ Internal Imports ============
 import { MarketParams } from "../types";
 import { OrderBook } from "./orderBook";
+import { log10BigNumber } from "../utils";
+
+// ============ Config Imports ============
+import { extractErrorMessage } from "../utils";
+import orderbookAbi from "../../abi/OrderBook.json";
 
 export abstract class CostEstimator {
   /**
@@ -19,41 +24,34 @@ export abstract class CostEstimator {
     orderbookAddress: string,
     marketParams: MarketParams,
     size: number,
-    l2Book?: any,
-    contractVaultParams?: any
   ): Promise<number> {
-    const l2OrderBook = await OrderBook.getL2OrderBook(
-      providerOrSigner,
+    const orderbook = new ethers.Contract(
       orderbookAddress,
-      marketParams,
-      l2Book,
-      contractVaultParams
+      orderbookAbi.abi,
+      providerOrSigner
     );
 
-    let remainingSize = size;
-    let receivedAmount = 0;
-    const orders = l2OrderBook.bids;
+    const sizeInPrecision = ethers.utils.parseUnits(
+      size.toString(),
+      log10BigNumber(marketParams.sizePrecision)
+    );
 
-    for (const [price, orderSize] of orders) {
-      const orderSizeFloat = orderSize;
-      const priceFloat = price;
+    try {
+      const output = await orderbook.callStatic.placeAndExecuteMarketSell(
+        sizeInPrecision,
+        0,
+        false,
+        false,
+        { from: ethers.constants.AddressZero }
+      );
 
-      if (remainingSize <= 0) {
-        break;
+      return Number(ethers.utils.formatUnits(output, marketParams.quoteAssetDecimals));
+    } catch (e: any) {
+      if (!e.error) {
+        throw e;
       }
-
-      if (remainingSize >= orderSizeFloat) {
-        receivedAmount += orderSizeFloat * priceFloat;
-        remainingSize -= orderSizeFloat;
-      } else {
-        receivedAmount += remainingSize * priceFloat;
-        remainingSize = 0;
-      }
+      throw extractErrorMessage(e);
     }
-
-    // Apply taker fee to the output (quote tokens)
-    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
-    return receivedAmount * (1 - takerFeeBps);
   }
 
   /**
@@ -121,42 +119,34 @@ export abstract class CostEstimator {
     orderbookAddress: string,
     marketParams: MarketParams,
     quoteAmount: number,
-    l2Book?: any,
-    contractVaultParams?: any
   ): Promise<number> {
-    const l2OrderBook = await OrderBook.getL2OrderBook(
-      providerOrSigner,
+    const orderbook = new ethers.Contract(
       orderbookAddress,
-      marketParams,
-      l2Book,
-      contractVaultParams
+      orderbookAbi.abi,
+      providerOrSigner
     );
 
-    let remainingQuote = quoteAmount;
-    let baseTokensReceived = 0;
+    const sizeInPrecision = ethers.utils.parseUnits(
+      quoteAmount.toString(),
+      log10BigNumber(marketParams.pricePrecision)
+    );
 
-    for (const [price, orderSize] of l2OrderBook.asks.reverse()) {
-      const orderSizeFloat = orderSize;
-      const priceFloat = price;
+    try {
+      const result = await orderbook.callStatic.placeAndExecuteMarketBuy(
+        sizeInPrecision,
+        0,
+        false,
+        false,
+        { from: ethers.constants.AddressZero }
+      );
 
-      if (remainingQuote <= 0) {
-        break;
+      return parseFloat(ethers.utils.formatUnits(result, marketParams.baseAssetDecimals));
+    } catch (e: any) {
+      if (!e.error) {
+        throw e;
       }
-
-      const orderValueInQuote = orderSizeFloat * priceFloat;
-
-      if (remainingQuote >= orderValueInQuote) {
-        baseTokensReceived += orderSizeFloat;
-        remainingQuote -= orderValueInQuote;
-      } else {
-        baseTokensReceived += remainingQuote / priceFloat;
-        remainingQuote = 0;
-      }
+      throw extractErrorMessage(e);
     }
-
-    // Apply taker fee to the output (base tokens)
-    const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
-    return baseTokensReceived * (1 - takerFeeBps);
   }
 
   /**
