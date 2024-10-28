@@ -32,6 +32,11 @@ Ensure you export your private key to use the examples
 export PRIVATE_KEY=<0xpvt_key>
 ```
 
+Ensure you export kuru api url
+```bash
+export KURU_API=<kuru_api_url>
+```
+
 ## Example Usage
 
 ### Cancel Order
