@@ -10,23 +10,6 @@ npm install @kuru-labs/kuru-sdk
 
 ## Configuration
 
-Ensure you have a configuration file (`config.json`) with the necessary details such as `rpcUrl`, `contractAddress`, etc.
-
-Example `config.json`:
-
-```json
-{
-    "rpcUrl": "https://your-rpc-url",
-    "contractAddress": "your-contract-address",
-    "marginAccountAddress": "your-margin-account-address",
-    "baseTokenAddress": "your-base-token-address",
-    "quoteTokenAddress": "your-quote-token-address",
-    "routerAddress": "your-router-address",
-    "userAddress": "your-user-address",
-    "vaultAddress": "your-vault-address"
-}
-```
-
 Ensure you export your private key to use the examples
 ```bash
 export PRIVATE_KEY=<0xpvt_key>
@@ -37,40 +20,8 @@ Ensure you export kuru api url
 export KURU_API=<kuru_api_url>
 ```
 
-## Example Usage
+## Example Usage for Orderbook
 
-### Cancel Order
-
-To cancel orders using the Kuru SDK:
-
-```typescript
-import { ethers, BigNumber } from "ethers";
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "../config.json";
-
-const {rpcUrl, contractAddress} = KuruConfig;
-
-const privateKey = process.env.PRIVATE_KEY as string;
-
-const args = process.argv.slice(2);
-
-(async () => {
-	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const signer = new ethers.Wallet(privateKey, provider);
-
-    try {
-        const txReceipt = await KuruSdk.OrderCanceler.cancelOrders(
-            signer,
-            contractAddress,
-            args.map(arg => BigNumber.from(parseInt(arg)))
-        );
-
-        console.log("Transaction hash:", txReceipt.transactionHash);
-    } catch (err: any) {
-        console.error("Error:", err);
-    }
-})();
-```
 
 ### Deposit
 
@@ -80,9 +31,11 @@ To deposit tokens into a margin account:
 import { ethers } from "ethers";
 
 import * as KuruSdk from "../../src";
-import * as KuruConfig from "../config.json";
 
-const {userAddress, rpcUrl, marginAccountAddress, baseTokenAddress} = KuruConfig;
+const rpcUrl = <your_rpc_url>; // RPC URL
+const userAddress = <your_user_address>; // User address that funds will be deposited to
+const marginAccountAddress = <your_margin_account_address>; // Margin account address
+const tokenAddress = <token_address>; // Token address to deposit
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
@@ -95,7 +48,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
             signer,
             marginAccountAddress,
             userAddress,
-            baseTokenAddress,
+            tokenAddress,
             10000,
             18,
             true
@@ -103,125 +56,6 @@ const privateKey = process.env.PRIVATE_KEY as string;
         console.log("Transaction hash:", receipt.transactionHash);
     } catch (error: any) {
         console.error("Error depositing:", error);
-    }
-})();
-```
-
-### Estimate Base for Sell
-
-To estimate the required base for a sell operation:
-
-```typescript
-import { ethers } from "ethers";
-
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
-import orderbookAbi from "../../abi/OrderBook.json";
-
-const {rpcUrl, contractAddress, userAddress} = KuruConfig;
-
-const args = process.argv.slice(2);
-const amount = parseFloat(args[0]);
-
-(async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
-
-    const orderbook = new ethers.Contract(contractAddress, orderbookAbi.abi, provider);
-    const l2Book = await orderbook.getL2Book(userAddress);
-    const vaultParams = await orderbook.getVaultParams();
-    
-
-	try {
-		const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
-			provider,
-			contractAddress,
-			marketParams,
-			amount,
-			l2Book,
-			vaultParams
-		);
-
-		console.log(estimate);
-	} catch (error) {
-		console.error("Error estimating required base for sell:", error);
-	}
-})();
-```
-
-### Estimate Buy
-
-To estimate the buy amount:
-
-```typescript
-import { ethers } from "ethers";
-
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
-
-const {rpcUrl, contractAddress} = KuruConfig;
-
-const args = process.argv.slice(2);
-const amount = parseFloat(args[0]);
-
-(async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
-
-	try {
-		const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
-			provider,
-			contractAddress,
-			marketParams,
-			amount
-		);
-
-		console.log(estimate);
-	} catch (error) {
-		console.error("Error estimating market buy:", error);
-	}
-})();
-```
-
-### Market Buy
-
-To perform a market buy:
-
-```typescript
-import { ethers } from "ethers";
-
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
-
-const { rpcUrl, contractAddress } = KuruConfig;
-
-const privateKey = process.env.PRIVATE_KEY as string;
-
-const args = process.argv.slice(2);
-const size = parseFloat(args[0]);
-const minAmountOut = parseFloat(args[1]);
-
-(async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const signer = new ethers.Wallet(privateKey, provider);
-    try {
-        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
-            provider,
-            contractAddress
-        );
-        const receipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
-            approveTokens: true,
-            size,
-            isBuy: true,
-            minAmountOut,
-            isMargin: false,
-            fillOrKill: true,
-        });
-        console.log("Transaction hash:", receipt.transactionHash);
-    } catch (error) {
-        console.error("Error placing market buy order:", error);
     }
 })();
 ```
@@ -234,26 +68,25 @@ To place a limit buy order:
 import { ethers } from "ethers";
 
 import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
 
-const {rpcUrl, contractAddress} = KuruConfig;
+const rpcUrl = <your_rpc_url>; // RPC URL
+const marketAddress = <your_market_address>; // Market address
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
-const args = process.argv.slice(2);
-const price = parseFloat(args[0]);
-const size = parseFloat(args[1]);
+const price = 135.50; // Price in quoteAsset (ex:USDC)
+const size = 10; // Size in baseAsset (ex:MON)
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
+    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, marketAddress);
 
     try {
         const receipt = await KuruSdk.GTC.placeLimit(
             signer,
-            contractAddress,
+            marketAddress,
             marketParams,
             {
                 price,
@@ -269,20 +102,169 @@ const size = parseFloat(args[1]);
 })();
 ```
 
-### Find Best Path
+### Cancel Order
 
-To find the best path for a swap:
+To cancel orders using the Kuru SDK:
+
+```typescript
+import { ethers, BigNumber } from "ethers";
+import * as KuruSdk from "../../src";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+const marketAddress = <your_market_address>; // Market address
+
+const privateKey = process.env.PRIVATE_KEY as string;
+
+const orderIds = listOfOrderIds; // List of order ids to cancel
+
+(async () => {
+	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
+
+    try {
+        const txReceipt = await KuruSdk.OrderCanceler.cancelOrders(
+            signer,
+            marketAddress,
+            orderIds.map(orderId => BigNumber.from(parseInt(orderId)))
+        );
+
+        console.log("Transaction hash:", txReceipt.transactionHash);
+    } catch (err: any) {
+        console.error("Error:", err);
+    }
+})();
+```
+
+### Estimate Buy
+
+To estimate the baseAsset received for a buy order with X amount of quoteAsset:
 
 ```typescript
 import { ethers } from "ethers";
 
 import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
 
-const { rpcUrl } = KuruConfig;
+const rpcUrl = <your_rpc_url>; // RPC URL
+const marketAddress = <your_market_address>; // Market address
 
-const args = process.argv.slice(2);
-const amount = parseFloat(args[0]);
+const amount = 100; // Amount of quoteAsset to spend (ex:USDC)
+
+(async () => {
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, marketAddress);
+
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateMarketBuy(
+			provider,
+			marketAddress,
+			marketParams,
+			amount
+		);
+
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating market buy:", error);
+	}
+})();
+```
+
+### Estimate Base for Sell
+
+To estimate the required baseAsset for a sell order to get X amount of quoteAsset:
+
+```typescript
+import { ethers } from "ethers";
+
+import * as KuruSdk from "../../src";
+import orderbookAbi from "../../abi/OrderBook.json";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+const marketAddress = <your_market_address>; // Market address  
+
+const amount = 100; // Amount of quoteAsset to receive after selling (ex:USDC)
+
+(async () => {
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, marketAddress);
+
+    const orderbook = new ethers.Contract(marketAddress, orderbookAbi.abi, provider);
+    const l2Book = await orderbook.getL2Book();
+    const vaultParams = await orderbook.getVaultParams();
+    
+
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
+			provider,
+			marketAddress,
+			marketParams,
+			amount,
+			l2Book,
+			vaultParams
+		);
+
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating required base for sell:", error);
+	}
+})();
+```
+
+### Market Buy
+
+To perform a market buy:
+
+```typescript
+import { ethers } from "ethers";
+
+import * as KuruSdk from "../../src";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+const marketAddress = <your_market_address>; // Market address
+
+const privateKey = process.env.PRIVATE_KEY as string;
+
+const size = 100; // Size in quoteAsset (ex:USDC)
+const minAmountOut = 10; // Minimum amount of baseAsset to receive (ex:MON)
+
+(async () => {
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
+    try {
+        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
+            provider,
+            marketAddress
+        );
+        const receipt = await KuruSdk.IOC.placeMarket(signer, marketAddress, marketParams, {
+            approveTokens: true,
+            size,
+            isBuy: true,
+            minAmountOut,
+            isMargin: false,
+            fillOrKill: true,
+        });
+        console.log("Transaction hash:", receipt.transactionHash);
+    } catch (error) {
+        console.error("Error placing market buy order:", error);
+    }
+})();
+```
+
+## Example usage for Router
+
+### Find Best Path
+
+To find the best path for a swap and expected output:
+
+```typescript
+import { ethers } from "ethers";
+
+import * as KuruSdk from "../../src";
+
+const rpcUrl = <your_rpc_url>; // RPC URL
+
+const amount = 100; // Amount of fromToken to swap (ex:USDC)
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -293,7 +275,7 @@ const amount = parseFloat(args[0]);
             <fromTokenAddress>,
             <toTokenAddress>,
             amount,
-            "amountIn"
+            "amountIn" // "amountIn" or "amountOut" 
         );
 
         console.log(bestPath);
@@ -313,15 +295,15 @@ To perform a token swap:
 import { ethers } from "ethers";
 
 import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
 
-const { rpcUrl, routerAddress, baseTokenAddress, quoteTokenAddress } =
-  KuruConfig;
+const rpcUrl = <your_rpc_url>; // RPC URL
+const fromTokenAddress = <your_from_token_address>; // From token address
+const toTokenAddress = <your_to_token_address>; // To token address
+const routerAddress = <kuru_router_address>; // Router address
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
-const args = process.argv.slice(2);
-const size = parseFloat(args[0]);
+const size = 100; // Size in fromToken (ex:USDC)
 
 (async () => {
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -330,8 +312,8 @@ const size = parseFloat(args[0]);
   try {
     const routeOutput = await KuruSdk.PathFinder.findBestPath(
       provider,
-      baseTokenAddress,
-      quoteTokenAddress,
+      fromTokenAddress,
+      toTokenAddress,
       size
     );
 
@@ -342,7 +324,7 @@ const size = parseFloat(args[0]);
       size,
       18, // In token decimals
       18, // Out token decimals
-      10, // Slippage tolerance(%)
+      3, // Slippage tolerance(in %)
       true, // Boolean indicating whether to approve tokens
       (txHash: string | null) => {
         console.log(`Transaction hash: ${txHash}`);
