@@ -340,13 +340,13 @@ const size = parseFloat(args[0]);
       routerAddress,
       routeOutput,
       size,
-      18,
-      18,
-      10,
-      true,
+      18, // In token decimals
+      18, // Out token decimals
+      10, // Slippage tolerance(%)
+      true, // Boolean indicating whether to approve tokens
       (txHash: string | null) => {
         console.log(`Transaction hash: ${txHash}`);
-      }
+      } // Callback function for what to do after approval
     );
     console.log("Transaction hash:", receipt.transactionHash);
   } catch (error) {
