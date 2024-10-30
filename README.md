@@ -289,6 +289,8 @@ const amount = 100; // Amount of fromToken to swap (ex:USDC)
 
 ### Swap
 
+> **Important Note**: The current BASE_TOKENS constants are configured for the development environment. As this project is under active development, these values will change over time. For teams currently integrating: We recommend using the development environment setup. If you need to use a custom list of base tokens for your project, please use the pool fetcher (shown after this example) to fetch pools with your specific token list.
+
 To perform a token swap:
 
 ```typescript
