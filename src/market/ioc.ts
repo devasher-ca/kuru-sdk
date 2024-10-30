@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from "ethers";
 
 // ============ Internal Imports ============
 import {
@@ -28,7 +28,7 @@ export abstract class IOC {
         orderbookAddress: string,
         marketParams: MarketParams,
         order: MARKET
-    ): Promise<number> {
+    ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
             orderbookAbi.abi,
@@ -132,7 +132,7 @@ async function placeAndExecuteMarketBuy(
     minAmountOut: number,
     isMargin: boolean,
     isFillOrKill: boolean
-): Promise<number> {
+): Promise<ContractReceipt> {
     const parsedQuoteSize = ethers.utils.parseUnits(
         quoteSize.toString(),
         marketParams.quoteAssetDecimals
@@ -179,8 +179,7 @@ async function placeAndExecuteMarketBuy(
                         : 0,
             }
         );
-        await tx.wait();
-        return tx.value;
+        return await tx.wait();
     } catch (e: any) {
         console.log({ e });
         if (!e.error) {
@@ -238,7 +237,7 @@ async function placeAndExecuteMarketSell(
     minAmountOut: number,
     isMargin: boolean,
     isFillOrKill: boolean
-): Promise<number> {
+): Promise<ContractReceipt> {
     const parsedSize = ethers.utils.parseUnits(
         size.toString(),
         marketParams.baseAssetDecimals
@@ -285,8 +284,7 @@ async function placeAndExecuteMarketSell(
                         : 0,
             }
         );
-        await tx.wait();
-        return tx.value;
+        return await tx.wait();
     } catch (e: any) {
         console.log({ e });
 

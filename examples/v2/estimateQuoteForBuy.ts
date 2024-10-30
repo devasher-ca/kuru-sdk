@@ -18,14 +18,18 @@ const amount = parseFloat(args[0]);
     const l2Book = await orderbook.getL2Book();
     const vaultParams = await orderbook.getVaultParams();
 
-	const estimate = await KuruSdk.CostEstimator.estimateRequiredQuoteForBuy(
-        provider,
-        contractAddress,
-        marketParams,
-        amount,
-        l2Book,
-        vaultParams
-    );
+	try {
+		const estimate = await KuruSdk.CostEstimator.estimateRequiredQuoteForBuy(
+			provider,
+			contractAddress,
+			marketParams,
+			amount,
+			l2Book,
+			vaultParams
+		);
 
-    console.log(estimate);
+		console.log(estimate);
+	} catch (error) {
+		console.error("Error estimating required quote for buy:", error);
+	}
 })();

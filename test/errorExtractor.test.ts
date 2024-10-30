@@ -232,4 +232,26 @@ describe('Error Extractor Tests', () => {
         expect(result.originalError).toBe(null);
         console.log('Null Error Result:', JSON.stringify(result, null, 2));
     });
+
+    // Add this test case after line 217 and before line 219
+    it('should handle Privy wallet error format', () => {
+        const privyError = {
+            body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x8199f5f3"},"id":84}',
+            error: {
+                code: -32603,
+                data: "0x8199f5f3"
+            },
+            requestBody: '{"method":"eth_estimateGas","params":[{"from":"0x18b908f74d83257407487463dbc11d4223017187","to":"0x6a8faed69841182a785e9b411b4208018856d1f7","data":"0x64216b0f00000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000a9fa93cbc62d80000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001","chainId":"0xa1ee"}],"id":84,"jsonrpc":"2.0"}',
+            requestMethod: "POST",
+            url: "/api/proxy-rpc",
+            code: "SERVER_ERROR",
+            version: "web/5.7.1"
+        };
+
+        const result = extractErrorMessage(privyError);
+        expect(result.message).toBe("Slippage Exceeded");
+        expect(result.code).toBe(-32603);
+        expect(result.details).toBe("execution reverted");
+        console.log('Privy Error Result:', JSON.stringify(result, null, 2));
+    });
 });

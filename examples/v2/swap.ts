@@ -15,24 +15,29 @@ const size = parseFloat(args[0]);
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
   const signer = new ethers.Wallet(privateKey, provider);
 
-  const routeOutput = await KuruSdk.PathFinder.findBestPath(
-    provider,
-    baseTokenAddress,
-    quoteTokenAddress,
-    size
-  );
+  try {
+    const routeOutput = await KuruSdk.PathFinder.findBestPath(
+      provider,
+      baseTokenAddress,
+      quoteTokenAddress,
+      size
+    );
 
-  await KuruSdk.TokenSwap.swap(
-    signer,
-    routerAddress,
-    routeOutput,
-    size,
-    18,
-    18,
-    10,
-    true,
-    (txHash: string | null) => {
-      console.log(`Transaction hash: ${txHash}`);
-    }
-  );
+    const receipt = await KuruSdk.TokenSwap.swap(
+      signer,
+      routerAddress,
+      routeOutput,
+      size,
+      18,
+      18,
+      10,
+      true,
+      (txHash: string | null) => {
+        console.log(`Transaction hash: ${txHash}`);
+      }
+    );
+    console.log("Transaction hash:", receipt.transactionHash);
+  } catch (error) {
+    console.error("Error performing swap:", error);
+  }
 })();

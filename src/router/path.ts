@@ -14,10 +14,14 @@ export abstract class PathFinder {
         tokenOut: string,
         amountIn: number,
         amountType: "amountOut" | "amountIn" = "amountIn",
+        poolFetcher?: PoolFetcher,
         pools?: Pool[]
     ): Promise<RouteOutput> {
         if (!pools) {
-            pools = await PoolFetcher.getAllPools();
+            if (!poolFetcher) {
+                throw new Error("Either pools or poolFetcher must be provided");
+            }
+            pools = await poolFetcher.getAllPools(tokenIn, tokenOut);
         }
 
         const routes = computeAllRoutes(tokenIn, tokenOut, pools);
@@ -113,8 +117,8 @@ async function computeRouteInput(
             providerOrSigner
         );
 
-        const l2Book = await orderbook.getL2Book();
-        const vaultParams = await orderbook.getVaultParams();
+        const l2Book = await orderbook.getL2Book({from: ethers.constants.AddressZero});
+        const vaultParams = await orderbook.getVaultParams({from: ethers.constants.AddressZero});
 
         currentToken === ethers.constants.AddressZero
             ? nativeSend.push(true)

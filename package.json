@@ -15,7 +15,6 @@
     "author": "Kuru Labs",
     "license": "ISC",
     "dependencies": {
-        "ethereum-multicall": "^2.24.0",
         "ethers": "5.6.2",
         "pg": "^8.11.3"
     },

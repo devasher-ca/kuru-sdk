@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "../config.json";
 
-const {userAddress, rpcUrl, marginAccountAddress, baseTokenAddress, quoteTokenAddress} = KuruConfig;
+const {userAddress, rpcUrl, marginAccountAddress, baseTokenAddress} = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
@@ -11,23 +11,18 @@ const privateKey = process.env.PRIVATE_KEY as string;
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 	
-    await KuruSdk.MarginDeposit.deposit(
-		signer,
-        marginAccountAddress,
-        userAddress,
-        baseTokenAddress,
-        10000,
-        18,
-        true
-	);
-
-    await KuruSdk.MarginDeposit.deposit(
-		signer,
-        marginAccountAddress,
-        userAddress,
-        quoteTokenAddress,
-        20,
-        18,
-        true
-	);
+    try {
+        const receipt = await KuruSdk.MarginDeposit.deposit(
+            signer,
+            marginAccountAddress,
+            userAddress,
+            baseTokenAddress,
+            10000,
+            18,
+            true
+        );
+        console.log("Transaction hash:", receipt.transactionHash);
+    } catch (error: any) {
+        console.error("Error depositing:", error);
+    }
 })();

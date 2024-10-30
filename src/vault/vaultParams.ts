@@ -24,7 +24,7 @@ export abstract class VaultParamFetcher {
             providerOrSigner
         );
 
-        const vaultParamsData = await orderbook.getVaultParams();
+        const vaultParamsData = await orderbook.getVaultParams({from: ethers.constants.AddressZero});
         return {
             kuruAmmVault: vaultParamsData[0],
             vaultBestBid: BigNumber.from(vaultParamsData[1]),
