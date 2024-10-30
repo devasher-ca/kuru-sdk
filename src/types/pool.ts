@@ -17,3 +17,22 @@ export interface RouteOutput {
     output: number;
     feeInBase: number;
 }
+
+export interface MarketResponse {
+    data: Array<{
+        baseasset: string;
+        quoteasset: string;
+        market: string;
+    }>;
+    pagination: {
+        limit: number;
+        offset: number;
+        total: number;
+    };
+}
+
+// Add interfaces for base tokens
+export interface BaseToken {
+    symbol: string;
+    address: string;
+}

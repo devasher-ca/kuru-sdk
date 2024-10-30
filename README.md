@@ -336,3 +336,43 @@ const size = 100; // Size in fromToken (ex:USDC)
   }
 })();
 ```
+
+## Example usage for Pool Fetching
+
+### Find Pools with Custom Base
+
+To find pools with custom base tokens:
+
+```typescript
+import { ethers } from "ethers";
+import * as KuruSdk from "../../src";
+
+const kuruApi = process.env.KURU_API as string;
+
+// Define custom base tokens
+const customBaseTokens = [
+    { symbol: 'ETH', address: ethers.constants.AddressZero },
+    { symbol: 'USDC', address: '0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94' }
+];
+
+(async () => {
+    const poolFetcher = new KuruSdk.PoolFetcher(kuruApi);
+
+    try {
+        // Get all pools with custom base tokens
+        const pools = await poolFetcher.getAllPools(
+            <tokenInAddress>,
+            <tokenOutAddress>,
+            customBaseTokens // Optional
+        );
+
+        console.log("Found pools:", pools);
+        // Each pool contains:
+        // - baseToken: string (address)
+        // - quoteToken: string (address)
+        // - orderbook: string (address)
+    } catch (error) {
+        console.error("Error finding pools:", error);
+    }
+})();
+```

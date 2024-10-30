@@ -21,7 +21,7 @@ export abstract class PathFinder {
             if (!poolFetcher) {
                 throw new Error("Either pools or poolFetcher must be provided");
             }
-            pools = await poolFetcher.getAllPools();
+            pools = await poolFetcher.getAllPools(tokenIn, tokenOut);
         }
 
         const routes = computeAllRoutes(tokenIn, tokenOut, pools);
