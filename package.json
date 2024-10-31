@@ -1,6 +1,6 @@
 {
     "name": "@abhikumar_98/kuru-sdk",
-    "version": "1.0.46",
+    "version": "1.0.47",
     "description": "SDK to interact with Kuru",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
