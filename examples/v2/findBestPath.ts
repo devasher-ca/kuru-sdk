@@ -6,7 +6,7 @@ import { PoolFetcher } from "../../src/pools/fetcher";
 
 const { rpcUrl } = KuruConfig;
 
-const kuruApi = process.env.KURU_API as string;
+const kuruApi = "https://api.staging.kuru.io:3001";
 
 const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
@@ -15,13 +15,30 @@ const amount = parseFloat(args[0]);
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
     try {
+        const pool = new PoolFetcher(kuruApi);
+        const result = await pool.getAllPools(
+            "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
+            "0xD18e0Fe99f3eB099C67aDE897a6bBbF02a5A68F9",
+            [
+                {
+                    symbol: "MON",
+                    address: "0x0000000000000000000000000000000000000000",
+                },
+                {
+                    symbol: "USDC",
+                    address: "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
+                },
+            ]
+        );
+
         const bestPath = await KuruSdk.PathFinder.findBestPath(
             provider,
-            "0x0000000000000000000000000000000000000000",
-            "0x6563dEC3cFd98c665B001f03975D510E6B20C309",
+            "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
+            "0xD18e0Fe99f3eB099C67aDE897a6bBbF02a5A68F9",
             amount,
             "amountIn",
-            new PoolFetcher(kuruApi)
+            undefined,
+            result
         );
 
         console.log(bestPath);
