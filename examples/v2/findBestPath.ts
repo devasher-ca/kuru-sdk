@@ -6,7 +6,7 @@ import { PoolFetcher } from "../../src/pools/fetcher";
 
 const { rpcUrl } = KuruConfig;
 
-const kuruApi = "https://api.staging.kuru.io:3001";
+const kuruApi = process.env.KURU_API;
 
 const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
