@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import { PoolFetcher } from "../../src/pools/fetcher";
 import { BaseToken } from "../../src/types/pool";
 
-const kuruApi = process.env.KURU_API as string;
+const kuruApi = "https://api.staging.kuru.io:3001";
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -11,8 +11,8 @@ const tokenOutAddress = args[1];
 
 // Define custom base tokens
 const customBaseTokens: BaseToken[] = [
-    { symbol: 'ETH', address: ethers.constants.AddressZero },
-    { symbol: 'USDC', address: '0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94' }
+    { symbol: "ETH", address: ethers.constants.AddressZero },
+    { symbol: "USDC", address: "0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94" },
 ];
 
 (async () => {
@@ -36,4 +36,4 @@ const customBaseTokens: BaseToken[] = [
     } catch (error) {
         console.error("Error finding pools:", error);
     }
-})(); 
+})();
