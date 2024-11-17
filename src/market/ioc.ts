@@ -8,7 +8,7 @@ import {
     approveToken,
     estimateApproveGas,
 } from "../utils";
-import { MarketParams, MARKET } from "../types";
+import { MarketParams, MARKET, TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
@@ -45,7 +45,8 @@ export abstract class IOC {
                   order.size,
                   order.minAmountOut,
                   order.isMargin ?? false,
-                  order.fillOrKill
+                  order.fillOrKill,
+                  order.txOptions
               )
             : placeAndExecuteMarketSell(
                   providerOrSigner,
@@ -56,7 +57,8 @@ export abstract class IOC {
                   order.size,
                   order.minAmountOut,
                   order.isMargin ?? false,
-                  order.fillOrKill
+                  order.fillOrKill,
+                  order.txOptions
               );
     }
 
@@ -131,8 +133,10 @@ async function placeAndExecuteMarketBuy(
     quoteSize: number,
     minAmountOut: number,
     isMargin: boolean,
-    isFillOrKill: boolean
+    isFillOrKill: boolean,
+    txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
+    console.time('Total Market Buy Time');
     const parsedQuoteSize = ethers.utils.parseUnits(
         quoteSize.toString(),
         marketParams.quoteAssetDecimals
@@ -148,6 +152,7 @@ async function placeAndExecuteMarketBuy(
         marketParams.quoteAssetAddress !== ethers.constants.AddressZero &&
         !isMargin
     ) {
+        console.time('Token Approval Time');
         const tokenContract = new ethers.Contract(
             marketParams.quoteAssetAddress,
             erc20Abi.abi,
@@ -159,28 +164,75 @@ async function placeAndExecuteMarketBuy(
             parsedQuoteSize,
             providerOrSigner
         );
+        console.timeEnd('Token Approval Time');
     }
 
     try {
-        const tx = await orderbook.placeAndExecuteMarketBuy(
+        console.time('Get Signer Time');
+        const signer = providerOrSigner instanceof ethers.Signer
+            ? providerOrSigner
+            : providerOrSigner.getSigner();
+        const address = await signer.getAddress();
+        console.timeEnd('Get Signer Time');
+
+        const data = orderbook.interface.encodeFunctionData("placeAndExecuteMarketBuy", [
             ethers.utils.parseUnits(
                 quoteSize.toString(),
                 log10BigNumber(marketParams.pricePrecision)
             ),
             parsedMinAmountOut,
             isMargin,
-            isFillOrKill,
-            {
-                value:
-                    !isMargin &&
-                    marketParams.quoteAssetAddress ===
-                        ethers.constants.AddressZero
-                        ? parsedQuoteSize
-                        : 0,
+            isFillOrKill
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: orderbook.address,
+            from: address,
+            data,
+            value: !isMargin && marketParams.quoteAssetAddress === ethers.constants.AddressZero
+                ? parsedQuoteSize
+                : BigNumber.from(0),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        console.time('RPC Calls Time');
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas(tx) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
             }
-        );
-        return await tx.wait();
+        }
+        console.timeEnd('RPC Calls Time');
+
+        console.time('Transaction Send Time');
+        const transaction = await signer.sendTransaction(tx);
+        console.timeEnd('Transaction Send Time');
+
+        console.time('Transaction Wait Time');
+        const receipt = await transaction.wait();
+        console.timeEnd('Transaction Wait Time');
+
+        console.timeEnd('Total Market Buy Time');
+        return receipt;
     } catch (e: any) {
+        console.timeEnd('Total Market Buy Time');
         console.log({ e });
         if (!e.error) {
             throw e;
@@ -236,7 +288,8 @@ async function placeAndExecuteMarketSell(
     size: number,
     minAmountOut: number,
     isMargin: boolean,
-    isFillOrKill: boolean
+    isFillOrKill: boolean,
+    txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
     const parsedSize = ethers.utils.parseUnits(
         size.toString(),
@@ -267,27 +320,68 @@ async function placeAndExecuteMarketSell(
     }
 
     try {
-        const tx = await orderbook.placeAndExecuteMarketSell(
+        const signer = providerOrSigner instanceof ethers.Signer
+            ? providerOrSigner
+            : providerOrSigner.getSigner();
+        const address = await signer.getAddress();
+
+        const data = orderbook.interface.encodeFunctionData("placeAndExecuteMarketSell", [
             ethers.utils.parseUnits(
                 size.toString(),
                 log10BigNumber(marketParams.sizePrecision)
             ),
             parsedMinAmountOut,
             isMargin,
-            isFillOrKill,
-            {
-                value:
-                    !isMargin &&
-                    marketParams.baseAssetAddress ===
-                        ethers.constants.AddressZero
-                        ? parsedSize
-                        : 0,
+            isFillOrKill
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: orderbook.address,
+            from: address,
+            data,
+            value: !isMargin && marketParams.baseAssetAddress === ethers.constants.AddressZero
+                ? parsedSize
+                : BigNumber.from(0),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        console.time('RPC Calls Time');
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas(tx) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
             }
-        );
-        return await tx.wait();
+        }
+        console.timeEnd('RPC Calls Time');
+
+        console.time('Transaction Send Time');
+        const transaction = await signer.sendTransaction(tx);
+        console.timeEnd('Transaction Send Time');
+
+        console.time('Transaction Wait Time');
+        const receipt = await transaction.wait();
+        console.timeEnd('Transaction Wait Time');
+
+        return receipt;
     } catch (e: any) {
         console.log({ e });
-
         if (!e.error) {
             throw e;
         }

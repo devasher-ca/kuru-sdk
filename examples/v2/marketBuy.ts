@@ -13,6 +13,7 @@ const minAmountOut = parseFloat(args[1]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    provider._pollingInterval = 10;
     const signer = new ethers.Wallet(privateKey, provider);
     try {
         const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
@@ -26,6 +27,9 @@ const minAmountOut = parseFloat(args[1]);
             minAmountOut,
             isMargin: false,
             fillOrKill: true,
+            txOptions: {
+                priorityFee: 0.001
+            },
         });
         console.log("Transaction hash:", receipt.transactionHash);
     } catch (error) {
