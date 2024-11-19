@@ -16,6 +16,8 @@ const minAmountOut = parseFloat(args[1]);
     provider._pollingInterval = 10;
     const signer = new ethers.Wallet(privateKey, provider);
     try {
+        const nonce = await signer.getTransactionCount();
+        
         const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
             provider,
             contractAddress
@@ -23,12 +25,15 @@ const minAmountOut = parseFloat(args[1]);
         const receipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
             approveTokens: true,
             size,
-            isBuy: true,
+            isBuy: false,
             minAmountOut,
             isMargin: false,
             fillOrKill: true,
             txOptions: {
-                priorityFee: 0.001
+                priorityFee: 0.001,
+                nonce: nonce,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+                gasLimit: ethers.utils.parseUnits('1000000', 1)
             },
         });
         console.log("Transaction hash:", receipt.transactionHash);

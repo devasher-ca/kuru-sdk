@@ -10,13 +10,19 @@ const args = process.argv.slice(2);
 
 (async () => {
 	const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    provider._pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
 
     try {
         const txReceipt = await KuruSdk.OrderCanceler.cancelOrders(
             signer,
             contractAddress,
-            args.map(arg => BigNumber.from(parseInt(arg)))
+            args.map(arg => BigNumber.from(parseInt(arg))),
+            {
+                priorityFee: 0.001,
+                // gasLimit: ethers.utils.parseUnits('1000000', 1),
+                gasPrice: ethers.utils.parseUnits('1', 'gwei')
+            }
         );
 
         console.log("Transaction hash:", txReceipt.transactionHash);
