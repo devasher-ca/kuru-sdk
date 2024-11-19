@@ -192,6 +192,7 @@ async function placeAndExecuteMarketBuy(
             value: !isMargin && marketParams.quoteAssetAddress === ethers.constants.AddressZero
                 ? parsedQuoteSize
                 : BigNumber.from(0),
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
             ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
@@ -200,7 +201,10 @@ async function placeAndExecuteMarketBuy(
 
         console.time('RPC Calls Time');
         const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas(tx) : Promise.resolve(tx.gasLimit),
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
             (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
         ]);
 
@@ -226,7 +230,7 @@ async function placeAndExecuteMarketBuy(
         console.timeEnd('Transaction Send Time');
 
         console.time('Transaction Wait Time');
-        const receipt = await transaction.wait();
+        const receipt = await transaction.wait(1);
         console.timeEnd('Transaction Wait Time');
 
         console.timeEnd('Total Market Buy Time');
@@ -342,6 +346,7 @@ async function placeAndExecuteMarketSell(
             value: !isMargin && marketParams.baseAssetAddress === ethers.constants.AddressZero
                 ? parsedSize
                 : BigNumber.from(0),
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
             ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
@@ -350,9 +355,13 @@ async function placeAndExecuteMarketSell(
 
         console.time('RPC Calls Time');
         const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas(tx) : Promise.resolve(tx.gasLimit),
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
             (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
         ]);
+        console.timeEnd('RPC Calls Time');
 
         if (!tx.gasLimit) {
             tx.gasLimit = gasLimit;
@@ -369,7 +378,6 @@ async function placeAndExecuteMarketSell(
                 tx.gasPrice = baseGasPrice;
             }
         }
-        console.timeEnd('RPC Calls Time');
 
         console.time('Transaction Send Time');
         const transaction = await signer.sendTransaction(tx);
