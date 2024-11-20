@@ -15,13 +15,14 @@ export abstract class GTC {
      * @param orderbookAddress - The address of the order book contract.
      * @param marketParams - The market parameters including price and size precision.
      * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
+     * @param txOptions - The transaction options for the order.
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
     ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(
             orderbookAddress,

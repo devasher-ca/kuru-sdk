@@ -34,7 +34,6 @@ const size = parseFloat(args[1]);
                     // gasPrice: ethers.utils.parseUnits('1', 'gwei')
                 }
             },
-            
         );
         console.log("Transaction hash:", receipt.transactionHash);
     } catch(e) {
