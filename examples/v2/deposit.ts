@@ -17,9 +17,9 @@ const privateKey = process.env.PRIVATE_KEY as string;
             marginAccountAddress,
             userAddress,
             baseTokenAddress,
-            10,
+            10000,
             18,
-            false
+            true
         );
         console.log("Transaction hash:", receipt.transactionHash);
     } catch (error: any) {

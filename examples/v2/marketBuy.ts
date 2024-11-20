@@ -25,7 +25,7 @@ const minAmountOut = parseFloat(args[1]);
         const receipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
             approveTokens: true,
             size,
-            isBuy: false,
+            isBuy: true,
             minAmountOut,
             isMargin: false,
             fillOrKill: true,

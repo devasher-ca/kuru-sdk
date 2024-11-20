@@ -20,7 +20,8 @@ const args = process.argv.slice(2);
             args.map(arg => BigNumber.from(parseInt(arg))),
             {
                 priorityFee: 0.001,
-                // gasLimit: ethers.utils.parseUnits('1000000', 1),
+                // Cancels happen in constant gas so this can be used to improve performance
+                gasLimit: BigNumber.from(80000 + (args.length - 1) * 20000),
                 gasPrice: ethers.utils.parseUnits('1', 'gwei')
             }
         );
