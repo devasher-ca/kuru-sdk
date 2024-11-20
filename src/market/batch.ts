@@ -33,8 +33,15 @@ export abstract class OrderBatcher {
 
         // Separate the limit orders into buy and sell arrays
         for (const order of batchUpdate.limitOrders) {
-            const priceBn: BigNumber = ethers.utils.parseUnits(order.price.toString(), log10BigNumber(marketParams.pricePrecision));
-            const sizeBn: BigNumber = ethers.utils.parseUnits(order.size.toString(), log10BigNumber(marketParams.sizePrecision));
+            const pricePrecision = log10BigNumber(marketParams.pricePrecision);
+            const sizePrecision = log10BigNumber(marketParams.sizePrecision);
+            
+            // Round the numbers to their respective precisions before parsing
+            const priceStr = Number(order.price).toFixed(pricePrecision);
+            const sizeStr = Number(order.size).toFixed(sizePrecision);
+            
+            const priceBn: BigNumber = ethers.utils.parseUnits(priceStr, pricePrecision);
+            const sizeBn: BigNumber = ethers.utils.parseUnits(sizeStr, sizePrecision);
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);
@@ -45,17 +52,67 @@ export abstract class OrderBatcher {
             }
         }
 
-        // Call the smart contract function
         try {
-            const tx = await orderbook.batchUpdate(
+            const signer = providerOrSigner instanceof ethers.Signer
+                ? providerOrSigner
+                : providerOrSigner.getSigner();
+            const address = await signer.getAddress();
+
+            const data = orderbook.interface.encodeFunctionData("batchUpdate", [
                 buyPrices,
                 buySizes,
                 sellPrices,
                 sellSizes,
                 batchUpdate.cancelOrders,
                 batchUpdate.postOnly
-            );
-            return await tx.wait();
+            ]);
+
+            const tx: ethers.providers.TransactionRequest = {
+                to: orderbook.address,
+                from: address,
+                data,
+                ...(batchUpdate.txOptions?.nonce !== undefined && { nonce: batchUpdate.txOptions.nonce }),
+                ...(batchUpdate.txOptions?.gasLimit && { gasLimit: batchUpdate.txOptions.gasLimit }),
+                ...(batchUpdate.txOptions?.gasPrice && { gasPrice: batchUpdate.txOptions.gasPrice }),
+                ...(batchUpdate.txOptions?.maxFeePerGas && { maxFeePerGas: batchUpdate.txOptions.maxFeePerGas }),
+                ...(batchUpdate.txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: batchUpdate.txOptions.maxPriorityFeePerGas })
+            };
+
+            console.time('RPC Calls Time');
+            const [gasLimit, baseGasPrice] = await Promise.all([
+                !tx.gasLimit ? signer.estimateGas({
+                    ...tx,
+                    gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+                }) : Promise.resolve(tx.gasLimit),
+                (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+            ]);
+            console.timeEnd('RPC Calls Time');
+
+            if (!tx.gasLimit) {
+                tx.gasLimit = gasLimit;
+            }
+
+            if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+                if (batchUpdate.txOptions?.priorityFee) {
+                    const priorityFeeWei = ethers.utils.parseUnits(
+                        batchUpdate.txOptions.priorityFee.toString(),
+                        'gwei'
+                    );
+                    tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+                } else {
+                    tx.gasPrice = baseGasPrice;
+                }
+            }
+
+            console.time('Transaction Send Time');
+            const transaction = await signer.sendTransaction(tx);
+            console.timeEnd('Transaction Send Time');
+
+            console.time('Transaction Wait Time');
+            const receipt = await transaction.wait();
+            console.timeEnd('Transaction Wait Time');
+
+            return receipt;
         } catch (e: any) {
             if (!e.error) {
                 throw e;

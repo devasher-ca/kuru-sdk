@@ -21,7 +21,7 @@ const args = process.argv.slice(2);
             {
                 priorityFee: 0.001,
                 // gasLimit: ethers.utils.parseUnits('1000000', 1),
-                gasPrice: ethers.utils.parseUnits('1', 'gwei')
+                // gasPrice: ethers.utils.parseUnits('1', 'gwei')
             }
         );
 
