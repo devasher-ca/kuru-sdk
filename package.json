@@ -1,4 +1,5 @@
 {
+
     "name": "@kuru-labs/kuru-sdk",
     "version": "1.0.2",
     "description": "SDK to interact with Kuru",
@@ -15,6 +16,7 @@
     "author": "Kuru Labs",
     "license": "ISC",
     "dependencies": {
+        "cross-fetch": "^4.0.0",
         "ethers": "5.6.2"
     },
     "devDependencies": {
