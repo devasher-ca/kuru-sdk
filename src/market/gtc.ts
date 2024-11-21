@@ -103,12 +103,9 @@ async function addBuyOrder(
     postOnly: boolean,
     txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
-    console.time('Total Limit Buy Time');
     try {
-        console.time('Get Signer Time');
         const signer = orderbook.signer;
         const address = await signer.getAddress();
-        console.timeEnd('Get Signer Time');
 
         const data = orderbook.interface.encodeFunctionData("addBuyOrder", [
             price,
@@ -127,7 +124,6 @@ async function addBuyOrder(
             ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
         };
 
-        console.time('RPC Calls Time');
         const [gasLimit, baseGasPrice] = await Promise.all([
             !tx.gasLimit ? signer.estimateGas({
                 ...tx,
@@ -135,7 +131,6 @@ async function addBuyOrder(
             }) : Promise.resolve(tx.gasLimit),
             (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
         ]);
-        console.timeEnd('RPC Calls Time');
 
         if (!tx.gasLimit) {
             tx.gasLimit = gasLimit;
@@ -153,18 +148,11 @@ async function addBuyOrder(
             }
         }
 
-        console.time('Transaction Send Time');
         const transaction = await signer.sendTransaction(tx);
-        console.timeEnd('Transaction Send Time');
-
-        console.time('Transaction Wait Time');
         const receipt = await transaction.wait(1);
-        console.timeEnd('Transaction Wait Time');
 
-        console.timeEnd('Total Limit Buy Time');
         return receipt;
     } catch (e: any) {
-        console.timeEnd('Total Limit Buy Time');
         console.log({ e });
         if (!e.error) {
             throw e;
@@ -210,12 +198,9 @@ async function addSellOrder(
     postOnly: boolean,
     txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
-    console.time('Total Limit Sell Time');
     try {
-        console.time('Get Signer Time');
         const signer = orderbook.signer;
         const address = await signer.getAddress();
-        console.timeEnd('Get Signer Time');
 
         const data = orderbook.interface.encodeFunctionData("addSellOrder", [
             price,
@@ -234,7 +219,6 @@ async function addSellOrder(
             ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
         };
 
-        console.time('RPC Calls Time');
         const [gasLimit, baseGasPrice] = await Promise.all([
             !tx.gasLimit ? signer.estimateGas({
                 ...tx,
@@ -242,7 +226,6 @@ async function addSellOrder(
             }) : Promise.resolve(tx.gasLimit),
             (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
         ]);
-        console.timeEnd('RPC Calls Time');
 
         if (!tx.gasLimit) {
             tx.gasLimit = gasLimit;
@@ -260,18 +243,11 @@ async function addSellOrder(
             }
         }
 
-        console.time('Transaction Send Time');
         const transaction = await signer.sendTransaction(tx);
-        console.timeEnd('Transaction Send Time');
-
-        console.time('Transaction Wait Time');
         const receipt = await transaction.wait(1);
-        console.timeEnd('Transaction Wait Time');
 
-        console.timeEnd('Total Limit Sell Time');
         return receipt;
     } catch (e: any) {
-        console.timeEnd('Total Limit Sell Time');
         console.log({ e });
         if (!e.error) {
             throw e;

@@ -23,6 +23,22 @@ let activeOrderIds: BigNumber[] = [];  // Tracks currently active order IDs
 let currentNonce: number = 0;          // Manages transaction nonce
 let currentGasPrice: BigNumber | undefined = undefined;
 
+const LOG_LEVELS = {
+    INFO: 'INFO',
+    ERROR: 'ERROR',
+    DEBUG: 'DEBUG'
+} as const;
+
+function log(level: keyof typeof LOG_LEVELS, message: string) {
+    if (level === 'ERROR') {
+        console.error(`[${level}] ${message}`);
+    } else if (level === 'INFO') {
+        console.log(`[${level}] ${message}`);
+    } else if (process.env.DEBUG) {
+        console.log(`[${level}] ${message}`);
+    }
+}
+
 interface InventoryBalance {
     baseBalance: number;
     quoteBalance: number;
@@ -37,7 +53,7 @@ let currentInventory: InventoryBalance = {
 // Synchronizes the nonce with the blockchain state
 async function syncNonce(signer: ethers.Wallet) {
     currentNonce = await signer.getTransactionCount();
-    console.log("Nonce synced to:", currentNonce);
+    log('DEBUG', `Nonce synced to: ${currentNonce}`);
 }
 
 function getAndIncrementNonce(): number {
@@ -147,20 +163,14 @@ class OrderTracker {
 
     private setupSocketListeners() {
         this.socket.on('connect', () => {
-            console.log('Connected to WebSocket');
+            log('DEBUG', 'WebSocket connected');
         });
 
         this.socket.on('Trade', (trade: TradeEvent) => {
             if (trade.marketAddress.toLowerCase() !== contractAddress.toLowerCase()) {
-                return; // Ignore trades from other markets
+                return;
             }
 
-            console.log(`Trade detected for order ${trade.orderId}:`);
-            console.log(`- Price: ${trade.price}`);
-            console.log(`- Filled Size: ${trade.filledSize}`);
-            console.log(`- Updated Size: ${trade.updatedSize}`);
-
-            // If order is fully filled (updatedSize = 0), remove from active orders
             if (trade.updatedSize === "0") {
                 const orderIdStr = BigNumber.from(trade.orderId).toString();
                 if (this.activeOrders.has(orderIdStr)) {
@@ -168,17 +178,16 @@ class OrderTracker {
                     activeOrderIds = activeOrderIds.filter(id => 
                         id.toString() !== orderIdStr
                     );
-                    console.log(`Order ${orderIdStr} fully filled and removed from tracking`);
                 }
             }
         });
 
         this.socket.on('disconnect', () => {
-            console.log('Disconnected from WebSocket');
+            log('DEBUG', 'Disconnected from WebSocket');
         });
 
         this.socket.on('error', (error) => {
-            console.error('WebSocket error:', error);
+            log('ERROR', `WebSocket error: ${error}`);
         });
 
         // Add balance update listener
@@ -203,12 +212,12 @@ class OrderTracker {
                 currentInventory.baseBalance = parseFloat(
                     ethers.utils.formatUnits(balance, this.marketParams.baseAssetDecimals)
                 );
-                console.log(`Base asset balance updated: ${currentInventory.baseBalance}`);
+                log('DEBUG', `Base asset balance updated: ${currentInventory.baseBalance}`);
             } else {
                 currentInventory.quoteBalance = parseFloat(
                     ethers.utils.formatUnits(balance, this.marketParams.quoteAssetDecimals)
                 );
-                console.log(`Quote asset balance updated: ${currentInventory.quoteBalance}`);
+                log('DEBUG', `Quote asset balance updated: ${currentInventory.quoteBalance}`);
             }
         });
     }
@@ -317,21 +326,6 @@ async function updateLimitOrders(
             batchUpdate.limitOrders.push(bidOrder);
         }
 
-        // Print order details before submission
-        console.log("\nOrder Details:");
-        console.log("Cancelling orders:", activeOrderIds.map(id => id.toString()));
-        
-        console.log("\nSell Orders:");
-        batchUpdate.limitOrders.slice(0, 2).forEach((order, i) => {
-            console.log(`${i + 1}. Price: ${order.price}, Size: ${order.size}`);
-        });
-        
-        console.log("\nBuy Orders:");
-        batchUpdate.limitOrders.slice(2).forEach((order, i) => {
-            console.log(`${i + 1}. Price: ${order.price}, Size: ${order.size}`);
-        });
-        console.log("\n");
-
         const receipt = await KuruSdk.OrderBatcher.batchUpdate(
             signer,
             contractAddress,
@@ -342,20 +336,41 @@ async function updateLimitOrders(
         // Parse events and update active orders
         const { newOrderIds, trades } = await parseEvents(receipt);
         activeOrderIds = newOrderIds;
-        
-        // Track new orders via WebSocket
         orderTracker.trackOrders(newOrderIds);
         
-        console.log("Orders updated successfully!");
-        console.log("Transaction hash:", receipt.transactionHash);
-        console.log("New active order IDs:", activeOrderIds.map(id => id.toString()));
+        // Consolidated logging
+        console.log('\n=== Market Making Update ===');
+        console.log(`Timestamp: ${new Date().toISOString()}`);
+        console.log(`Transaction Hash: ${receipt.transactionHash}`);
+        
+        console.log('\nMarket State:');
+        console.log(`- SOL Price: $${basePrice.toFixed(3)}`);
+        console.log(`- Base Balance: ${currentInventory.baseBalance.toFixed(4)} SOL`);
+        console.log(`- Quote Balance: $${currentInventory.quoteBalance.toFixed(2)}`);
+        
+        console.log('\nOrder Updates:');
+        console.log(`- Cancelled Orders: ${batchUpdate.cancelOrders.length}`);
+        console.log(`- New Orders: ${newOrderIds.length}`);
+        
+        console.log('\nNew Orders:');
+        console.log('Sells:');
+        batchUpdate.limitOrders.slice(0, 2).forEach((order, i) => {
+            console.log(`  ${i + 1}. ${order.size} SOL @ $${order.price.toFixed(3)}`);
+        });
+        
+        console.log('Buys:');
+        batchUpdate.limitOrders.slice(2).forEach((order, i) => {
+            console.log(`  ${i + 1}. ${order.size} SOL @ $${order.price.toFixed(3)}`);
+        });
         
         if (trades.length > 0) {
-            console.log("Trades executed:");
+            console.log('\nExecuted Trades:');
             trades.forEach(trade => {
-                console.log(`- ${trade.isBuy ? 'Buy' : 'Sell'} order filled: Size ${trade.filledSize.toString()} @ ${trade.price.toString()}`);
+                console.log(`- ${trade.isBuy ? 'Buy' : 'Sell'}: ${trade.filledSize.toString()} SOL @ $${trade.price.toString()}`);
             });
         }
+        console.log('===========================\n');
+
     } catch (error) {
         console.error("Error updating limit orders:", error);
     }
@@ -365,9 +380,9 @@ async function updateLimitOrders(
 async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
     try {
         currentGasPrice = await provider.getGasPrice();
-        console.log("Gas price synced to:", ethers.utils.formatUnits(currentGasPrice, "gwei"), "gwei");
+        log('DEBUG', `Gas price synced to: ${ethers.utils.formatUnits(currentGasPrice, "gwei")} gwei`);
     } catch (error) {
-        console.error("Error syncing gas price:", error);
+        log('ERROR', `Error syncing gas price: ${error}`);
     }
 }
 
@@ -393,17 +408,14 @@ async function updateInventoryBalances(
             )
         ]);
 
-        // Convert to human readable numbers using appropriate decimals
         currentInventory = {
             baseBalance: parseFloat(ethers.utils.formatUnits(baseBalance, marketParams.baseAssetDecimals)),
             quoteBalance: parseFloat(ethers.utils.formatUnits(quoteBalance, marketParams.quoteAssetDecimals))
         };
 
-        console.log("Updated inventory balances:");
-        console.log(`- Base Asset: ${currentInventory.baseBalance}`);
-        console.log(`- Quote Asset: ${currentInventory.quoteBalance}`);
+        log('DEBUG', `Updated inventory - Base: ${currentInventory.baseBalance}, Quote: ${currentInventory.quoteBalance}`);
     } catch (error) {
-        console.error("Error updating inventory balances:", error);
+        log('ERROR', `Error updating inventory balances: ${error}`);
     }
 }
 

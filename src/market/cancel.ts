@@ -23,16 +23,13 @@ export abstract class OrderCanceler {
         orderIds: BigNumber[],
         txOptions?: TransactionOptions
     ): Promise<ContractReceipt> {
-        console.time('Total Cancel Orders Time');
         try {
             const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
             
-            console.time('Get Signer Time');
             const signer = providerOrSigner instanceof ethers.Signer
                 ? providerOrSigner
                 : providerOrSigner.getSigner();
             const address = await signer.getAddress();
-            console.timeEnd('Get Signer Time');
 
             const data = orderbook.interface.encodeFunctionData("batchCancelOrders", [orderIds]);
 
@@ -47,7 +44,6 @@ export abstract class OrderCanceler {
                 ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
             };
 
-            console.time('RPC Calls Time');
             const [gasLimit, baseGasPrice] = await Promise.all([
                 !tx.gasLimit ? signer.estimateGas({
                     ...tx,
@@ -55,7 +51,6 @@ export abstract class OrderCanceler {
                 }) : Promise.resolve(tx.gasLimit),
                 (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
             ]);
-            console.timeEnd('RPC Calls Time');
 
             if (!tx.gasLimit) {
                 tx.gasLimit = gasLimit;
@@ -73,18 +68,11 @@ export abstract class OrderCanceler {
                 }
             }
 
-            console.time('Transaction Send Time');
             const transaction = await signer.sendTransaction(tx);
-            console.timeEnd('Transaction Send Time');
-
-            console.time('Transaction Wait Time');
             const receipt = await transaction.wait(1);
-            console.timeEnd('Transaction Wait Time');
 
-            console.timeEnd('Total Cancel Orders Time');
             return receipt;
         } catch (e: any) {
-            console.timeEnd('Total Cancel Orders Time');
             console.log({ e });
             if (!e.error) {
                 throw e;
