@@ -2,6 +2,8 @@
 import * as KuruSdk from "../../src";
 import { BATCH, LIMIT } from "../../src/types/order";
 import { log10BigNumber } from "../../src/utils/math";
+import { MarginBalance } from "../../src/margin/balance";
+import { MarketParams } from "../../src/types";
 
 // Config
 import * as KuruConfig from "../config.json";
@@ -19,6 +21,17 @@ const BINANCE_API_URL = "https://api.binance.com/api/v3/ticker/price?symbol=SOLU
 // Global state management
 let activeOrderIds: BigNumber[] = [];  // Tracks currently active order IDs
 let currentNonce: number = 0;          // Manages transaction nonce
+let currentGasPrice: BigNumber | undefined = undefined;
+
+interface InventoryBalance {
+    baseBalance: number;
+    quoteBalance: number;
+}
+
+let currentInventory: InventoryBalance = {
+    baseBalance: 0,
+    quoteBalance: 0
+};
 
 // Nonce management functions
 // Synchronizes the nonce with the blockchain state
@@ -117,10 +130,19 @@ class OrderTracker {
     // Manages active order tracking and cleanup
     private socket: Socket;
     private activeOrders: Set<string> = new Set();
+    private readonly signerAddress: string;
+    private marketParams: MarketParams | null = null;
 
     constructor(signerAddress: string) {
+        this.signerAddress = signerAddress;
         this.socket = io(`wss://ws.staging.kuru.io?marketAddress=${signerAddress}`);
         this.setupSocketListeners();
+    }
+
+    // Add method to set market params
+    public setMarketParams(params: MarketParams) {
+        this.marketParams = params;
+        console.log("Market params set in OrderTracker");
     }
 
     private setupSocketListeners() {
@@ -157,6 +179,37 @@ class OrderTracker {
 
         this.socket.on('error', (error) => {
             console.error('WebSocket error:', error);
+        });
+
+        // Add balance update listener
+        this.socket.on('BalanceUpdate', (update: {
+            owner: string;
+            token: string;
+            balance: string;
+            market: string;
+            isBaseAsset: boolean;
+            timestamp: string;
+        }) => {
+            // Verify it's for our signer and market
+            if (update.owner.toLowerCase() !== this.signerAddress.toLowerCase() ||
+                update.market.toLowerCase() !== contractAddress.toLowerCase() ||
+                !this.marketParams) {
+                return;
+            }
+
+            // Update the appropriate balance
+            const balance = BigNumber.from(update.balance);
+            if (update.isBaseAsset) {
+                currentInventory.baseBalance = parseFloat(
+                    ethers.utils.formatUnits(balance, this.marketParams.baseAssetDecimals)
+                );
+                console.log(`Base asset balance updated: ${currentInventory.baseBalance}`);
+            } else {
+                currentInventory.quoteBalance = parseFloat(
+                    ethers.utils.formatUnits(balance, this.marketParams.quoteAssetDecimals)
+                );
+                console.log(`Quote asset balance updated: ${currentInventory.quoteBalance}`);
+            }
         });
     }
 
@@ -224,7 +277,8 @@ async function updateLimitOrders(
             txOptions: {
                 priorityFee: 0.001,
                 nonce: getAndIncrementNonce(),
-                gasLimit: ethers.BigNumber.from(totalGasLimit)
+                gasLimit: ethers.BigNumber.from(totalGasLimit),
+                gasPrice: currentGasPrice
             }
         };
 
@@ -307,22 +361,79 @@ async function updateLimitOrders(
     }
 }
 
+// Add this new function near syncNonce
+async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
+    try {
+        currentGasPrice = await provider.getGasPrice();
+        console.log("Gas price synced to:", ethers.utils.formatUnits(currentGasPrice, "gwei"), "gwei");
+    } catch (error) {
+        console.error("Error syncing gas price:", error);
+    }
+}
+
+// Add this new function to fetch and update balances
+async function updateInventoryBalances(
+    provider: ethers.providers.JsonRpcProvider,
+    signer: ethers.Wallet,
+    marketParams: MarketParams
+) {
+    try {
+        const [baseBalance, quoteBalance] = await Promise.all([
+            MarginBalance.getBalance(
+                provider,
+                KuruConfig.marginAccountAddress,
+                signer.address,
+                marketParams.baseAssetAddress
+            ),
+            MarginBalance.getBalance(
+                provider,
+                KuruConfig.marginAccountAddress,
+                signer.address,
+                marketParams.quoteAssetAddress
+            )
+        ]);
+
+        // Convert to human readable numbers using appropriate decimals
+        currentInventory = {
+            baseBalance: parseFloat(ethers.utils.formatUnits(baseBalance, marketParams.baseAssetDecimals)),
+            quoteBalance: parseFloat(ethers.utils.formatUnits(quoteBalance, marketParams.quoteAssetDecimals))
+        };
+
+        console.log("Updated inventory balances:");
+        console.log(`- Base Asset: ${currentInventory.baseBalance}`);
+        console.log(`- Quote Asset: ${currentInventory.quoteBalance}`);
+    } catch (error) {
+        console.error("Error updating inventory balances:", error);
+    }
+}
+
 // Main market making loop
 async function startMarketMaking() {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     provider._pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
     
-    // Initialize order tracker
     const orderTracker = new OrderTracker(signer.address);
 
-    // Initial nonce sync
-    await syncNonce(signer);
+    // Get initial market params and set them in the tracker
+    const marketParams = await getMarketParams(provider);
+    orderTracker.setMarketParams(marketParams);
 
-    // Sync nonce every 5 seconds
+    // Initial syncs including balance
+    await Promise.all([
+        syncNonce(signer),
+        syncGasPrice(provider),
+        updateInventoryBalances(provider, signer, marketParams)
+    ]);
+
+    // Sync nonce, gas price, and balances every 3 seconds
     setInterval(async () => {
-        await syncNonce(signer);
-    }, 5000);
+        await Promise.all([
+            syncNonce(signer),
+            syncGasPrice(provider),
+            updateInventoryBalances(provider, signer, marketParams)
+        ]);
+    }, 3000);
 
     // Execute immediately first
     try {

@@ -21,8 +21,8 @@ const args = process.argv.slice(2);
             {
                 priorityFee: 0.001,
                 // Cancels happen in constant gas so this can be used to improve performance
-                gasLimit: BigNumber.from(80000 + (args.length - 1) * 20000),
-                gasPrice: ethers.utils.parseUnits('1', 'gwei')
+                gasLimit: BigNumber.from(85000 + (args.length - 1) * 40000),
+                // gasPrice: ethers.utils.parseUnits('1', 'gwei')
             }
         );
 

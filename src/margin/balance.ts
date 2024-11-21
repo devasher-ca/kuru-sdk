@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
@@ -13,12 +13,11 @@ export abstract class MarginBalance {
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string
-    ): Promise<number> {
+    ): Promise<BigNumber> {
         try {
             const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
     
-            const balance = await marginAccount.getBalance(userAddress, tokenAddress, {from: ethers.constants.AddressZero});
-            return parseFloat(ethers.utils.formatEther(balance));
+            return await marginAccount.getBalance(userAddress, tokenAddress, {from: ethers.constants.AddressZero});
         } catch (e: any) {
             if (!e.error) {
                 throw e;
