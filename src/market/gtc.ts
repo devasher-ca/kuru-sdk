@@ -3,7 +3,7 @@ import { ethers, BigNumber, ContractReceipt } from "ethers";
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from "../utils";
-import { MarketParams, LIMIT } from "../types";
+import { MarketParams, LIMIT, TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
@@ -15,13 +15,14 @@ export abstract class GTC {
      * @param orderbookAddress - The address of the order book contract.
      * @param marketParams - The market parameters including price and size precision.
      * @param order - The limit order object containing price, size, isBuy, and postOnly properties.
+     * @param txOptions - The transaction options for the order.
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
     ): Promise<ContractReceipt> {
         const orderbook = new ethers.Contract(
             orderbookAddress,
@@ -46,8 +47,8 @@ export abstract class GTC {
         );
 
         return order.isBuy
-            ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly)
-            : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly);
+            ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
+            : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
     }
 
     static async estimateGas(
@@ -92,18 +93,67 @@ export abstract class GTC {
  * @param price - The price of the order.
  * @param size - The size of the order.
  * @param postOnly - A boolean indicating whether the order should be post-only.
+ * @param txOptions - The transaction options for the order.
  * @returns A promise that resolves to a boolean indicating success or failure.
  */
 async function addBuyOrder(
     orderbook: ethers.Contract,
     price: BigNumber,
     size: BigNumber,
-    postOnly: boolean
+    postOnly: boolean,
+    txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
     try {
-        const tx = await orderbook.addBuyOrder(price, size, postOnly);
-        return await tx.wait();
+        const signer = orderbook.signer;
+        const address = await signer.getAddress();
+
+        const data = orderbook.interface.encodeFunctionData("addBuyOrder", [
+            price,
+            size,
+            postOnly
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: orderbook.address,
+            from: address,
+            data,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        const transaction = await signer.sendTransaction(tx);
+        const receipt = await transaction.wait(1);
+
+        return receipt;
     } catch (e: any) {
+        console.log({ e });
         if (!e.error) {
             throw e;
         }
@@ -138,18 +188,67 @@ async function estimateGasBuy(
  * @param price - The price of the order.
  * @param size - The size of the order.
  * @param postOnly - A boolean indicating whether the order should be post-only.
+ * @param txOptions - The transaction options for the order.
  * @returns A promise that resolves to a boolean indicating success or failure.
  */
 async function addSellOrder(
     orderbook: ethers.Contract,
     price: BigNumber,
     size: BigNumber,
-    postOnly: boolean
+    postOnly: boolean,
+    txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
     try {
-        const tx = await orderbook.addSellOrder(price, size, postOnly);
-        return await tx.wait();
+        const signer = orderbook.signer;
+        const address = await signer.getAddress();
+
+        const data = orderbook.interface.encodeFunctionData("addSellOrder", [
+            price,
+            size,
+            postOnly
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: orderbook.address,
+            from: address,
+            data,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        const transaction = await signer.sendTransaction(tx);
+        const receipt = await transaction.wait(1);
+
+        return receipt;
     } catch (e: any) {
+        console.log({ e });
         if (!e.error) {
             throw e;
         }

@@ -1,6 +1,6 @@
 {
     "name": "@kuru-labs/kuru-sdk",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "SDK to interact with Kuru",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -23,6 +23,7 @@
         "@types/node": "^20.10.5",
         "@types/pg": "^8.10.9",
         "jest": "^29.7.0",
+        "socket.io-client": "^4.8.1",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
         "typescript": "^5.4.5"

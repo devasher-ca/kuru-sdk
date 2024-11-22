@@ -17,7 +17,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
             marginAccountAddress,
             userAddress,
             baseTokenAddress,
-            10000,
+            100000,
             18,
             true
         );

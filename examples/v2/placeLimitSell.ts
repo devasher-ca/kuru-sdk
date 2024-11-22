@@ -13,6 +13,7 @@ const size = parseFloat(args[1]);
 
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    provider._pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
@@ -26,8 +27,13 @@ const size = parseFloat(args[1]);
                 price,
                 size,
                 isBuy: false,
-                postOnly: true
-            }
+                postOnly: true,
+                txOptions: {
+                    priorityFee: 0.001,
+                    // gasLimit: ethers.utils.parseUnits('1000000', 1),
+                    // gasPrice: ethers.utils.parseUnits('1', 'gwei')
+                }
+            },
         );
         console.log("Transaction hash:", receipt.transactionHash);
     } catch(e) {
