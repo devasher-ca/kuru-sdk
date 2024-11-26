@@ -1,6 +1,9 @@
 // ============ External Imports ============
 import { ethers, BigNumber } from "ethers";
 
+// Add TransactionOptions type import
+import { TransactionOptions } from "../types";
+
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
 
@@ -25,24 +28,60 @@ export async function approveToken(
     approveTo: string,
     size: BigNumber,
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    txOptions?: TransactionOptions,
+    waitForReceipt: boolean = true
 ): Promise<string | null> {
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
-
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo)
 
         if (existingApproval.gte(size)) {
             return null;
         }
 
-        const tx = await tokenContract.approve(
+        const signer = tokenContract.signer;
+        const address = await signer.getAddress();
+
+        const data = tokenContract.interface.encodeFunctionData("approve", [
             approveTo,
             size
-        );
+        ]);
 
-        const { transactionHash } = await tx.wait();
+        const tx: ethers.providers.TransactionRequest = {
+            to: tokenContract.address,
+            from: address,
+            data,
+            gasLimit: BigNumber.from(50000),
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
 
-        return transactionHash;
+        const baseGasPrice = (!tx.gasPrice && !tx.maxFeePerGas) 
+            ? await signer.provider!.getGasPrice() 
+            : undefined;
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        const transaction = await signer.sendTransaction(tx);
+        
+        if (!waitForReceipt) {
+            return transaction.hash;
+        }
+
+        const receipt = await transaction.wait(1);
+        return receipt.transactionHash;
     } catch (e: any) {
         console.error({e})
         if (!e.error) {

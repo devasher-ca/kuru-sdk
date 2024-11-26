@@ -165,9 +165,7 @@ async function placeAndExecuteMarketBuy(
     }
 
     try {
-        const signer = providerOrSigner instanceof ethers.Signer
-            ? providerOrSigner
-            : providerOrSigner.getSigner();
+        const signer = orderbook.signer;
         const address = await signer.getAddress();
 
         const data = orderbook.interface.encodeFunctionData("placeAndExecuteMarketBuy", [
@@ -310,9 +308,7 @@ async function placeAndExecuteMarketSell(
     }
 
     try {
-        const signer = providerOrSigner instanceof ethers.Signer
-            ? providerOrSigner
-            : providerOrSigner.getSigner();
+        const signer = orderbook.signer;
         const address = await signer.getAddress();
 
         const data = orderbook.interface.encodeFunctionData("placeAndExecuteMarketSell", [
