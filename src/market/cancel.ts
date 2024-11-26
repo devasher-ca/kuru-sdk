@@ -26,9 +26,7 @@ export abstract class OrderCanceler {
         try {
             const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
             
-            const signer = providerOrSigner instanceof ethers.Signer
-                ? providerOrSigner
-                : providerOrSigner.getSigner();
+            const signer = orderbook.signer;
             const address = await signer.getAddress();
 
             const data = orderbook.interface.encodeFunctionData("batchCancelOrders", [orderIds]);

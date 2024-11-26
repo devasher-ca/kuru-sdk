@@ -53,9 +53,7 @@ export abstract class OrderBatcher {
         }
 
         try {
-            const signer = providerOrSigner instanceof ethers.Signer
-                ? providerOrSigner
-                : providerOrSigner.getSigner();
+            const signer = orderbook.signer;
             const address = await signer.getAddress();
 
             const data = orderbook.interface.encodeFunctionData("batchUpdate", [
@@ -78,6 +76,7 @@ export abstract class OrderBatcher {
                 ...(batchUpdate.txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: batchUpdate.txOptions.maxPriorityFeePerGas })
             };
 
+            console.time('RPC Calls Time');
             const [gasLimit, baseGasPrice] = await Promise.all([
                 !tx.gasLimit ? signer.estimateGas({
                     ...tx,
@@ -85,6 +84,7 @@ export abstract class OrderBatcher {
                 }) : Promise.resolve(tx.gasLimit),
                 (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
             ]);
+            console.timeEnd('RPC Calls Time');
 
             if (!tx.gasLimit) {
                 tx.gasLimit = gasLimit;
@@ -102,8 +102,13 @@ export abstract class OrderBatcher {
                 }
             }
 
+            console.time('Transaction Send Time');
             const transaction = await signer.sendTransaction(tx);
+            console.timeEnd('Transaction Send Time');
+
+            console.time('Transaction Wait Time');
             const receipt = await transaction.wait();
+            console.timeEnd('Transaction Wait Time');
 
             return receipt;
         } catch (e: any) {

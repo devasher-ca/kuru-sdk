@@ -419,6 +419,43 @@ async function updateInventoryBalances(
     }
 }
 
+async function cancelAllOrders(
+    provider: ethers.providers.JsonRpcProvider,
+    signer: ethers.Wallet,
+    marketParams: MarketParams
+) {
+    if (activeOrderIds.length === 0) {
+        log('INFO', 'No active orders to cancel');
+        return;
+    }
+
+    try {
+        const batchUpdate: BATCH = {
+            limitOrders: [],
+            cancelOrders: activeOrderIds,
+            postOnly: false,
+            txOptions: {
+                priorityFee: 0.001,
+                nonce: getAndIncrementNonce(),
+                gasLimit: ethers.BigNumber.from(85_000 + activeOrderIds.length * 40_000),
+                gasPrice: currentGasPrice
+            }
+        };
+
+        const receipt = await KuruSdk.OrderBatcher.batchUpdate(
+            signer,
+            contractAddress,
+            marketParams,
+            batchUpdate
+        );
+
+        log('INFO', `Successfully cancelled ${activeOrderIds.length} orders. TX: ${receipt.transactionHash}`);
+        activeOrderIds = [];
+    } catch (error) {
+        log('ERROR', `Failed to cancel orders: ${error}`);
+    }
+}
+
 // Main market making loop
 async function startMarketMaking() {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -474,8 +511,14 @@ async function startMarketMaking() {
     }, 3000);
 
     // Cleanup on process exit
-    process.on('SIGINT', () => {
+    process.on('SIGINT', async () => {
+        log('INFO', 'Shutting down market maker...');
         orderTracker.disconnect();
+        
+        // Cancel all outstanding orders before exit
+        await cancelAllOrders(provider, signer, marketParams);
+        
+        log('INFO', 'Market maker shutdown complete');
         process.exit();
     });
 }
