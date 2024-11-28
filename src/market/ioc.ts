@@ -337,7 +337,6 @@ async function placeAndExecuteMarketBuy(
             isFillOrKill,
             txOptions
         );
-        console.log("Sending transaction", tx);
         const transaction = await orderbook.signer.sendTransaction(tx);
         const receipt = await transaction.wait(1);
 
