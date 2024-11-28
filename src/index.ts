@@ -6,3 +6,4 @@ export * from "./router";
 export * from "./erc20";
 export * from "./vault";
 export * from "./pools";
+export * from "./utils";
