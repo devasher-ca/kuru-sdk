@@ -6,6 +6,7 @@ import { TransactionOptions } from "../types";
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from "../utils";
+import erc20Abi from "../../abi/IERC20.json";
 
 const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
 
@@ -18,28 +19,26 @@ const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvide
 
 /**
  * @dev Constructs a transaction to approve token spending.
- * @param tokenContract - The token contract instance.
+ * @param signer - The signer instance.
+ * @param tokenContractAddress - The token contract address.
  * @param approveTo - EOA/Contract address of spender.
  * @param size - The amount of tokens to approve.
  * @param txOptions - Optional transaction parameters.
  * @returns A promise that resolves to the transaction request object.
  */
 export async function constructApproveTransaction(
-    tokenContract: ethers.Contract,
+    signer: ethers.Signer,
+    tokenContractAddress: string,
     approveTo: string,
     size: BigNumber,
     txOptions?: TransactionOptions
 ): Promise<ethers.providers.TransactionRequest> {
-    const signer = tokenContract.signer;
     const address = await signer.getAddress();
-
-    const data = tokenContract.interface.encodeFunctionData("approve", [
-        approveTo,
-        size
-    ]);
+    const tokenInterface = new ethers.utils.Interface(erc20Abi.abi);
+    const data = tokenInterface.encodeFunctionData("approve", [approveTo, size]);
 
     const tx: ethers.providers.TransactionRequest = {
-        to: tokenContract.address,
+        to: tokenContractAddress,
         from: address,
         data,
         gasLimit: BigNumber.from(50000),
@@ -48,9 +47,8 @@ export async function constructApproveTransaction(
         ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
         ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
     };
-
     const baseGasPrice = (!tx.gasPrice && !tx.maxFeePerGas) 
-        ? await signer.provider!.getGasPrice() 
+        ? signer.provider?.getGasPrice() || undefined
         : undefined;
 
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
@@ -59,9 +57,9 @@ export async function constructApproveTransaction(
                 txOptions.priorityFee.toString(),
                 'gwei'
             );
-            tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            tx.gasPrice = await baseGasPrice.then(base => base.add(priorityFeeWei));
         } else {
-            tx.gasPrice = baseGasPrice;
+            tx.gasPrice = await baseGasPrice;
         }
     }
 
@@ -91,16 +89,18 @@ export async function approveToken(
         const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
 
         if (existingApproval.gte(size)) {
+            console.log("Approval already exists");
             return null;
         }
 
         const tx = await constructApproveTransaction(
-            tokenContract,
+            tokenContract.signer,
+            tokenContract.address,
             approveTo,
             size,
             txOptions
         );
-
+        console.log("Sending transaction", tx);
         const transaction = await tokenContract.signer.sendTransaction(tx);
         
         if (!waitForReceipt) {

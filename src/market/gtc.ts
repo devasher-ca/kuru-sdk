@@ -86,7 +86,8 @@ export abstract class GTC {
 
     /**
      * @dev Constructs a transaction for a buy limit order.
-     * @param orderbook - The orderbook contract instance.
+     * @param signer - The signer instance.
+     * @param orderbookAddress - The address of the order book contract.
      * @param price - The price of the order.
      * @param size - The size of the order.
      * @param postOnly - Whether the order is post-only.
@@ -94,23 +95,24 @@ export abstract class GTC {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructBuyOrderTransaction(
-        orderbook: ethers.Contract,
+        signer: ethers.Signer,
+        orderbookAddress: string,
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
-        const signer = orderbook.signer;
         const address = await signer.getAddress();
 
-        const data = orderbook.interface.encodeFunctionData("addBuyOrder", [
+        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const data = orderbookInterface.encodeFunctionData("addBuyOrder", [
             price,
             size,
             postOnly
         ]);
 
         const tx: ethers.providers.TransactionRequest = {
-            to: orderbook.address,
+            to: orderbookAddress,
             from: address,
             data,
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
@@ -149,7 +151,8 @@ export abstract class GTC {
 
     /**
      * @dev Constructs a transaction for a sell limit order.
-     * @param orderbook - The orderbook contract instance.
+     * @param signer - The signer instance.
+     * @param orderbookAddress - The address of the order book contract.
      * @param price - The price of the order.
      * @param size - The size of the order.
      * @param postOnly - Whether the order is post-only.
@@ -157,23 +160,24 @@ export abstract class GTC {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructSellOrderTransaction(
-        orderbook: ethers.Contract,
+        signer: ethers.Signer,
+        orderbookAddress: string,
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
-        const signer = orderbook.signer;
         const address = await signer.getAddress();
 
-        const data = orderbook.interface.encodeFunctionData("addSellOrder", [
+        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const data = orderbookInterface.encodeFunctionData("addSellOrder", [
             price,
             size,
             postOnly
         ]);
 
         const tx: ethers.providers.TransactionRequest = {
-            to: orderbook.address,
+            to: orderbookAddress,
             from: address,
             data,
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
@@ -222,7 +226,8 @@ export abstract class GTC {
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructBuyOrderTransaction(
-                orderbook,
+                orderbook.signer,
+                orderbook.address,
                 price,
                 size,
                 postOnly,
@@ -254,7 +259,8 @@ export abstract class GTC {
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructSellOrderTransaction(
-                orderbook,
+                orderbook.signer,
+                orderbook.address,
                 price,
                 size,
                 postOnly,
