@@ -47,8 +47,8 @@ export abstract class GTC {
         );
 
         return order.isBuy
-            ? addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
-            : addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
+            ? GTC.addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
+            : GTC.addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
     }
 
     static async estimateGas(
@@ -83,27 +83,23 @@ export abstract class GTC {
             ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
             : estimateGasSell(orderbook, priceBn, sizeBn, order.postOnly);
     }
-}
 
-// ======================== INTERNAL HELPER FUNCTIONS ========================
-
-/**
- * @dev Adds a buy limit order to the order book.
- * @param orderbook - The order book contract instance.
- * @param price - The price of the order.
- * @param size - The size of the order.
- * @param postOnly - A boolean indicating whether the order should be post-only.
- * @param txOptions - The transaction options for the order.
- * @returns A promise that resolves to a boolean indicating success or failure.
- */
-async function addBuyOrder(
-    orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
-    postOnly: boolean,
-    txOptions?: TransactionOptions
-): Promise<ContractReceipt> {
-    try {
+    /**
+     * @dev Constructs a transaction for a buy limit order.
+     * @param orderbook - The orderbook contract instance.
+     * @param price - The price of the order.
+     * @param size - The size of the order.
+     * @param postOnly - Whether the order is post-only.
+     * @param txOptions - Transaction options.
+     * @returns A promise that resolves to the transaction request object.
+     */
+    static async constructBuyOrderTransaction(
+        orderbook: ethers.Contract,
+        price: BigNumber,
+        size: BigNumber,
+        postOnly: boolean,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
         const signer = orderbook.signer;
         const address = await signer.getAddress();
 
@@ -148,57 +144,25 @@ async function addBuyOrder(
             }
         }
 
-        const transaction = await signer.sendTransaction(tx);
-        const receipt = await transaction.wait(1);
-
-        return receipt;
-    } catch (e: any) {
-        console.log({ e });
-        if (!e.error) {
-            throw e;
-        }
-        throw extractErrorMessage(e);
+        return tx;
     }
-}
 
-async function estimateGasBuy(
-    orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
-    postOnly: boolean
-): Promise<BigNumber> {
-    try {
-        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
-            price,
-            size,
-            postOnly
-        );
-        return gasEstimate;
-    } catch (e: any) {
-        if (!e.error) {
-            throw e;
-        }
-        throw extractErrorMessage(e);
-    }
-}
-
-/**
- * @dev Adds a sell limit order to the order book.
- * @param orderbook - The order book contract instance.
- * @param price - The price of the order.
- * @param size - The size of the order.
- * @param postOnly - A boolean indicating whether the order should be post-only.
- * @param txOptions - The transaction options for the order.
- * @returns A promise that resolves to a boolean indicating success or failure.
- */
-async function addSellOrder(
-    orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
-    postOnly: boolean,
-    txOptions?: TransactionOptions
-): Promise<ContractReceipt> {
-    try {
+    /**
+     * @dev Constructs a transaction for a sell limit order.
+     * @param orderbook - The orderbook contract instance.
+     * @param price - The price of the order.
+     * @param size - The size of the order.
+     * @param postOnly - Whether the order is post-only.
+     * @param txOptions - Transaction options.
+     * @returns A promise that resolves to the transaction request object.
+     */
+    static async constructSellOrderTransaction(
+        orderbook: ethers.Contract,
+        price: BigNumber,
+        size: BigNumber,
+        postOnly: boolean,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
         const signer = orderbook.signer;
         const address = await signer.getAddress();
 
@@ -243,12 +207,90 @@ async function addSellOrder(
             }
         }
 
-        const transaction = await signer.sendTransaction(tx);
-        const receipt = await transaction.wait(1);
+        return tx;
+    }
 
-        return receipt;
+    /**
+     * @dev Places a buy limit order on the order book.
+     */
+    static async addBuyOrder(
+        orderbook: ethers.Contract,
+        price: BigNumber,
+        size: BigNumber,
+        postOnly: boolean,
+        txOptions?: TransactionOptions
+    ): Promise<ContractReceipt> {
+        try {
+            const tx = await GTC.constructBuyOrderTransaction(
+                orderbook,
+                price,
+                size,
+                postOnly,
+                txOptions
+            );
+
+            const transaction = await orderbook.signer.sendTransaction(tx);
+            const receipt = await transaction.wait(1);
+
+            return receipt;
+        } catch (e: any) {
+            console.log({ e });
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e);
+        }
+    }
+
+    /**
+     * @dev Places a sell limit order on the order book.
+     */
+    static async addSellOrder(
+        orderbook: ethers.Contract,
+        price: BigNumber,
+        size: BigNumber,
+        postOnly: boolean,
+        txOptions?: TransactionOptions
+    ): Promise<ContractReceipt> {
+        try {
+            const tx = await GTC.constructSellOrderTransaction(
+                orderbook,
+                price,
+                size,
+                postOnly,
+                txOptions
+            );
+
+            const transaction = await orderbook.signer.sendTransaction(tx);
+            const receipt = await transaction.wait(1);
+
+            return receipt;
+        } catch (e: any) {
+            console.log({ e });
+            if (!e.error) {
+                throw e;
+            }
+            throw extractErrorMessage(e);
+        }
+    }
+}
+
+// ======================== INTERNAL HELPER FUNCTIONS ========================
+
+async function estimateGasBuy(
+    orderbook: ethers.Contract,
+    price: BigNumber,
+    size: BigNumber,
+    postOnly: boolean
+): Promise<BigNumber> {
+    try {
+        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
+            price,
+            size,
+            postOnly
+        );
+        return gasEstimate;
     } catch (e: any) {
-        console.log({ e });
         if (!e.error) {
             throw e;
         }
