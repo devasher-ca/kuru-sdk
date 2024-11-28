@@ -100,7 +100,6 @@ export async function approveToken(
             size,
             txOptions
         );
-        console.log("Sending transaction", tx);
         const transaction = await tokenContract.signer.sendTransaction(tx);
         
         if (!waitForReceipt) {
