@@ -395,7 +395,6 @@ export abstract class OrderBook {
   
           // Reset partially filled sizes for new price level
           newOrderBook.vaultParams.bidPartiallyFilledSize = BigNumber.from(0);
-          newOrderBook.vaultParams.askPartiallyFilledSize = BigNumber.from(0);
         } else {
           // Update partially filled size for current price level
           newOrderBook.vaultParams.bidPartiallyFilledSize = 
@@ -534,18 +533,18 @@ export abstract class OrderBook {
 
     // Format and group bids (round down)
     const formattedBids = groupOrders(orderBook.bids, formatBidPrice)
-      .sort((a, b) => b[0] - a[0]); // Sort bids in descending order
+      .sort((a, b) => b[0] - a[0]);
 
     // Format and group asks (round up)
     const formattedAsks = groupOrders(orderBook.asks, formatAskPrice)
-      .sort((a, b) => a[0] - b[0]); // Sort asks in ascending order
+      .sort((a, b) => b[0] - a[0]);
 
     // Format and group manual orders
     const formattedManualBids = groupOrders(orderBook.manualOrders.bids, formatBidPrice)
       .sort((a, b) => b[0] - a[0]);
 
     const formattedManualAsks = groupOrders(orderBook.manualOrders.asks, formatAskPrice)
-      .sort((a, b) => a[0] - b[0]);
+      .sort((a, b) => b[0] - a[0]);
 
     return {
       ...orderBook,
@@ -663,7 +662,6 @@ export abstract class OrderBook {
 
           // Reset partially filled sizes for new price level
           newOrderBook.vaultParams.bidPartiallyFilledSize = BigNumber.from(0);
-          newOrderBook.vaultParams.askPartiallyFilledSize = BigNumber.from(0);
         } else {
           // Update partially filled size for current price level
           newOrderBook.vaultParams.bidPartiallyFilledSize = 
@@ -685,7 +683,7 @@ export abstract class OrderBook {
 
         return Array.from(priceMap.entries())
           .filter(([_, size]) => size > 0)
-          .sort((a, b) => isAsk ? a[0] - b[0] : b[0] - a[0]);
+          .sort((a, b) => b[0] - a[0]);
       };
 
       // Update order book with formatted orders
@@ -734,7 +732,7 @@ export abstract class OrderBook {
 
         return Array.from(priceMap.entries())
           .filter(([_, size]) => size > 0)
-          .sort((a, b) => isAsk ? a[0] - b[0] : b[0] - a[0]);
+          .sort((a, b) => b[0] - a[0]);
       };
       // Recombine manual orders with AMM prices
       const ammPrices = getAmmPricesFromVaultParams(newOrderBook.vaultParams, marketParams);

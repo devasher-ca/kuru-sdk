@@ -125,33 +125,13 @@ class OrderbookWatcher {
 
                     // Debug logging
                     console.log("Before orderbook first few entries:");
-                    console.log("Asks:", beforeOrderbook.asks.slice(0, 3));
+                    console.log("Asks:", beforeOrderbook.asks.slice(-3));
                     console.log("Bids:", beforeOrderbook.bids.slice(0, 3));
 
                     console.log("After orderbook first few entries:");
-                    console.log("Asks:", this.localOrderbook.asks.slice(0, 3));
+                    console.log("Asks:", this.localOrderbook.asks.slice(-3));
                     console.log("Bids:", this.localOrderbook.bids.slice(0, 3));
 
-                    // Existing comparison logic
-                    beforeOrderbook.asks.forEach((ask: any, index: number) => {
-                        if (index >= this.localOrderbook!.asks.length) return;
-                        const newAsk = this.localOrderbook!.asks[index];
-                        if (ask[0] !== newAsk[0] || ask[1] !== newAsk[1]) {
-                            console.log(
-                                `Ask Updated [${index}]: ${ask[0]}@${ask[1]} -> ${newAsk[0]}@${newAsk[1]}`
-                            );
-                        }
-                    });
-
-                    beforeOrderbook.bids.forEach((bid: any, index: number) => {
-                        if (index >= this.localOrderbook!.bids.length) return;
-                        const newBid = this.localOrderbook!.bids[index];
-                        if (bid[0] !== newBid[0] || bid[1] !== newBid[1]) {
-                            console.log(
-                                `Bid Updated [${index}]: ${bid[0]}@${bid[1]} -> ${newBid[0]}@${newBid[1]}`
-                            );
-                        }
-                    });
                     console.log("========================\n");
                 }
             } catch (error) {
