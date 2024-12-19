@@ -4,23 +4,14 @@ import {routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress} from "../con
 
 async function main() {
     // Connect to provider with custom fetch
-    const provider = new ethers.providers.JsonRpcProvider(
-        rpcUrl,
-        {
-            name: "custom",
-            chainId: 41454,
-        }
-    );
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
     // Add debug logging with elapsed time
     provider.pollingInterval = 100;
-    // Get private key from environment variable
     const privateKey = process.env.PRIVATE_KEY;
     if (!privateKey) {
         throw new Error("PRIVATE_KEY environment variable not set");
     }
-
-    // Create signer
     const signer = new ethers.Wallet(privateKey, provider);
 
     const paramCreator = new ParamCreator();

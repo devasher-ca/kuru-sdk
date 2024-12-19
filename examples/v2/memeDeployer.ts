@@ -4,21 +4,11 @@ import { monadDeployerAddress, rpcUrl } from "../config.json";
 
 async function main() {
     // Connect to provider with custom fetch
-    const provider = new ethers.providers.JsonRpcProvider(
-        rpcUrl,
-        {
-            name: "custom",
-            chainId: 41454,
-        }
-    );
-
-    // Get private key from environment variable
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const privateKey = process.env.PRIVATE_KEY;
     if (!privateKey) {
         throw new Error("PRIVATE_KEY environment variable not set");
     }
-
-    // Create signer
     const signer = new ethers.Wallet(privateKey, provider);
 
     // Initialize MonadDeployer SDK
