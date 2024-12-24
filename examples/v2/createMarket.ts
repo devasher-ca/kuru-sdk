@@ -1,7 +1,6 @@
 import { ethers } from "ethers";
 import { ParamCreator } from "../../src/create/market";
 import {routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress} from "../config.json";
-import { exit } from "process";
 
 async function main() {
     // Connect to provider with custom fetch
