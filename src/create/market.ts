@@ -151,6 +151,16 @@ export class ParamCreator {
     calculatePrecisions(quote:number, base:number, maxPrice:number, minSize:number, tickSizeBps: number = 10) {
         let currentPrice = quote / base;
 
+        // Calculate tick size based on BPS but ensure minimum tick size
+        let tickSize = Math.max(
+            currentPrice * (tickSizeBps / 10000),  // BPS-based tick size
+            currentPrice / 1000000,  // Minimum tick size (1 millionth of price)
+            0.00000001  // Absolute minimum tick size
+        );
+
+        // Convert to fixed notation with max 9 decimals
+        const tickStr = tickSize.toFixed(9);
+
         // Convert to string with high precision to detect patterns
         const priceStr = currentPrice.toFixed(9);
         
@@ -182,11 +192,6 @@ export class ParamCreator {
             throw new Error(`Current price is too low: ${currentPrice}`);
         }
 
-        // Calculate tick size based on provided BPS
-        let tickSize = currentPrice * (tickSizeBps / 10000);
-        // Convert scientific notation to fixed notation for tick size
-        const tickStr = tickSize.toFixed(9);
-        
         // Handle recurring decimals in tick size the same way
         const tickDecimalPart = tickStr.split('.')[1];
         if (tickDecimalPart) {
