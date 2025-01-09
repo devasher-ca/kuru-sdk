@@ -6,6 +6,7 @@ import { ParamFetcher, CostEstimator } from "../market";
 import { PoolFetcher } from "../pools";
 import { Pool, Route, RouteOutput } from "../types/pool";
 import orderbookAbi from "../../abi/OrderBook.json";
+import utilsAbi from "../../abi/KuruUtils.json";
 
 export abstract class PathFinder {
     static async findBestPath(
@@ -15,7 +16,8 @@ export abstract class PathFinder {
         amountIn: number,
         amountType: "amountOut" | "amountIn" = "amountIn",
         poolFetcher?: PoolFetcher,
-        pools?: Pool[]
+        pools?: Pool[],
+        estimatorContractAddress?: string
     ): Promise<RouteOutput> {
         // Normalize input addresses to lowercase
         const normalizedTokenIn = tokenIn.toLowerCase();
@@ -47,6 +49,7 @@ export abstract class PathFinder {
             isBuy: [],
             nativeSend: [],
             output: 0,
+            priceImpact: 0,
             feeInBase: 0,
         };
 
@@ -61,7 +64,15 @@ export abstract class PathFinder {
                 bestOutput = routeOutput.output;
             }
         }
-
+        if (estimatorContractAddress) {
+            const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
+            const orderbookAddresses = bestRoute.route.path.map(pool => pool.orderbook);
+            const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, bestRoute.isBuy);
+            const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
+            const actualPrice = parseFloat((amountIn / bestRoute.output).toFixed(18));
+            const priceImpact = ((100 * actualPrice / priceInUnits) - 100).toFixed(2);
+            bestRoute.priceImpact = parseFloat(priceImpact);
+        }
         return bestRoute;
     }
 }
@@ -113,7 +124,7 @@ async function computeRouteInput(
     let feeInBase: number = amountOut;
     let isBuy: boolean[] = [];
     let nativeSend: boolean[] = [];
-
+    let priceImpact: number = 0;
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
 
@@ -175,6 +186,7 @@ async function computeRouteInput(
         nativeSend,
         isBuy,
         feeInBase,
+        priceImpact,
     };
 }
 
@@ -188,6 +200,7 @@ async function computeRouteOutput(
     let feeInBase: number = amountIn;
     let isBuy: boolean[] = [];
     let nativeSend: boolean[] = [];
+    let priceImpact: number = 1;
 
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
@@ -232,6 +245,7 @@ async function computeRouteOutput(
         output,
         nativeSend,
         isBuy,
+        priceImpact,
         feeInBase,
     };
 }
