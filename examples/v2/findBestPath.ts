@@ -3,8 +3,7 @@ import { ethers } from "ethers";
 import * as KuruSdk from "../../src";
 import * as KuruConfig from "./../config.json";
 import { PoolFetcher } from "../../src/pools/fetcher";
-
-const { rpcUrl } = KuruConfig;
+const { rpcUrl, estimatorContractAddress } = KuruConfig;
 
 const kuruApi = process.env.KURU_API;
 
@@ -17,8 +16,8 @@ const amount = parseFloat(args[0]);
     try {
         const pool = new PoolFetcher(kuruApi as string);
         const result = await pool.getAllPools(
-            "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
-            "0xD18e0Fe99f3eB099C67aDE897a6bBbF02a5A68F9",
+            "0x0000000000000000000000000000000000000000",
+            "0x6C15057930e0d8724886C09e940c5819fBE65465",
             [
                 {
                     symbol: "MON",
@@ -26,24 +25,23 @@ const amount = parseFloat(args[0]);
                 },
                 {
                     symbol: "USDC",
-                    address: "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
+                    address: "0x6C15057930e0d8724886C09e940c5819fBE65465",
                 },
             ]
         );
-
+        console.log("result", result);
         const bestPath = await KuruSdk.PathFinder.findBestPath(
             provider,
-            "0x266c56717Cad3ee549ea53bA75e14653C9748b40",
-            "0xD18e0Fe99f3eB099C67aDE897a6bBbF02a5A68F9",
+            "0x0000000000000000000000000000000000000000",
+            "0x6C15057930e0d8724886C09e940c5819fBE65465",
             amount,
             "amountIn",
             undefined,
-            result
+            result,
+            estimatorContractAddress
         );
 
-        console.log(bestPath);
-        console.log(bestPath.route.path);
-        console.log(bestPath.output);
+        console.log("priceImpact: ", bestPath.priceImpact)
     } catch (error) {
         console.error("Error finding best path:", error);
     }

@@ -15,6 +15,7 @@ export interface RouteOutput {
     isBuy: boolean[];
     nativeSend: boolean[];
     output: number;
+    priceImpact: number;
     feeInBase: number;
 }
 
