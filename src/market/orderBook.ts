@@ -749,6 +749,202 @@ export abstract class OrderBook {
 
     return newOrderBook;
   }
+
+  static reconcileFormattedCanceledOrders(
+    existingOrderBook: OrderBookData,
+    marketParams: MarketParams,
+    canceledOrderEvent: WssCanceledOrderEvent
+  ): OrderBookData {
+    // Create deep copies to prevent mutations
+    const newOrderBook: OrderBookData = {
+      ...existingOrderBook,
+      vaultParams: { ...existingOrderBook.vaultParams },
+      manualOrders: {
+        bids: [...existingOrderBook.manualOrders.bids],
+        asks: [...existingOrderBook.manualOrders.asks],
+      },
+    };
+
+    // Calculate decimals for price formatting
+    const pricePrecisionDecimals = log10BigNumber(marketParams.pricePrecision);
+    const tickSizeDecimals = log10BigNumber(marketParams.tickSize);
+    const decimals = pricePrecisionDecimals - tickSizeDecimals;
+
+    // Helper functions for price formatting
+    const formatPrice = (price: number, isAsk: boolean): number => {
+      const multiplier = Math.pow(10, decimals);
+      return isAsk 
+        ? Math.ceil(price * multiplier) / multiplier   // Round up for asks
+        : Math.floor(price * multiplier) / multiplier; // Round down for bids
+    };
+
+    for (const canceledOrder of canceledOrderEvent.canceledOrdersData) {
+      // Convert size and price to floating-point numbers
+      const orderSize = parseFloat(
+        ethers.utils.formatUnits(
+          canceledOrder.size,
+          log10BigNumber(marketParams.sizePrecision)
+        )
+      );
+      const rawPrice = parseFloat(
+        ethers.utils.formatUnits(
+          canceledOrder.price,
+          log10BigNumber(marketParams.pricePrecision)
+        )
+      );
+
+      // Format the price according to tick size
+      const formattedPrice = formatPrice(rawPrice, !canceledOrder.isbuy);
+
+      // Determine which side of the book to update
+      const sideToUpdate = canceledOrder.isbuy
+        ? newOrderBook.manualOrders.bids
+        : newOrderBook.manualOrders.asks;
+
+      // Find the existing order at this price - using exact match since these are manual orders
+      const existingOrderIndex = sideToUpdate.findIndex(
+        ([price]) => price === formattedPrice
+      );
+
+      if (existingOrderIndex !== -1) {
+        // If an order at this price exists, reduce its size
+        sideToUpdate[existingOrderIndex][1] -= orderSize;
+
+        // If the size becomes zero or negative, remove the order
+        if (sideToUpdate[existingOrderIndex][1] <= 0) {
+          sideToUpdate.splice(existingOrderIndex, 1);
+        }
+      }
+    }
+
+    // Group and format orders
+    const groupAndFormatOrders = (orders: number[][], isAsk: boolean): number[][] => {
+      const priceMap = new Map<number, number>();
+      
+      orders.forEach(([price, size]) => {
+        const formattedPrice = formatPrice(price, isAsk);
+        priceMap.set(formattedPrice, (priceMap.get(formattedPrice) || 0) + size);
+      });
+
+      return Array.from(priceMap.entries())
+        .filter(([_, size]) => size > 0)
+        .sort((a, b) => b[0] - a[0]);
+    };
+
+    // Recombine manual orders with AMM prices
+    const ammPrices = getAmmPricesFromVaultParams(
+      newOrderBook.vaultParams,
+      marketParams
+    );
+
+    // Update order book with formatted orders
+    newOrderBook.bids = groupAndFormatOrders([...newOrderBook.manualOrders.bids, ...ammPrices.bids], false);
+    newOrderBook.asks = groupAndFormatOrders([...newOrderBook.manualOrders.asks, ...ammPrices.asks], true);
+    newOrderBook.manualOrders.bids = groupAndFormatOrders(newOrderBook.manualOrders.bids, false);
+    newOrderBook.manualOrders.asks = groupAndFormatOrders(newOrderBook.manualOrders.asks, true);
+
+    // Update the block number
+    newOrderBook.blockNumber = parseInt(
+      canceledOrderEvent.canceledOrdersData[0].blocknumber,
+      16
+    );
+
+    return newOrderBook;
+  }
+
+  static reconcileFormattedOrderCreated(
+    existingOrderBook: OrderBookData,
+    marketParams: MarketParams,
+    orderEvent: WssOrderEvent
+  ): OrderBookData {
+    // Create deep copies to prevent mutations
+    const newOrderBook: OrderBookData = {
+      ...existingOrderBook,
+      manualOrders: {
+        bids: [...existingOrderBook.manualOrders.bids],
+        asks: [...existingOrderBook.manualOrders.asks],
+      },
+    };
+
+    // Calculate decimals for price formatting
+    const pricePrecisionDecimals = log10BigNumber(marketParams.pricePrecision);
+    const tickSizeDecimals = log10BigNumber(marketParams.tickSize);
+    const decimals = pricePrecisionDecimals - tickSizeDecimals;
+
+    // Helper functions for price formatting
+    const formatPrice = (price: number, isAsk: boolean): number => {
+      const multiplier = Math.pow(10, decimals);
+      return isAsk 
+        ? Math.ceil(price * multiplier) / multiplier   // Round up for asks
+        : Math.floor(price * multiplier) / multiplier; // Round down for bids
+    };
+
+    // Convert size and price to floating-point numbers
+    const orderSize = parseFloat(
+      ethers.utils.formatUnits(
+        orderEvent.size,
+        log10BigNumber(marketParams.sizePrecision)
+      )
+    );
+    const rawPrice = parseFloat(
+      ethers.utils.formatUnits(
+        orderEvent.price,
+        log10BigNumber(marketParams.pricePrecision)
+      )
+    );
+
+    // Format the price according to tick size
+    const formattedPrice = formatPrice(rawPrice, !orderEvent.isBuy);
+
+    // Determine which side of the book to update
+    const sideToUpdate = orderEvent.isBuy
+      ? newOrderBook.manualOrders.bids
+      : newOrderBook.manualOrders.asks;
+
+    // Find if there's an existing order at this price - using exact match since these are manual orders
+    const existingOrderIndex = sideToUpdate.findIndex(
+      ([price]) => price === formattedPrice
+    );
+
+    if (existingOrderIndex !== -1) {
+      // If an order at this price exists, update its size
+      sideToUpdate[existingOrderIndex][1] += orderSize;
+    } else {
+      // If no order at this price exists, add a new order
+      sideToUpdate.push([formattedPrice, orderSize]);
+    }
+
+    // Group and format orders
+    const groupAndFormatOrders = (orders: number[][], isAsk: boolean): number[][] => {
+      const priceMap = new Map<number, number>();
+      
+      orders.forEach(([price, size]) => {
+        const formattedPrice = formatPrice(price, isAsk);
+        priceMap.set(formattedPrice, (priceMap.get(formattedPrice) || 0) + size);
+      });
+
+      return Array.from(priceMap.entries())
+        .filter(([_, size]) => size > 0)
+        .sort((a, b) => b[0] - a[0]);
+    };
+
+    // Recombine manual orders with AMM prices
+    const ammPrices = getAmmPricesFromVaultParams(
+      newOrderBook.vaultParams,
+      marketParams
+    );
+
+    // Update order book with formatted orders
+    newOrderBook.bids = groupAndFormatOrders([...newOrderBook.manualOrders.bids, ...ammPrices.bids], false);
+    newOrderBook.asks = groupAndFormatOrders([...newOrderBook.manualOrders.asks, ...ammPrices.asks], true);
+    newOrderBook.manualOrders.bids = groupAndFormatOrders(newOrderBook.manualOrders.bids, false);
+    newOrderBook.manualOrders.asks = groupAndFormatOrders(newOrderBook.manualOrders.asks, true);
+
+    // Update the block number
+    newOrderBook.blockNumber = orderEvent.blockNumber.toNumber();
+
+    return newOrderBook;
+  }
 }
 
 /**

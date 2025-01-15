@@ -17,7 +17,6 @@ class OrderbookWatcher {
     private localOrderbook: OrderBookData | null = null;
     private provider: ethers.providers.JsonRpcProvider;
     private marketParams: any;
-    private eventQueue: Map<number, (() => OrderBookData)[]> = new Map();
     private lastProcessedBlock: number = 0;
 
     constructor() {
@@ -76,13 +75,32 @@ class OrderbookWatcher {
                     marketAddress: event.marketAddress,
                 };
 
+                // Store the orderbook state before reconciliation
+                const beforeOrderbook = JSON.parse(JSON.stringify(this.localOrderbook));
+
                 await this.handleReconciliation(() =>
-                    KuruSdk.OrderBook.reconcileOrderCreated(
+                    this.localOrderbook = KuruSdk.OrderBook.reconcileFormattedOrderCreated(
                         this.localOrderbook!,
                         this.marketParams,
                         orderEvent
                     )
                 );
+
+                // Compare and print changes after reconciliation
+                if (this.localOrderbook) {
+                    console.log("\n=== Order Created Updates ===");
+                    console.log(`New Order: ${orderEvent.size.toString()} @ ${orderEvent.price.toString()}`);
+                    
+                    console.log("Before orderbook first few entries:");
+                    console.log("Asks:", beforeOrderbook.asks.slice(-3));
+                    console.log("Bids:", beforeOrderbook.bids.slice(0, 3));
+
+                    console.log("After orderbook first few entries:");
+                    console.log("Asks:", this.localOrderbook.asks.slice(-3));
+                    console.log("Bids:", this.localOrderbook.bids.slice(0, 3));
+
+                    console.log("========================\n");
+                }
             } catch (error) {
                 console.error("Error processing OrderCreated:", error);
             }
@@ -149,13 +167,32 @@ class OrderbookWatcher {
                     canceledOrdersData: event.canceledOrdersData,
                 };
 
+                // Store the orderbook state before reconciliation
+                const beforeOrderbook = JSON.parse(JSON.stringify(this.localOrderbook));
+
                 await this.handleReconciliation(() =>
-                    KuruSdk.OrderBook.reconcileCanceledOrders(
+                    this.localOrderbook = KuruSdk.OrderBook.reconcileFormattedCanceledOrders(
                         this.localOrderbook!,
                         this.marketParams,
                         cancelEvent
                     )
                 );
+
+                // Compare and print changes after reconciliation
+                if (this.localOrderbook) {
+                    console.log("\n=== Orders Canceled Updates ===");
+                    console.log(`Canceled Orders: ${cancelEvent.orderIds.join(", ")}`);
+                    
+                    console.log("Before orderbook first few entries:");
+                    console.log("Asks:", beforeOrderbook.asks.slice(-3));
+                    console.log("Bids:", beforeOrderbook.bids.slice(0, 3));
+
+                    console.log("After orderbook first few entries:");
+                    console.log("Asks:", this.localOrderbook.asks.slice(-3));
+                    console.log("Bids:", this.localOrderbook.bids.slice(0, 3));
+
+                    console.log("========================\n");
+                }
             } catch (error) {
                 console.error("Error processing OrdersCanceled:", error);
             }
@@ -172,59 +209,19 @@ class OrderbookWatcher {
 
     private async handleReconciliation(reconcileFunc: () => OrderBookData) {
         try {
-            const currentBlock = this.getCurrentBlockFromEvent(reconcileFunc);
-
-            if (!this.eventQueue.has(currentBlock)) {
-                this.eventQueue.set(currentBlock, []);
-            }
-            this.eventQueue.get(currentBlock)!.push(reconcileFunc);
+            // Execute the reconciliation once and store the result
+            const result = reconcileFunc();
+            const currentBlock = Number(result.blockNumber || 0);
+            
+            // Update the orderbook immediately
+            this.localOrderbook = result;
 
             if (currentBlock > this.lastProcessedBlock) {
-                if (this.eventQueue.has(this.lastProcessedBlock)) {
-                    const events = this.eventQueue.get(this.lastProcessedBlock)!;
-                    let updatedOrderbook = this.localOrderbook!;
-
-                    for (const event of events) {
-                        updatedOrderbook = event();
-                    }
-
-                    this.localOrderbook = updatedOrderbook;
-                    this.eventQueue.delete(this.lastProcessedBlock);
-
-                    // Print orders around midpoint after reconciliation
-                    const lowestAsk = this.localOrderbook.asks[0]?.[0] || 0;
-                    const highestBid = this.localOrderbook.bids[0]?.[0] || 0;
-                    const midpoint = (lowestAsk + highestBid) / 2;
-
-                    console.log("\n=== Orders Around Midpoint ===");
-                    console.log(`Midpoint: ${midpoint}`);
-                    console.log("\nAsks (3 levels):");
-                    this.localOrderbook.asks.slice(0, 3).forEach(([price, size]) => {
-                        console.log(`${size} @ ${price}`);
-                    });
-                    console.log("\nBids (3 levels):");
-                    this.localOrderbook.bids.slice(0, 3).forEach(([price, size]) => {
-                        console.log(`${size} @ ${price}`);
-                    });
-                    console.log("===========================\n");
-                }
-
                 this.lastProcessedBlock = currentBlock;
             }
         } catch (error) {
             console.error("Error in reconciliation:", error);
             await this.fetchAndUpdateOrderbook();
-        }
-    }
-
-    private getCurrentBlockFromEvent(
-        reconcileFunc: () => OrderBookData
-    ): number {
-        try {
-            const result = reconcileFunc();
-            return Number(result.blockNumber || 0);
-        } catch {
-            return 0;
         }
     }
 
