@@ -1,14 +1,15 @@
 // ============ External Imports ============
 import { BigNumber, ContractReceipt, ethers } from "ethers";
 import { VaultParamFetcher } from "./params";
-import { ParamFetcher } from "../market";
 import { MarketParams, VaultParams } from "src/types";
-import { getTokenDecimals, approveToken } from "../utils";
-import erc20Abi from "../../abi/IERC20.json";
+import { parseUnits } from "ethers/lib/utils";
+
 // ============ Internal Imports ============
+import { getTokenDecimals, approveToken } from "../utils";
 import vaultAbi from "../../abi/Vault.json";
 import marginAbi from "../../abi/MarginAccount.json";
-import { parseUnits } from "ethers/lib/utils";
+import erc20Abi from "../../abi/IERC20.json";
+
 
 export abstract class Vault {
 
@@ -19,13 +20,13 @@ export abstract class Vault {
         amount2: BigNumber,
         receiver: string
     ): Promise<ContractReceipt> {
-        const contractInstance = new ethers.Contract(
+        const vaultContract = new ethers.Contract(
             ammVaultAddress,
             vaultAbi.abi,
             providerOrSigner
         );
 
-        const tx = await contractInstance.deposit(amount1, amount2, receiver);
+        const tx = await vaultContract.deposit(amount1, amount2, receiver);
 
         return tx.wait();
     }
@@ -36,13 +37,13 @@ export abstract class Vault {
         receiver: string,
         owner: string
     ): Promise<ContractReceipt> {
-        const contractInstance = new ethers.Contract(
+        const vaultContract = new ethers.Contract(
             owner,
             vaultAbi.abi,
             providerOrSigner
         );
 
-        const tx = await contractInstance.withdraw(shares, receiver, owner);
+        const tx = await vaultContract.withdraw(shares, receiver, owner);
 
         return tx.wait();
     }
@@ -59,8 +60,8 @@ export abstract class Vault {
         userAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        return await vault.balanceOf(userAddress, {from: ethers.constants.AddressZero});
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
+        return await vaultContract.balanceOf(userAddress, {from: ethers.constants.AddressZero});
     }
 
     /**
@@ -74,25 +75,23 @@ export abstract class Vault {
 
     static async getVaultLiquidity(
         vaultAddress: string,
-        marketAddress: string,
+        baseAssetAddress: string,
+        quoteAssetAddress: string,
         marginAccountAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ) {
-        const marginAccount = new ethers.Contract(
+        const marginAccountContract = new ethers.Contract(
             marginAccountAddress,
             marginAbi.abi,
             providerOrSigner
         );
-
-        const { baseAssetAddress, quoteAssetAddress } =
-            await ParamFetcher.getMarketParams(providerOrSigner, marketAddress);
-
-        const token1 = await marginAccount.getBalance(
+    
+        const token1 = await marginAccountContract.getBalance(
             vaultAddress,
             baseAssetAddress,
             {from: ethers.constants.AddressZero}
         );
-        const token2 = await marginAccount.getBalance(
+        const token2 = await marginAccountContract.getBalance(
             vaultAddress,
             quoteAssetAddress,
             {from: ethers.constants.AddressZero}
@@ -122,8 +121,8 @@ export abstract class Vault {
         vaultAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        const [amount1, amount2] = await vault.previewMint(shares, {from: ethers.constants.AddressZero});
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
+        const [amount1, amount2] = await vaultContract.previewMint(shares, {from: ethers.constants.AddressZero});
         return { amount1, amount2 };
     }
 
@@ -139,8 +138,8 @@ export abstract class Vault {
         vaultAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        const [amount1, amount2] = await vault.previewRedeem(shares, {from: ethers.constants.AddressZero});
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
+        const [amount1, amount2] = await vaultContract.previewRedeem(shares, {from: ethers.constants.AddressZero});
         return { amount1, amount2 };
     }
 
@@ -158,8 +157,8 @@ export abstract class Vault {
         vaultAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        return await vault.previewDeposit(amount1, amount2, {from: ethers.constants.AddressZero});
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
+        return await vaultContract.previewDeposit(amount1, amount2, {from: ethers.constants.AddressZero});
     }
 
     /**
@@ -172,13 +171,10 @@ export abstract class Vault {
     static async calculateAmount2ForAmount1(
         amount1: BigNumber,
         marketAddress: string,
+        marketParams: MarketParams,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
         const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
-            providerOrSigner,
-            marketAddress
-        );
-        const marketParams: MarketParams = await ParamFetcher.getMarketParams(
             providerOrSigner,
             marketAddress
         );
@@ -200,20 +196,16 @@ export abstract class Vault {
      */
     static async depositBasedOnShares(
         shares: BigNumber,
-        marketAddress: string,
+        marketParams: MarketParams,
         vaultAddress: string,
         signer: ethers.Signer,
         shouldApprove: boolean = false
     ): Promise<ContractReceipt> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
         const { amount1, amount2 } = await this.calculateDepositForShares(
             shares,
             vaultAddress,
             signer
-        );
-        const marketParams: MarketParams = await ParamFetcher.getMarketParams(
-            signer,
-            marketAddress
         );
         const token1Address = marketParams.baseAssetAddress;
         const token2Address = marketParams.quoteAssetAddress;
@@ -244,7 +236,7 @@ export abstract class Vault {
             );
         }
 
-        const tx = await vault.mint(
+        const tx = await vaultContract.mint(
             shares,
             await signer.getAddress(),
             overrides
@@ -264,8 +256,8 @@ export abstract class Vault {
         vaultAddress: string,
         signer: ethers.Signer
     ): Promise<ContractReceipt> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        const tx = await vault.redeem(
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const tx = await vaultContract.redeem(
             shares,
             await signer.getAddress(),
             await signer.getAddress()
@@ -286,18 +278,13 @@ export abstract class Vault {
     static async depositWithAmounts(
         amount1: BigNumber,
         amount2: BigNumber,
-        marketAddress: string,
+        baseAssetAddress: string,
+        quoteAssetAddress: string,
         vaultAddress: string,
         signer: ethers.Signer,
         shouldApprove: boolean = false
     ): Promise<ContractReceipt> {
-        const vault = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-
-        const { baseAssetAddress, quoteAssetAddress } = await ParamFetcher.getMarketParams(
-            signer,
-            marketAddress
-        );
-
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
 
         let overrides: ethers.PayableOverrides = {};
 
@@ -325,7 +312,7 @@ export abstract class Vault {
             );
         }
 
-        const tx = await vault.deposit(
+        const tx = await vaultContract.deposit(
             amount1,
             amount2,
             await signer.getAddress(),
