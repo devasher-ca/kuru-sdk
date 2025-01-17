@@ -3,19 +3,39 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version update type (major/minor/patch)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Install dependencies
         run: npm ci
@@ -25,6 +45,12 @@ jobs:
 
       - name: Update version
         run: |
+          # Determine version type (manual or automatic)
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          if [ -z "$VERSION_TYPE" ]; then
+            VERSION_TYPE="patch"
+          fi
+          
           # Read current version from package.json
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           
@@ -34,17 +60,36 @@ jobs:
           MINOR="${version_parts[1]}"
           PATCH="${version_parts[2]}"
           
-          # Increment patch version
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          # Calculate new version based on version type
+          case $VERSION_TYPE in
+            "major")
+              NEW_VERSION="$((MAJOR + 1)).0.0"
+              ;;
+            "minor")
+              NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+              ;;
+            "patch")
+              NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+              ;;
+          esac
           
           # Update package.json with new version
           node -e "const pkg = require('./package.json'); pkg.version = '$NEW_VERSION'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')"
+          
+          # Create git tag and commit
+          git add package.json
+          git commit -m "Bump version to $NEW_VERSION"
+          git tag "v$NEW_VERSION"
           
           echo "Updated version from $CURRENT_VERSION to $NEW_VERSION"
 
       - name: Build
         run: npm run build
+
+      - name: Push changes
+        run: |
+          git push
+          git push --tags
 
       - name: Publish to npm
         run: npm publish --access public
