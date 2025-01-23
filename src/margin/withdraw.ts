@@ -6,6 +6,7 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import marginAccountAbi from "../../abi/MarginAccount.json";
+import { TransactionOptions } from "src/types";
 
 export abstract class MarginWithdraw {
     static async withdraw(
@@ -13,19 +14,86 @@ export abstract class MarginWithdraw {
         marginAccountAddress: string,
         tokenAddress: string,
         amount: number,
-        decimals: number
+        decimals: number,
+        txOptions?: TransactionOptions
     ): Promise<ContractReceipt> {
         try {
-            const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
-    
-            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-            const tx = await marginAccount.withdraw(formattedAmount, tokenAddress);
-            return await tx.wait();
+            const signer = providerOrSigner instanceof ethers.Signer 
+                ? providerOrSigner 
+                : providerOrSigner.getSigner();
+
+            const tx = await MarginWithdraw.constructWithdrawTransaction(
+                signer,
+                marginAccountAddress,
+                tokenAddress,
+                amount,
+                decimals,
+                txOptions
+            );
+
+            const transaction = await signer.sendTransaction(tx);
+            return await transaction.wait();
         } catch (e: any) {
             if (!e.error) {
                 throw e;
             }
             throw extractErrorMessage(e);
         }
+    }
+
+    static async constructWithdrawTransaction(
+        signer: ethers.Signer,
+        marginAccountAddress: string,
+        tokenAddress: string,
+        amount: number,
+        decimals: number,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
+        const address = await signer.getAddress();
+        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
+
+        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+
+        const data = marginAccountInterface.encodeFunctionData("withdraw", [
+            formattedAmount,
+            tokenAddress
+        ]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: marginAccountAddress,
+            from: address,
+            data,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit ? signer.estimateGas({
+                ...tx,
+                gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+            }) : Promise.resolve(tx.gasLimit),
+            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(
+                    txOptions.priorityFee.toString(),
+                    'gwei'
+                );
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        return tx;
     }
 }
