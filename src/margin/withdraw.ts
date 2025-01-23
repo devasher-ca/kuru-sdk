@@ -22,12 +22,13 @@ export abstract class MarginWithdraw {
                 ? providerOrSigner 
                 : providerOrSigner.getSigner();
 
+            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+
             const tx = await MarginWithdraw.constructWithdrawTransaction(
                 signer,
                 marginAccountAddress,
                 tokenAddress,
-                amount,
-                decimals,
+                formattedAmount.toString(),
                 txOptions
             );
 
@@ -45,17 +46,14 @@ export abstract class MarginWithdraw {
         signer: ethers.Signer,
         marginAccountAddress: string,
         tokenAddress: string,
-        amount: number,
-        decimals: number,
+        amount: string,
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
         const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-
         const data = marginAccountInterface.encodeFunctionData("withdraw", [
-            formattedAmount,
+            amount,
             tokenAddress
         ]);
 
