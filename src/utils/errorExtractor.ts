@@ -7,7 +7,7 @@ interface ParsedError {
     originalError?: any;
 }
 
-function searchForErrorCode(data: string): string | null {
+export function searchForErrorCode(data: string): string | null {
     if (!data || typeof data !== 'string') return null;
     
     // Remove '0x' prefix if present
