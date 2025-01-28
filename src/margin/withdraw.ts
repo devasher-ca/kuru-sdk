@@ -125,7 +125,7 @@ export abstract class MarginWithdraw {
         const address = await signer.getAddress();
         const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const data = marginAccountInterface.encodeFunctionData("batchCdelaimMaxTokens", [tokens]);
+        const data = marginAccountInterface.encodeFunctionData("batchClaimMaxTokens", [tokens]);
 
         const tx: ethers.providers.TransactionRequest = {
             to: marginAccountAddress,

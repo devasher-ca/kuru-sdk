@@ -127,7 +127,7 @@ export abstract class MarginDeposit {
     
             let gasEstimate: BigNumber;
             if (tokenAddress === ethers.constants.AddressZero) {
-                gasEstimate = await marginAccount.estimateGas   .deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
+                gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount, { value: formattedAmount });
             } else {
                 if (approveTokens) {
                     gasEstimate = await estimateApproveGas(
