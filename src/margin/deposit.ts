@@ -31,14 +31,13 @@ export abstract class MarginDeposit {
                     providerOrSigner
                 );
             }
-
+            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
             const tx = await MarginDeposit.constructDepositTransaction(
                 tokenContract.signer,
                 marginAccountAddress,
                 userAddress,
                 tokenAddress,
-                amount,
-                decimals,
+                formattedAmount,
                 txOptions
             );
 
@@ -60,26 +59,23 @@ export abstract class MarginDeposit {
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
-        amount: number,
-        decimals: number,
+        amount: BigNumber,
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
         const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
-
         const data = marginAccountInterface.encodeFunctionData("deposit", [
             userAddress,
             tokenAddress,
-            formattedAmount
+            amount
         ]);
 
         const tx: ethers.providers.TransactionRequest = {
             to: marginAccountAddress,
             from: address,
             data,
-            value: tokenAddress === ethers.constants.AddressZero ? formattedAmount : BigNumber.from(0),
+            value: tokenAddress === ethers.constants.AddressZero ? amount : BigNumber.from(0),
             ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
             ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
             ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
