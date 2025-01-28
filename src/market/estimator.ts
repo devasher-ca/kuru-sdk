@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 // ============ Internal Imports ============
 import { MarketParams } from "../types";
@@ -25,11 +25,6 @@ export abstract class CostEstimator {
         marketParams: MarketParams,
         size: number
     ): Promise<number> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
 
         const sizeInPrecision = ethers.utils.parseUnits(
             size.toFixed(log10BigNumber(marketParams.sizePrecision)),
@@ -37,12 +32,10 @@ export abstract class CostEstimator {
         );
 
         try {
-            const output = await orderbook.callStatic.placeAndExecuteMarketSell(
-                sizeInPrecision,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
+            const output = await this.returnMarketSellEstimate(
+                providerOrSigner,
+                orderbookAddress,
+                sizeInPrecision
             );
 
             return Number(
@@ -57,6 +50,28 @@ export abstract class CostEstimator {
             }
             throw extractErrorMessage(e);
         }
+    }
+
+    static async returnMarketSellEstimate(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        size: BigNumber
+    ): Promise<number> {
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
+        
+        const estimate = await orderbook.callStatic.estimateMarketSell(
+            size,
+            0,
+            false,
+            false,
+            { from: ethers.constants.AddressZero }
+        );
+
+        return estimate;
     }
 
     /**
@@ -125,24 +140,16 @@ export abstract class CostEstimator {
         marketParams: MarketParams,
         quoteAmount: number
     ): Promise<number> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
-
         const sizeInPrecision = ethers.utils.parseUnits(
             quoteAmount.toFixed(log10BigNumber(marketParams.pricePrecision)),
             log10BigNumber(marketParams.pricePrecision)
         );
 
         try {
-            const result = await orderbook.callStatic.placeAndExecuteMarketBuy(
-                sizeInPrecision,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
+            const result = await this.returnMarketBuyEstimate(
+                providerOrSigner,
+                orderbookAddress,
+                sizeInPrecision
             );
 
             return parseFloat(
@@ -154,6 +161,28 @@ export abstract class CostEstimator {
             }
             throw extractErrorMessage(e);
         }
+    }
+
+    static async returnMarketBuyEstimate(
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        orderbookAddress: string,
+        size: BigNumber
+    ): Promise<number> {
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
+
+        const estimate = await orderbook.callStatic.estimateMarketBuy(
+            size,
+            0,
+            false,
+            false,
+            { from: ethers.constants.AddressZero }
+        );
+
+        return estimate;
     }
 
     /**
