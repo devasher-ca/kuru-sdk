@@ -63,7 +63,7 @@ export abstract class CostEstimator {
             providerOrSigner
         );
         
-        const estimate = await orderbook.callStatic.estimateMarketSell(
+        const estimate = await orderbook.callStatic.placeAndExecuteMarketSell(
             size,
             0,
             false,
@@ -174,7 +174,7 @@ export abstract class CostEstimator {
             providerOrSigner
         );
 
-        const estimate = await orderbook.callStatic.estimateMarketBuy(
+        const estimate = await orderbook.callStatic.placeAndExecuteMarketBuy(
             size,
             0,
             false,
