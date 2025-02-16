@@ -135,3 +135,29 @@ export async function estimateApproveGas(
         throw extractErrorMessage(e);
     }
 }
+
+/**
+ * @dev Gets the token allowance for a specific owner and spender.
+ * @param tokenAddress - The token contract address.
+ * @param ownerAddress - The address of the token owner.
+ * @param spenderAddress - The address of the spender.
+ * @param provider - The provider instance to use for the query.
+ * @returns A promise that resolves to the current allowance as a BigNumber.
+ */
+export async function getAllowance(
+    tokenAddress: string,
+    ownerAddress: string,
+    spenderAddress: string,
+    provider: ethers.providers.Provider
+): Promise<BigNumber> {
+    try {
+        const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, provider);
+        const allowance = await tokenContract.allowance(ownerAddress, spenderAddress);
+        return allowance;
+    } catch (e: any) {
+        if (!e.error) {
+            throw e;
+        }
+        throw extractErrorMessage(e);
+    }
+}
