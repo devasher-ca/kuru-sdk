@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-
+import KuruUtilsABI from "../../abi/KuruUtils.json";
 import { TokenInfo } from "../types";
 
 export abstract class TokenDetailsReader {
@@ -17,25 +17,16 @@ export abstract class TokenDetailsReader {
         tokens: string[],
         holder: string
     ): Promise<TokenInfo[]> {
-        const iface = new ethers.utils.Interface([
-            "function getTokensInfo(address[] tokens, address holder) view returns (tuple(string name, string symbol, uint256 balance, uint8 decimals)[])"
-        ]);
-
-        const data = iface.encodeFunctionData("getTokensInfo", [tokens, holder]);
-
-        const result = await providerOrSigner.call({
-            to: kuruUtilsAddress,
-            from: ethers.constants.AddressZero,
-            data
-        });
-
-        const decodedResult = iface.decodeFunctionResult("getTokensInfo", result);
+        const kuruUtils = new ethers.Contract(kuruUtilsAddress, KuruUtilsABI.abi, providerOrSigner);
         
-        return decodedResult[0].map((info: any) => ({
+        const result = await kuruUtils.getTokensInfo(tokens, holder);
+        
+        return result.map((info: any) => ({
             name: info.name,
             symbol: info.symbol,
             balance: info.balance.toString(),
-            decimals: info.decimals
+            decimals: info.decimals,
+            totalSupply: info.totalSupply.toString()
         }));
     }
 }

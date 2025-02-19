@@ -61,6 +61,7 @@ const TOKEN_ADDRESSES = [
             console.log(`Symbol: ${info.symbol}`);
             console.log(`Balance: ${info.balance}`);
             console.log(`Decimals: ${info.decimals}`);
+            console.log(`Total Supply: ${info.totalSupply}`);
         });
 
         console.log(`\nEstimated Gas Used: ${gasEstimate.toString()}`);
