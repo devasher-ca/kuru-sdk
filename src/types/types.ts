@@ -110,3 +110,10 @@ export interface TradeEvent {
     takerAddress: string;
     filledSize: BigNumber;
 }
+
+export interface TokenInfo {
+    name: string;
+    symbol: string;
+    balance: string;
+    decimals: number;
+}
