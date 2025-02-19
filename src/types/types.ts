@@ -116,4 +116,5 @@ export interface TokenInfo {
     symbol: string;
     balance: string;
     decimals: number;
+    totalSupply: string;
 }
