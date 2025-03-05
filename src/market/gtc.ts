@@ -40,11 +40,11 @@ export abstract class GTC {
         );
 
         const priceBn: BigNumber = ethers.utils.parseUnits(
-            clippedPrice.toString(),
+            clippedPrice,
             log10BigNumber(marketParams.pricePrecision)
         );
         const sizeBn: BigNumber = ethers.utils.parseUnits(
-            clippedSize.toString(),
+            clippedSize,
             log10BigNumber(marketParams.sizePrecision)
         );
 
@@ -87,11 +87,11 @@ export abstract class GTC {
         );
 
         const priceBn: BigNumber = ethers.utils.parseUnits(
-            clippedPrice.toString(),
+            clippedPrice,
             log10BigNumber(marketParams.pricePrecision)
         );
         const sizeBn: BigNumber = ethers.utils.parseUnits(
-            clippedSize.toString(),
+            clippedSize,
             log10BigNumber(marketParams.sizePrecision)
         );
 

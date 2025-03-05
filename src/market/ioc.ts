@@ -139,7 +139,7 @@ export abstract class IOC {
             "placeAndExecuteMarketBuy",
             [
                 ethers.utils.parseUnits(
-                    quoteSize.toString(),
+                    quoteSize,
                     log10BigNumber(marketParams.pricePrecision)
                 ),
                 minAmountOut,
@@ -149,7 +149,7 @@ export abstract class IOC {
         );
 
         const parsedQuoteSize = ethers.utils.parseUnits(
-            quoteSize.toString(),
+            quoteSize,
             marketParams.quoteAssetDecimals
         );
 
@@ -228,7 +228,7 @@ export abstract class IOC {
             "placeAndExecuteMarketSell",
             [
                 ethers.utils.parseUnits(
-                    size.toString(),
+                    size,
                     log10BigNumber(marketParams.sizePrecision)
                 ),
                 minAmountOut,
@@ -238,7 +238,7 @@ export abstract class IOC {
         );
 
         const parsedSize = ethers.utils.parseUnits(
-            size.toString(),
+            size,
             marketParams.baseAssetDecimals
         );
 
@@ -323,12 +323,12 @@ async function placeAndExecuteMarketBuy(
     txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
     const parsedQuoteSize = ethers.utils.parseUnits(
-        quoteSize.toString(),
+        quoteSize,
         marketParams.quoteAssetDecimals
     );
 
     const parsedMinAmountOut = ethers.utils.parseUnits(
-        minAmountOut.toString(),
+        minAmountOut,
         marketParams.baseAssetDecimals
     );
 
@@ -386,7 +386,7 @@ async function estimateGasBuy(
         const gasEstimate =
             await orderbook.estimateGas.placeAndExecuteMarketBuy(
                 ethers.utils.parseUnits(
-                    quoteSize.toString(),
+                    quoteSize,
                     log10BigNumber(marketParams.pricePrecision)
                 ),
                 minAmountOut,
@@ -429,12 +429,12 @@ async function placeAndExecuteMarketSell(
     txOptions?: TransactionOptions
 ): Promise<ContractReceipt> {
     const parsedSize = ethers.utils.parseUnits(
-        size.toString(),
+        size,
         marketParams.baseAssetDecimals
     );
 
     const parsedMinAmountOut = ethers.utils.parseUnits(
-        minAmountOut.toString(),
+        minAmountOut,
         marketParams.quoteAssetDecimals
     );
 
@@ -493,7 +493,7 @@ async function estimateGasSell(
         const gasEstimate =
             await orderbook.estimateGas.placeAndExecuteMarketSell(
                 ethers.utils.parseUnits(
-                    size.toString(),
+                    size,
                     log10BigNumber(marketParams.sizePrecision)
                 ),
                 minAmountOut,

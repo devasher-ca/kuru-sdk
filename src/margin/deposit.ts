@@ -38,14 +38,11 @@ export abstract class MarginDeposit {
                 await approveToken(
                     tokenContract,
                     marginAccountAddress,
-                    ethers.utils.parseUnits(amount.toString(), decimals),
+                    ethers.utils.parseUnits(amount, decimals),
                     providerOrSigner
                 );
             }
-            const formattedAmount = ethers.utils.parseUnits(
-                amount.toString(),
-                decimals
-            );
+            const formattedAmount = ethers.utils.parseUnits(amount, decimals);
             const tx = await MarginDeposit.constructDepositTransaction(
                 tokenContract.signer,
                 marginAccountAddress,
@@ -143,7 +140,7 @@ export abstract class MarginDeposit {
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
-        amount: number,
+        amount: string,
         decimals: number,
         approveTokens: boolean
     ): Promise<BigNumber> {
@@ -159,10 +156,7 @@ export abstract class MarginDeposit {
                 providerOrSigner
             );
 
-            const formattedAmount = ethers.utils.parseUnits(
-                amount.toString(),
-                decimals
-            );
+            const formattedAmount = ethers.utils.parseUnits(amount, decimals);
 
             let gasEstimate: BigNumber;
             if (tokenAddress === ethers.constants.AddressZero) {
@@ -177,7 +171,7 @@ export abstract class MarginDeposit {
                     gasEstimate = await estimateApproveGas(
                         tokenContract,
                         marginAccountAddress,
-                        ethers.utils.parseUnits(amount.toString(), decimals)
+                        ethers.utils.parseUnits(amount, decimals)
                     );
                 } else {
                     gasEstimate = await marginAccount.estimateGas.deposit(
