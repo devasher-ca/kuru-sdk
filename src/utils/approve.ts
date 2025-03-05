@@ -45,7 +45,7 @@ export async function constructApproveTransaction(
         to: tokenContractAddress,
         from: address,
         data,
-        gasLimit: BigNumber.from(txOptions?.gasLimit ?? 50_000),
+        ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
         ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
         ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
         ...(txOptions?.maxFeePerGas && {
