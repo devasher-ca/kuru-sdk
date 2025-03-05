@@ -8,14 +8,15 @@ import { TransactionOptions } from "../types";
 import { extractErrorMessage } from "../utils";
 import erc20Abi from "../../abi/IERC20.json";
 
-const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
-
+const getOwnerAddress = async (
+    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+): Promise<string> => {
     if (providerOrSigner instanceof ethers.providers.JsonRpcProvider) {
         return await providerOrSigner.getSigner().getAddress();
     }
 
     return await providerOrSigner.getAddress();
-}
+};
 
 /**
  * @dev Constructs a transaction to approve token spending.
@@ -35,29 +36,39 @@ export async function constructApproveTransaction(
 ): Promise<ethers.providers.TransactionRequest> {
     const address = await signer.getAddress();
     const tokenInterface = new ethers.utils.Interface(erc20Abi.abi);
-    const data = tokenInterface.encodeFunctionData("approve", [approveTo, size]);
+    const data = tokenInterface.encodeFunctionData("approve", [
+        approveTo,
+        size,
+    ]);
 
     const tx: ethers.providers.TransactionRequest = {
         to: tokenContractAddress,
         from: address,
         data,
-        gasLimit: BigNumber.from(50000),
+        gasLimit: BigNumber.from(txOptions?.gasLimit ?? 50_000),
         ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
         ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-        ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-        ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
+        ...(txOptions?.maxFeePerGas && {
+            maxFeePerGas: txOptions.maxFeePerGas,
+        }),
+        ...(txOptions?.maxPriorityFeePerGas && {
+            maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
+        }),
     };
-    const baseGasPrice = (!tx.gasPrice && !tx.maxFeePerGas) 
-        ? signer.provider?.getGasPrice() || undefined
-        : undefined;
+    const baseGasPrice =
+        !tx.gasPrice && !tx.maxFeePerGas
+            ? signer.provider?.getGasPrice() || undefined
+            : undefined;
 
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
         if (txOptions?.priorityFee) {
             const priorityFeeWei = ethers.utils.parseUnits(
                 txOptions.priorityFee.toString(),
-                'gwei'
+                "gwei"
             );
-            tx.gasPrice = await baseGasPrice.then(base => base.add(priorityFeeWei));
+            tx.gasPrice = await baseGasPrice.then((base) =>
+                base.add(priorityFeeWei)
+            );
         } else {
             tx.gasPrice = await baseGasPrice;
         }
@@ -86,7 +97,10 @@ export async function approveToken(
 ): Promise<string | null> {
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
-        const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
+        const existingApproval = await tokenContract.allowance(
+            ownerAddress,
+            approveTo
+        );
 
         if (existingApproval.gte(size)) {
             console.log("Approval already exists");
@@ -101,7 +115,7 @@ export async function approveToken(
             txOptions
         );
         const transaction = await tokenContract.signer.sendTransaction(tx);
-        
+
         if (!waitForReceipt) {
             return transaction.hash;
         }
@@ -109,7 +123,7 @@ export async function approveToken(
         const receipt = await transaction.wait(1);
         return receipt.transactionHash;
     } catch (e: any) {
-        console.error({e});
+        console.error({ e });
         if (!e.error) {
             throw e;
         }
@@ -151,8 +165,15 @@ export async function getAllowance(
     provider: ethers.providers.Provider
 ): Promise<BigNumber> {
     try {
-        const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, provider);
-        const allowance = await tokenContract.allowance(ownerAddress, spenderAddress);
+        const tokenContract = new ethers.Contract(
+            tokenAddress,
+            erc20Abi.abi,
+            provider
+        );
+        const allowance = await tokenContract.allowance(
+            ownerAddress,
+            spenderAddress
+        );
         return allowance;
     } catch (e: any) {
         if (!e.error) {

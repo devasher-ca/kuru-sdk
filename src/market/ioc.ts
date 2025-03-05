@@ -127,7 +127,7 @@ export abstract class IOC {
         orderbookAddress: string,
         marketParams: MarketParams,
         quoteSize: string,
-        minAmountOut: BigNumber,
+        minAmountOut: string,
         isMargin: boolean,
         isFillOrKill: boolean,
         txOptions?: TransactionOptions
@@ -216,7 +216,7 @@ export abstract class IOC {
         orderbookAddress: string,
         marketParams: MarketParams,
         size: string,
-        minAmountOut: BigNumber,
+        minAmountOut: string,
         isMargin: boolean,
         isFillOrKill: boolean,
         txOptions?: TransactionOptions
@@ -356,7 +356,7 @@ async function placeAndExecuteMarketBuy(
             orderbook.address,
             marketParams,
             quoteSize,
-            parsedMinAmountOut,
+            parsedMinAmountOut.toString(),
             isMargin,
             isFillOrKill,
             txOptions
@@ -462,7 +462,7 @@ async function placeAndExecuteMarketSell(
             orderbook.address,
             marketParams,
             size,
-            parsedMinAmountOut,
+            parsedMinAmountOut.toString(),
             isMargin,
             isFillOrKill,
             txOptions
