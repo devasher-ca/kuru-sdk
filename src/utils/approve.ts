@@ -45,7 +45,6 @@ export async function constructApproveTransaction(
         to: tokenContractAddress,
         from: address,
         data,
-        ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
         ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
         ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
         ...(txOptions?.maxFeePerGas && {
@@ -55,10 +54,22 @@ export async function constructApproveTransaction(
             maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas,
         }),
     };
-    const baseGasPrice =
+
+    const [gasLimit, baseGasPrice] = await Promise.all([
+        !tx.gasLimit
+            ? signer.estimateGas({
+                  ...tx,
+                  gasPrice: ethers.utils.parseUnits("1", "gwei"),
+              })
+            : Promise.resolve(tx.gasLimit),
         !tx.gasPrice && !tx.maxFeePerGas
-            ? signer.provider?.getGasPrice() || undefined
-            : undefined;
+            ? signer.provider!.getGasPrice()
+            : Promise.resolve(undefined),
+    ]);
+
+    if (!tx.gasLimit) {
+        tx.gasLimit = gasLimit;
+    }
 
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
         if (txOptions?.priorityFee) {
@@ -66,11 +77,9 @@ export async function constructApproveTransaction(
                 txOptions.priorityFee.toString(),
                 "gwei"
             );
-            tx.gasPrice = await baseGasPrice.then((base) =>
-                base.add(priorityFeeWei)
-            );
+            tx.gasPrice = baseGasPrice.add(priorityFeeWei);
         } else {
-            tx.gasPrice = await baseGasPrice;
+            tx.gasPrice = baseGasPrice;
         }
     }
 
