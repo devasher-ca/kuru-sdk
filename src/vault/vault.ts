@@ -186,6 +186,30 @@ export abstract class Vault {
     }
 
     /**
+     * Calculate the amount of token1 needed for a specific amount of token2 based on current price
+     * @param amount2 The amount of token2
+     * @param marketAddress The address of the market contract
+     * @param providerOrSigner The provider or signer to use for the transaction
+     * @returns A promise that resolves to the amount of token1 needed
+     */
+    static async calculateAmount1ForAmount2(
+        amount2: BigNumber,
+        marketAddress: string,
+        marketParams: MarketParams,
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+    ): Promise<BigNumber> {
+        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
+            providerOrSigner,
+            marketAddress
+        );
+        const price = vaultParams.vaultBestAsk;
+        const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
+        const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
+        //amount1 = (amount2 * 10^token1Decimals * 10^18) / (price * 10^token2Decimals)
+        return amount2.mul(parseUnits("1", token1Decimals)).mul(parseUnits("1", 18)).div(price).div(parseUnits("1", token2Decimals));
+    }
+
+    /**
      * Deposit tokens into the vault based on the number of shares to mint
      * @param shares The number of shares to mint
      * @param marketAddress The address of the market contract
