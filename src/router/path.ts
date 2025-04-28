@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { ParamFetcher, CostEstimator } from "../market";
 import { PoolFetcher } from "../pools";
 import { Pool, Route, RouteOutput } from "../types/pool";
+import { MarketParams } from "../types";
 import orderbookAbi from "../../abi/OrderBook.json";
 import utilsAbi from "../../abi/KuruUtils.json";
 
@@ -54,27 +55,51 @@ export abstract class PathFinder {
         };
 
         let bestOutput = 0;
-        for (const route of routes) {
-            const routeOutput = await (amountType === "amountOut"
-                ? computeRouteInput(providerOrSigner, route, amountIn)
-                : computeRouteOutput(providerOrSigner, route, amountIn));
+        const routeOutputs = await Promise.all(
+            routes.map(async route => 
+                amountType === "amountOut"
+                    ? await computeRouteInput(providerOrSigner, route, amountIn)
+                    : await computeRouteOutput(providerOrSigner, route, amountIn)
+            )
+        );
 
+        for (const routeOutput of routeOutputs) {
             if (routeOutput.output > bestOutput) {
                 bestRoute = routeOutput;
                 bestOutput = routeOutput.output;
             }
         }
         if (estimatorContractAddress) {
-            const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
-            const orderbookAddresses = bestRoute.route.path.map(pool => pool.orderbook);
-            const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, bestRoute.isBuy);
-            const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
-            const actualPrice = parseFloat((amountIn / bestRoute.output).toFixed(18));
-            const priceImpact = ((100 * actualPrice / priceInUnits) - 100).toFixed(2);
-            bestRoute.priceImpact = parseFloat(priceImpact);
+            bestRoute.priceImpact = await calculatePriceImpact(
+                providerOrSigner, 
+                estimatorContractAddress, 
+                bestRoute, 
+                amountIn
+            );
         }
         return bestRoute;
     }
+}
+
+async function calculatePriceImpact(
+    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    estimatorContractAddress: string,
+    route: RouteOutput,
+    amountIn: number
+): Promise<number> {
+    const estimatorContract = new ethers.Contract(
+        estimatorContractAddress,
+        utilsAbi.abi,
+        providerOrSigner
+    );
+    const orderbookAddresses = route.route.path.map(pool => pool.orderbook);
+    const price = await estimatorContract.calculatePriceOverRoute(
+        orderbookAddresses,
+        route.isBuy
+    );
+    const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
+    const actualPrice = parseFloat((amountIn / route.output).toFixed(18));
+    return parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
 }
 
 function computeAllRoutes(
@@ -117,7 +142,8 @@ function computeAllRoutes(
 async function computeRouteInput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
-    amountOut: number
+    amountOut: number,
+    marketParamsMap?: Map<string, MarketParams>
 ) {
     let currentToken = route.tokenIn;
     let output: number = amountOut;
@@ -128,11 +154,14 @@ async function computeRouteInput(
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
 
-        // Fetch market parameters for the current orderbook
-        const marketParams = await ParamFetcher.getMarketParams(
-            providerOrSigner,
-            orderbookAddress
-        );
+        // Get market parameters from map if available, otherwise fetch them
+        let poolMarketParams = marketParamsMap?.get(orderbookAddress);
+        if (!poolMarketParams) {
+            poolMarketParams = await ParamFetcher.getMarketParams(
+                providerOrSigner,
+                orderbookAddress
+            );
+        }
 
         const orderbook = new ethers.Contract(
             orderbookAddress,
@@ -155,7 +184,7 @@ async function computeRouteInput(
             output = await CostEstimator.estimateRequiredBaseForSell(
                 providerOrSigner,
                 orderbookAddress,
-                marketParams,
+                poolMarketParams,
                 output,
                 l2Book,
                 vaultParams
@@ -167,7 +196,7 @@ async function computeRouteInput(
             output = await CostEstimator.estimateRequiredQuoteForBuy(
                 providerOrSigner,
                 orderbookAddress,
-                marketParams,
+                poolMarketParams,
                 output,
                 l2Book,
                 vaultParams
@@ -176,7 +205,7 @@ async function computeRouteInput(
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(marketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(poolMarketParams.takerFeeBps._hex);
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 
@@ -193,7 +222,8 @@ async function computeRouteInput(
 async function computeRouteOutput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
-    amountIn: number
+    amountIn: number,
+    marketParamsMap?: Map<string, MarketParams>
 ): Promise<RouteOutput> {
     let currentToken = route.tokenIn;
     let output: number = amountIn;
@@ -205,11 +235,14 @@ async function computeRouteOutput(
     for (const pool of route.path) {
         const orderbookAddress = pool.orderbook;
 
-        // Fetch market parameters for the current orderbook
-        const marketParams = await ParamFetcher.getMarketParams(
-            providerOrSigner,
-            orderbookAddress
-        );
+        // Get market parameters from map if available, otherwise fetch them
+        let poolMarketParams = marketParamsMap?.get(orderbookAddress);
+        if (!poolMarketParams) {
+            poolMarketParams = await ParamFetcher.getMarketParams(
+                providerOrSigner,
+                orderbookAddress
+            );
+        }
 
         currentToken === ethers.constants.AddressZero
             ? nativeSend.push(true)
@@ -219,7 +252,7 @@ async function computeRouteOutput(
             output = (await CostEstimator.estimateMarketSell(
                 providerOrSigner,
                 orderbookAddress,
-                marketParams,
+                poolMarketParams,
                 output
             )).output;
             currentToken = pool.quoteToken; // Update current token to quote token
@@ -229,14 +262,14 @@ async function computeRouteOutput(
             output = (await CostEstimator.estimateMarketBuy(
                 providerOrSigner,
                 orderbookAddress,
-                marketParams,
+                poolMarketParams,
                 output
             )).output;
             currentToken = pool.baseToken; // Update current token to base token
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(marketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(poolMarketParams.takerFeeBps._hex);
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 
@@ -249,6 +282,8 @@ async function computeRouteOutput(
         feeInBase,
     };
 }
+
+
 
 function involvesToken(pool: Pool, token: string): boolean {
     // Make comparison case insensitive
