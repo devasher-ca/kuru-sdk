@@ -1,7 +1,7 @@
 // ============ External Imports ============
 import { BigNumber, ContractReceipt, ethers } from "ethers";
 import { VaultParamFetcher } from "./params";
-import { MarketParams, VaultParams } from "src/types";
+import { MarketParams, TransactionOptions, VaultParams } from "src/types";
 import { parseUnits } from "ethers/lib/utils";
 
 // ============ Internal Imports ============
@@ -10,9 +10,7 @@ import vaultAbi from "../../abi/Vault.json";
 import marginAbi from "../../abi/MarginAccount.json";
 import erc20Abi from "../../abi/IERC20.json";
 
-
 export abstract class Vault {
-
     static async deposit(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         ammVaultAddress: string,
@@ -20,11 +18,7 @@ export abstract class Vault {
         amount2: BigNumber,
         receiver: string
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            ammVaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(ammVaultAddress, vaultAbi.abi, providerOrSigner);
 
         const tx = await vaultContract.deposit(amount1, amount2, receiver);
 
@@ -37,11 +31,7 @@ export abstract class Vault {
         receiver: string,
         owner: string
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            owner,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(owner, vaultAbi.abi, providerOrSigner);
 
         const tx = await vaultContract.withdraw(shares, receiver, owner);
 
@@ -61,7 +51,7 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        return await vaultContract.balanceOf(userAddress, {from: ethers.constants.AddressZero});
+        return await vaultContract.balanceOf(userAddress, { from: ethers.constants.AddressZero });
     }
 
     /**
@@ -80,22 +70,14 @@ export abstract class Vault {
         marginAccountAddress: string,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ) {
-        const marginAccountContract = new ethers.Contract(
-            marginAccountAddress,
-            marginAbi.abi,
-            providerOrSigner
-        );
-    
-        const token1 = await marginAccountContract.getBalance(
-            vaultAddress,
-            baseAssetAddress,
-            {from: ethers.constants.AddressZero}
-        );
-        const token2 = await marginAccountContract.getBalance(
-            vaultAddress,
-            quoteAssetAddress,
-            {from: ethers.constants.AddressZero}
-        );
+        const marginAccountContract = new ethers.Contract(marginAccountAddress, marginAbi.abi, providerOrSigner);
+
+        const token1 = await marginAccountContract.getBalance(vaultAddress, baseAssetAddress, {
+            from: ethers.constants.AddressZero,
+        });
+        const token2 = await marginAccountContract.getBalance(vaultAddress, quoteAssetAddress, {
+            from: ethers.constants.AddressZero,
+        });
 
         return {
             token1: {
@@ -122,7 +104,7 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        const [amount1, amount2] = await vaultContract.previewMint(shares, {from: ethers.constants.AddressZero});
+        const [amount1, amount2] = await vaultContract.previewMint(shares, { from: ethers.constants.AddressZero });
         return { amount1, amount2 };
     }
 
@@ -139,7 +121,7 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        const [amount1, amount2] = await vaultContract.previewRedeem(shares, {from: ethers.constants.AddressZero});
+        const [amount1, amount2] = await vaultContract.previewRedeem(shares, { from: ethers.constants.AddressZero });
         return { amount1, amount2 };
     }
 
@@ -158,7 +140,7 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
-        return await vaultContract.previewDeposit(amount1, amount2, {from: ethers.constants.AddressZero});
+        return await vaultContract.previewDeposit(amount1, amount2, { from: ethers.constants.AddressZero });
     }
 
     /**
@@ -172,17 +154,18 @@ export abstract class Vault {
         amount1: BigNumber,
         marketAddress: string,
         marketParams: MarketParams,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
-        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
-            providerOrSigner,
-            marketAddress
-        );
+        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
         const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
         const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount2 = (amount1 * price * 10^token2Decimals) / (10^token1Decimals * 10^18)
-        return amount1.mul(price).mul(parseUnits("1", token2Decimals)).div(parseUnits("1", token1Decimals)).div(parseUnits("1", 18));
+        return amount1
+            .mul(price)
+            .mul(parseUnits("1", token2Decimals))
+            .div(parseUnits("1", token1Decimals))
+            .div(parseUnits("1", 18));
     }
 
     /**
@@ -198,15 +181,16 @@ export abstract class Vault {
         marketParams: MarketParams,
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
     ): Promise<BigNumber> {
-        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
-            providerOrSigner,
-            marketAddress
-        );
+        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
         const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
         const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount1 = (amount2 * 10^token1Decimals * 10^18) / (price * 10^token2Decimals)
-        return amount2.mul(parseUnits("1", token1Decimals)).mul(parseUnits("1", 18)).div(price).div(parseUnits("1", token2Decimals));
+        return amount2
+            .mul(parseUnits("1", token1Decimals))
+            .mul(parseUnits("1", 18))
+            .div(price)
+            .div(parseUnits("1", token2Decimals));
     }
 
     /**
@@ -226,11 +210,7 @@ export abstract class Vault {
         shouldApprove: boolean = false
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        const { amount1, amount2 } = await this.calculateDepositForShares(
-            shares,
-            vaultAddress,
-            signer
-        );
+        const { amount1, amount2 } = await this.calculateDepositForShares(shares, vaultAddress, signer);
         const token1Address = marketParams.baseAssetAddress;
         const token2Address = marketParams.quoteAssetAddress;
 
@@ -240,31 +220,17 @@ export abstract class Vault {
             overrides = { value: amount1 };
         } else if (shouldApprove) {
             const tokenContract = new ethers.Contract(token1Address, erc20Abi.abi, signer);
-            await approveToken(
-                tokenContract,
-                vaultAddress,
-                amount1,
-                signer
-            );
+            await approveToken(tokenContract, vaultAddress, amount1, signer);
         }
 
         if (token2Address === ethers.constants.AddressZero) {
             overrides = { value: amount2 };
         } else if (shouldApprove) {
             const tokenContract = new ethers.Contract(token2Address, erc20Abi.abi, signer);
-            await approveToken(
-                tokenContract,
-                vaultAddress,
-                amount2,
-                signer
-            );
+            await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.mint(
-            shares,
-            await signer.getAddress(),
-            overrides
-        );
+        const tx = await vaultContract.mint(shares, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
@@ -281,11 +247,7 @@ export abstract class Vault {
         signer: ethers.Signer
     ): Promise<ContractReceipt> {
         const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
-        const tx = await vaultContract.redeem(
-            shares,
-            await signer.getAddress(),
-            await signer.getAddress()
-        );
+        const tx = await vaultContract.redeem(shares, await signer.getAddress(), await signer.getAddress());
         return await tx.wait();
     }
 
@@ -316,32 +278,143 @@ export abstract class Vault {
             overrides.value = amount1;
         } else if (shouldApprove) {
             const tokenContract = new ethers.Contract(baseAssetAddress, erc20Abi.abi, signer);
-            await approveToken(
-                tokenContract,
-                vaultAddress,
-                amount1,
-                signer
-            );
+            await approveToken(tokenContract, vaultAddress, amount1, signer);
         }
 
         if (quoteAssetAddress === ethers.constants.AddressZero) {
             overrides.value = amount2;
         } else if (shouldApprove) {
             const tokenContract = new ethers.Contract(quoteAssetAddress, erc20Abi.abi, signer);
-            await approveToken(
-                tokenContract,
-                vaultAddress,
-                amount2,
-                signer
-            );
+            await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.deposit(
-            amount1,
-            amount2,
-            await signer.getAddress(),
-            overrides
-        );
+        const tx = await vaultContract.deposit(amount1, amount2, await signer.getAddress(), overrides);
         return await tx.wait();
+    }
+
+    static async constructDepositTransaction(
+        amount1: BigNumber,
+        amount2: BigNumber,
+        baseAssetAddress: string,
+        quoteAssetAddress: string,
+        vaultAddress: string,
+        signer: ethers.Signer,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
+        const promises = [];
+
+        const shouldApproveToken1 = baseAssetAddress !== ethers.constants.AddressZero;
+        const shouldApproveToken2 = quoteAssetAddress !== ethers.constants.AddressZero;
+
+        if (shouldApproveToken1) {
+            const token1Contract = new ethers.Contract(baseAssetAddress, erc20Abi.abi, signer);
+            promises.push(approveToken(token1Contract, vaultAddress, amount1, signer));
+        }
+
+        if (shouldApproveToken2) {
+            const token2Contract = new ethers.Contract(quoteAssetAddress, erc20Abi.abi, signer);
+            promises.push(approveToken(token2Contract, vaultAddress, amount2, signer));
+        }
+
+        await Promise.all(promises);
+
+        const address = await signer.getAddress();
+
+        const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
+        const data = vaultInterface.encodeFunctionData("deposit", [amount1, amount2, address]);
+
+        // Calculate the total value for native token deposits
+        const txValue =
+            baseAssetAddress === ethers.constants.AddressZero
+                ? amount1
+                : quoteAssetAddress === ethers.constants.AddressZero
+                ? amount2
+                : BigNumber.from(0);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: vaultAddress,
+            from: address,
+            data,
+            value: txValue,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas }),
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit
+                ? signer.estimateGas({
+                      ...tx,
+                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
+                  })
+                : Promise.resolve(tx.gasLimit),
+            !tx.gasPrice && !tx.maxFeePerGas ? signer.provider!.getGasPrice() : Promise.resolve(undefined),
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(txOptions.priorityFee.toString(), "gwei");
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        return tx;
+    }
+
+    static async constructWithdrawTransaction(
+        shares: BigNumber,
+        vaultAddress: string,
+        signer: ethers.Signer,
+        txOptions?: TransactionOptions
+    ): Promise<ethers.providers.TransactionRequest> {
+        const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
+
+        const fromAddress = await signer.getAddress();
+
+        const data = vaultInterface.encodeFunctionData("withdraw", [shares, fromAddress, fromAddress]);
+
+        const tx: ethers.providers.TransactionRequest = {
+            to: vaultAddress,
+            from: fromAddress,
+            data,
+            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
+            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
+            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
+            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
+            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas }),
+        };
+
+        const [gasLimit, baseGasPrice] = await Promise.all([
+            !tx.gasLimit
+                ? signer.estimateGas({
+                      ...tx,
+                      gasPrice: ethers.utils.parseUnits("1", "gwei"),
+                  })
+                : Promise.resolve(tx.gasLimit),
+            !tx.gasPrice && !tx.maxFeePerGas ? signer.provider!.getGasPrice() : Promise.resolve(undefined),
+        ]);
+
+        if (!tx.gasLimit) {
+            tx.gasLimit = gasLimit;
+        }
+
+        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
+            if (txOptions?.priorityFee) {
+                const priorityFeeWei = ethers.utils.parseUnits(txOptions.priorityFee.toString(), "gwei");
+                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            } else {
+                tx.gasPrice = baseGasPrice;
+            }
+        }
+
+        return tx;
     }
 }
