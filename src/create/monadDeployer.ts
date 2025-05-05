@@ -93,7 +93,7 @@ export class MonadDeployer {
         tokenParams: TokenParams,
         marketParams: PoolParams,
         txOptions?: TransactionOptions
-    ): Promise<{tokenAddress: string, marketAddress: string}> {
+    ): Promise<{ tokenAddress: string; marketAddress: string; hash: string }> {
         const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
 
         try {
@@ -126,7 +126,8 @@ export class MonadDeployer {
             const parsedLog = deployer.interface.parseLog(pumpingTimeLog);
             return {
                 tokenAddress: parsedLog.args.token,
-                marketAddress: parsedLog.args.market
+                marketAddress: parsedLog.args.market,
+                hash: receipt.transactionHash
             };
         } catch (e: any) {
             console.log({ e });
