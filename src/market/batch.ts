@@ -7,6 +7,7 @@ import { MarketParams, BATCH } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
+import buildTransactionRequest from "src/utils/txConfig";
 
 export abstract class OrderBatcher {
     /**
@@ -65,40 +66,13 @@ export abstract class OrderBatcher {
                 batchUpdate.postOnly
             ]);
 
-            const tx: ethers.providers.TransactionRequest = {
+            const tx = await buildTransactionRequest({
                 to: orderbook.address,
                 from: address,
                 data,
-                ...(batchUpdate.txOptions?.nonce !== undefined && { nonce: batchUpdate.txOptions.nonce }),
-                ...(batchUpdate.txOptions?.gasLimit && { gasLimit: batchUpdate.txOptions.gasLimit }),
-                ...(batchUpdate.txOptions?.gasPrice && { gasPrice: batchUpdate.txOptions.gasPrice }),
-                ...(batchUpdate.txOptions?.maxFeePerGas && { maxFeePerGas: batchUpdate.txOptions.maxFeePerGas }),
-                ...(batchUpdate.txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: batchUpdate.txOptions.maxPriorityFeePerGas })
-            };
-
-            const [gasLimit, baseGasPrice] = await Promise.all([
-                !tx.gasLimit ? signer.estimateGas({
-                    ...tx,
-                    gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-                }) : Promise.resolve(tx.gasLimit),
-                (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-            ]);
-
-            if (!tx.gasLimit) {
-                tx.gasLimit = gasLimit;
-            }
-
-            if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-                if (batchUpdate.txOptions?.priorityFee) {
-                    const priorityFeeWei = ethers.utils.parseUnits(
-                        batchUpdate.txOptions.priorityFee.toString(),
-                        'gwei'
-                    );
-                    tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-                } else {
-                    tx.gasPrice = baseGasPrice;
-                }
-            }
+                txOptions: batchUpdate.txOptions,
+                signer
+            });
 
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait();

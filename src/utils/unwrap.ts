@@ -5,6 +5,7 @@ import { ethers, BigNumber } from "ethers";
 import { extractErrorMessage } from "./errorExtractor";
 import wmonAbi from "../../abi/WMon.json";
 import { TransactionOptions } from "../types";
+import buildTransactionRequest from "./txConfig";
 
 /**
  * @dev Wraps native tokens into wrapped tokens (e.g. ETH -> WETH)
@@ -22,44 +23,15 @@ export async function constructWrapTransaction(
         const address = await signer.getAddress();
         const wrapperContractInterface = new ethers.utils.Interface(wmonAbi);
         const data = wrapperContractInterface.encodeFunctionData("deposit");
-        
-        const tx: ethers.providers.TransactionRequest = {
+
+        return buildTransactionRequest({
             to: wrapperContractAddress,
             from: address,
             value: amount,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei')
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+            txOptions,
+            signer
+        });
     } catch (e: any) {
         if (!e.error) {
             throw e;
@@ -87,42 +59,13 @@ export async function constructUnwrapTransaction(
             amount,
         ]);
         
-        const tx: ethers.providers.TransactionRequest = {
+        return buildTransactionRequest({
             to: wrapperContractAddress,
             from: address,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei')
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+            txOptions,
+            signer
+        });
     } catch (e: any) {
         if (!e.error) {
             throw e;

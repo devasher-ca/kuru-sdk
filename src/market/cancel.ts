@@ -7,6 +7,7 @@ import { TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
+import buildTransactionRequest from "src/utils/txConfig";
 
 export abstract class OrderCanceler {
     /**
@@ -28,42 +29,13 @@ export abstract class OrderCanceler {
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData("batchCancelOrders", [orderIds]);
 
-        const tx: ethers.providers.TransactionRequest = {
+        return buildTransactionRequest({
             to: orderbookAddress,
             from: address,
             data,
-            ...(txOptions?.nonce !== undefined && { nonce: txOptions.nonce }),
-            ...(txOptions?.gasLimit && { gasLimit: txOptions.gasLimit }),
-            ...(txOptions?.gasPrice && { gasPrice: txOptions.gasPrice }),
-            ...(txOptions?.maxFeePerGas && { maxFeePerGas: txOptions.maxFeePerGas }),
-            ...(txOptions?.maxPriorityFeePerGas && { maxPriorityFeePerGas: txOptions.maxPriorityFeePerGas })
-        };
-
-        const [gasLimit, baseGasPrice] = await Promise.all([
-            !tx.gasLimit ? signer.estimateGas({
-                ...tx,
-                gasPrice: ethers.utils.parseUnits('1', 'gwei')
-            }) : Promise.resolve(tx.gasLimit),
-            (!tx.gasPrice && !tx.maxFeePerGas) ? signer.provider!.getGasPrice() : Promise.resolve(undefined)
-        ]);
-
-        if (!tx.gasLimit) {
-            tx.gasLimit = gasLimit;
-        }
-
-        if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
-            if (txOptions?.priorityFee) {
-                const priorityFeeWei = ethers.utils.parseUnits(
-                    txOptions.priorityFee.toString(),
-                    'gwei'
-                );
-                tx.gasPrice = baseGasPrice.add(priorityFeeWei);
-            } else {
-                tx.gasPrice = baseGasPrice;
-            }
-        }
-
-        return tx;
+            txOptions,
+            signer
+        });
     }
 
     /**
