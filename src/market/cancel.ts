@@ -7,7 +7,7 @@ import { TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class OrderCanceler {
     /**
@@ -27,14 +27,17 @@ export abstract class OrderCanceler {
         const address = await signer.getAddress();
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData("batchCancelOrders", [orderIds]);
+        const data = orderbookInterface.encodeFunctionData(
+            "batchCancelOrders",
+            [orderIds]
+        );
 
         return buildTransactionRequest({
             to: orderbookAddress,
             from: address,
             data,
             txOptions,
-            signer
+            signer,
         });
     }
 
@@ -53,8 +56,12 @@ export abstract class OrderCanceler {
         txOptions?: TransactionOptions
     ): Promise<ContractReceipt> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
-            
+            const orderbook = new ethers.Contract(
+                orderbookAddress,
+                orderbookAbi.abi,
+                providerOrSigner
+            );
+
             const tx = await OrderCanceler.constructCancelOrdersTransaction(
                 orderbook.signer,
                 orderbookAddress,
@@ -81,9 +88,15 @@ export abstract class OrderCanceler {
         orderIds: BigNumber[]
     ): Promise<BigNumber> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            const orderbook = new ethers.Contract(
+                orderbookAddress,
+                orderbookAbi.abi,
+                providerOrSigner
+            );
 
-            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(orderIds);
+            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(
+                orderIds
+            );
             return gasEstimate;
         } catch (e: any) {
             console.log({ e });

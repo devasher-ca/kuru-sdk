@@ -12,7 +12,7 @@ import { TransactionOptions } from "src/types";
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
 import marginAccountAbi from "../../abi/MarginAccount.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class MarginDeposit {
     static async deposit(
@@ -86,7 +86,10 @@ export abstract class MarginDeposit {
             amount,
         ]);
 
-        const value = tokenAddress === ethers.constants.AddressZero ? amount : BigNumber.from(0);
+        const value =
+            tokenAddress === ethers.constants.AddressZero
+                ? amount
+                : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: marginAccountAddress,
@@ -94,7 +97,7 @@ export abstract class MarginDeposit {
             data,
             value,
             txOptions,
-            signer
+            signer,
         });
     }
 
