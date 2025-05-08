@@ -7,11 +7,11 @@ import { extractErrorMessage } from "../utils";
 
 // ============ Config Imports ============
 import monadDeployerAbi from "../../abi/MonadDeployer.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export interface TokenParams {
     name: string;
-    symbol: string; 
+    symbol: string;
     tokenURI: string;
     initialSupply: ethers.BigNumber;
     dev: string;
@@ -38,16 +38,22 @@ export class MonadDeployer {
         txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
+        const deployer = new ethers.Contract(
+            deployerAddress,
+            monadDeployerAbi.abi,
+            signer
+        );
 
         // Get the kuruCollectiveFee
         const kuruCollectiveFee = await deployer.kuruCollectiveFee();
 
-        const deployerInterface = new ethers.utils.Interface(monadDeployerAbi.abi);
-        const data = deployerInterface.encodeFunctionData("deployTokenAndMarket", [
-            tokenParams,
-            marketParams
-        ]);
+        const deployerInterface = new ethers.utils.Interface(
+            monadDeployerAbi.abi
+        );
+        const data = deployerInterface.encodeFunctionData(
+            "deployTokenAndMarket",
+            [tokenParams, marketParams]
+        );
 
         return buildTransactionRequest({
             from: address,
@@ -55,7 +61,7 @@ export class MonadDeployer {
             data,
             value: marketParams.nativeTokenAmount.add(kuruCollectiveFee),
             signer,
-            txOptions
+            txOptions,
         });
     }
 
@@ -66,40 +72,45 @@ export class MonadDeployer {
         marketParams: PoolParams,
         txOptions?: TransactionOptions
     ): Promise<{ tokenAddress: string; marketAddress: string; hash: string }> {
-        const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
+        const deployer = new ethers.Contract(
+            deployerAddress,
+            monadDeployerAbi.abi,
+            signer
+        );
 
         try {
-            const tx = await MonadDeployer.constructDeployTokenAndMarketTransaction(
-                signer,
-                deployerAddress,
-                tokenParams,
-                marketParams,
-                txOptions
-            );
+            const tx =
+                await MonadDeployer.constructDeployTokenAndMarketTransaction(
+                    signer,
+                    deployerAddress,
+                    tokenParams,
+                    marketParams,
+                    txOptions
+                );
 
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
-            const pumpingTimeLog = receipt.logs.find(
-                log => {
-                    try {
-                        const parsedLog = deployer.interface.parseLog(log);
-                        return parsedLog.name === "PumpingTime";
-                    } catch {
-                        return false;
-                    }
+            const pumpingTimeLog = receipt.logs.find((log) => {
+                try {
+                    const parsedLog = deployer.interface.parseLog(log);
+                    return parsedLog.name === "PumpingTime";
+                } catch {
+                    return false;
                 }
-            );
-            
+            });
+
             if (!pumpingTimeLog) {
-                throw new Error("PumpingTime event not found in transaction receipt");
+                throw new Error(
+                    "PumpingTime event not found in transaction receipt"
+                );
             }
 
             const parsedLog = deployer.interface.parseLog(pumpingTimeLog);
             return {
                 tokenAddress: parsedLog.args.token,
                 marketAddress: parsedLog.args.market,
-                hash: receipt.transactionHash
+                hash: receipt.transactionHash,
             };
         } catch (e: any) {
             console.log({ e });

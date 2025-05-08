@@ -14,7 +14,7 @@ import { calculateDynamicSlippage } from "../utils";
 // ============ Config Imports ============
 import erc20Abi from "../../abi/IERC20.json";
 import routerAbi from "../../abi/Router.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class TokenSwap {
     /**
@@ -33,7 +33,7 @@ export abstract class TokenSwap {
         routeOutput: RouteOutput,
         tokenInAmount: BigNumber,
         minTokenOutAmount: BigNumber,
-        txOptions?: TransactionOptions,
+        txOptions?: TransactionOptions
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
@@ -45,10 +45,12 @@ export abstract class TokenSwap {
             routeOutput.route.tokenIn,
             routeOutput.route.tokenOut,
             tokenInAmount,
-            minTokenOutAmount
+            minTokenOutAmount,
         ]);
 
-        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigNumber.from(0);
+        const value = routeOutput.nativeSend[0]
+            ? tokenInAmount
+            : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: routerAddress,
@@ -56,7 +58,7 @@ export abstract class TokenSwap {
             data,
             value,
             txOptions,
-            signer
+            signer,
         });
     }
 
@@ -106,12 +108,14 @@ export abstract class TokenSwap {
                 inTokenDecimals
             );
 
-            slippageTolerance = slippageOptions ? calculateDynamicSlippage(
-                slippageOptions.defaultSlippageBps,
-                amountIn,
-                slippageOptions.priceImpactBps,
-                slippageOptions.ohlcvData
-            ) : slippageTolerance;
+            slippageTolerance = slippageOptions
+                ? calculateDynamicSlippage(
+                      slippageOptions.defaultSlippageBps,
+                      amountIn,
+                      slippageOptions.priceImpactBps,
+                      slippageOptions.ohlcvData
+                  )
+                : slippageTolerance;
 
             const clippedOutput = Number(
                 (routeOutput.output * (100 - slippageTolerance)) / 100

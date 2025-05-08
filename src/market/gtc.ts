@@ -7,7 +7,7 @@ import { MarketParams, LIMIT, TransactionOptions } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class GTC {
     /**
@@ -133,7 +133,7 @@ export abstract class GTC {
             from: address,
             data,
             txOptions,
-            signer
+            signer,
         });
     }
 
@@ -169,7 +169,7 @@ export abstract class GTC {
             from: address,
             data,
             txOptions,
-            signer
+            signer,
         });
     }
 

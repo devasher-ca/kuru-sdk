@@ -2,7 +2,7 @@ import { ethers, ContractReceipt } from "ethers";
 import { BatchLPDetails } from "./positionViewer";
 import { TransactionOptions } from "../types";
 import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class PositionProvider {
     /**
@@ -18,7 +18,11 @@ export abstract class PositionProvider {
         batchDetails: BatchLPDetails
     ): Promise<ContractReceipt> {
         // Create contract instance
-        const contract = new ethers.Contract(contractAddress, orderbookAbi.abi, signer);
+        const contract = new ethers.Contract(
+            contractAddress,
+            orderbookAbi.abi,
+            signer
+        );
 
         const prices: bigint[] = [];
         const flipPrices: bigint[] = [];
@@ -93,20 +97,17 @@ export abstract class PositionProvider {
         }
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData("batchProvisionLiquidity", [
-            prices,
-            flipPrices,
-            sizes,
-            isBuy,
-            false
-        ]);
+        const data = orderbookInterface.encodeFunctionData(
+            "batchProvisionLiquidity",
+            [prices, flipPrices, sizes, isBuy, false]
+        );
 
         return buildTransactionRequest({
             from: address,
             to: contractAddress,
             signer,
             data,
-            txOptions
+            txOptions,
         });
     }
 }

@@ -13,7 +13,7 @@ import { MarketParams, MARKET, TransactionOptions } from "../types";
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
 import erc20Abi from "../../abi/IERC20.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class IOC {
     /**
@@ -154,10 +154,11 @@ export abstract class IOC {
             marketParams.quoteAssetDecimals
         );
 
-        const value = !isMargin &&
-        marketParams.quoteAssetAddress === ethers.constants.AddressZero
-            ? parsedQuoteSize
-            : BigNumber.from(0);
+        const value =
+            !isMargin &&
+            marketParams.quoteAssetAddress === ethers.constants.AddressZero
+                ? parsedQuoteSize
+                : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -165,7 +166,7 @@ export abstract class IOC {
             data,
             value,
             txOptions,
-            signer
+            signer,
         });
     }
 
@@ -206,11 +207,12 @@ export abstract class IOC {
             size,
             marketParams.baseAssetDecimals
         );
-        
-        const value = !isMargin &&
-        marketParams.baseAssetAddress === ethers.constants.AddressZero
-            ? parsedSize
-            : BigNumber.from(0);
+
+        const value =
+            !isMargin &&
+            marketParams.baseAssetAddress === ethers.constants.AddressZero
+                ? parsedSize
+                : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -218,7 +220,7 @@ export abstract class IOC {
             data,
             value,
             txOptions,
-            signer
+            signer,
         });
     }
 }

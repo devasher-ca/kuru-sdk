@@ -7,7 +7,7 @@ import { MarketParams, BATCH } from "../types";
 
 // ============ Config Imports ============
 import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "src/utils/txConfig";
+import buildTransactionRequest from "../utils/txConfig";
 
 export abstract class OrderBatcher {
     /**
@@ -24,7 +24,11 @@ export abstract class OrderBatcher {
         marketParams: MarketParams,
         batchUpdate: BATCH
     ): Promise<ContractReceipt> {
-        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const orderbook = new ethers.Contract(
+            orderbookAddress,
+            orderbookAbi.abi,
+            providerOrSigner
+        );
 
         // Initialize arrays for buy and sell prices and sizes
         const buyPrices: BigNumber[] = [];
@@ -36,13 +40,19 @@ export abstract class OrderBatcher {
         for (const order of batchUpdate.limitOrders) {
             const pricePrecision = log10BigNumber(marketParams.pricePrecision);
             const sizePrecision = log10BigNumber(marketParams.sizePrecision);
-            
+
             // Round the numbers to their respective precisions before parsing
             const priceStr = Number(order.price).toFixed(pricePrecision);
             const sizeStr = Number(order.size).toFixed(sizePrecision);
-            
-            const priceBn: BigNumber = ethers.utils.parseUnits(priceStr, pricePrecision);
-            const sizeBn: BigNumber = ethers.utils.parseUnits(sizeStr, sizePrecision);
+
+            const priceBn: BigNumber = ethers.utils.parseUnits(
+                priceStr,
+                pricePrecision
+            );
+            const sizeBn: BigNumber = ethers.utils.parseUnits(
+                sizeStr,
+                sizePrecision
+            );
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);
@@ -63,7 +73,7 @@ export abstract class OrderBatcher {
                 sellPrices,
                 sellSizes,
                 batchUpdate.cancelOrders,
-                batchUpdate.postOnly
+                batchUpdate.postOnly,
             ]);
 
             const tx = await buildTransactionRequest({
@@ -71,7 +81,7 @@ export abstract class OrderBatcher {
                 from: address,
                 data,
                 txOptions: batchUpdate.txOptions,
-                signer
+                signer,
             });
 
             const transaction = await signer.sendTransaction(tx);
