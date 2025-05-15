@@ -23,8 +23,17 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
             contractAddress
         );
         
+        const orderbook = await KuruSdk.OrderBook.getL2OrderBook(
+            provider,
+            contractAddress,
+            marketParams
+        );
+
+        console.log("bestAskPrice", orderbook.asks[orderbook.asks.length - 1][0]);
         // Extract best ask price from orderbook
-        const bestAskPrice = BigInt(148) * BigInt(marketParams.pricePrecision.toString()) / BigInt(100000000);
+        const bestAskPrice = orderbook.asks.length > 0 
+            ? BigInt(Math.floor(orderbook.asks[orderbook.asks.length - 1][0] * 1000000000))
+            : BigInt(0);
 
         // Define price range for concentrated liquidity
         const minFeesBps = BigInt(100); // 0.3% fee
@@ -76,20 +85,6 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         console.log(`Base Liquidity: ${ethers.utils.formatUnits(batchLPDetails.baseLiquidity.toString(), marketParams.baseAssetDecimals)}`);
         
         // Add graphs at the end
-        console.log("\nBid Positions Graph (Size/Price):");
-        const bidValues = batchLPDetails.bids.map(position => {
-            const size = parseFloat(ethers.utils.formatUnits(
-                position.liquidity.toString(), 
-                KuruSdk.log10BigNumber(marketParams.sizePrecision)
-            ));
-            const price = parseFloat(ethers.utils.formatUnits(
-                position.price.toString(), 
-                KuruSdk.log10BigNumber(marketParams.pricePrecision)
-            ));
-            return size * price;
-        });
-        console.log(createAsciiGraph(bidValues));
-
         console.log("\nAsk Positions Graph (Size * Price):");
         const askValues = batchLPDetails.asks.map(position => {
             const size = parseFloat(ethers.utils.formatUnits(
@@ -104,15 +99,29 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         });
         console.log(createAsciiGraph(askValues));
 
-        const privateKey = process.env.PRIVATE_KEY as string;
-        const signer = new ethers.Wallet(privateKey, provider);
-        const receipt = await KuruSdk.PositionProvider.provisionLiquidity(
-            signer,
-            contractAddress,
-            batchLPDetails
-        );
+        console.log("\nBid Positions Graph (Size/Price):");
+        const bidValues = batchLPDetails.bids.map(position => {
+            const size = parseFloat(ethers.utils.formatUnits(
+                position.liquidity.toString(), 
+                KuruSdk.log10BigNumber(marketParams.sizePrecision)
+            ));
+            const price = parseFloat(ethers.utils.formatUnits(
+                position.price.toString(), 
+                KuruSdk.log10BigNumber(marketParams.pricePrecision)
+            ));
+            return size * price;
+        });
+        console.log(createAsciiGraph(bidValues));
 
-        console.log("Transaction hash:", receipt.transactionHash);
+        // const privateKey = process.env.PRIVATE_KEY as string;
+        // const signer = new ethers.Wallet(privateKey, provider);
+        // const receipt = await KuruSdk.PositionProvider.provisionLiquidity(
+        //     signer,
+        //     contractAddress,
+        //     batchLPDetails
+        // );
+
+        // console.log("Transaction hash:", receipt.transactionHash);
         
     } catch (error) {
         console.error("Error retrieving curve concentrated liquidity positions:", error);
