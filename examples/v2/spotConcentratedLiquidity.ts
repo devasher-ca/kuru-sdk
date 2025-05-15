@@ -90,20 +90,6 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         console.log(`Base Liquidity: ${ethers.utils.formatUnits(batchLPDetails.baseLiquidity.toString(), marketParams.baseAssetDecimals)}`);
         
         // Add graphs at the end
-        console.log("\nBid Positions Graph (Size/Price):");
-        const bidValues = batchLPDetails.bids.map(position => {
-            const size = parseFloat(ethers.utils.formatUnits(
-                position.liquidity.toString(), 
-                KuruSdk.log10BigNumber(marketParams.sizePrecision)
-            ));
-            const price = parseFloat(ethers.utils.formatUnits(
-                position.price.toString(), 
-                KuruSdk.log10BigNumber(marketParams.pricePrecision)
-            ));
-            return size * price;
-        });
-        console.log(createAsciiGraph(bidValues));
-
         console.log("\nAsk Positions Graph (Size * Price):");
         const askValues = batchLPDetails.asks.map(position => {
             const size = parseFloat(ethers.utils.formatUnits(
@@ -117,6 +103,20 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
             return size * price;
         });
         console.log(createAsciiGraph(askValues));
+
+        console.log("\nBid Positions Graph (Size/Price):");
+        const bidValues = batchLPDetails.bids.map(position => {
+            const size = parseFloat(ethers.utils.formatUnits(
+                position.liquidity.toString(), 
+                KuruSdk.log10BigNumber(marketParams.sizePrecision)
+            ));
+            const price = parseFloat(ethers.utils.formatUnits(
+                position.price.toString(), 
+                KuruSdk.log10BigNumber(marketParams.pricePrecision)
+            ));
+            return size * price;
+        });
+        console.log(createAsciiGraph(bidValues));
         
     } catch (error) {
         console.error("Error retrieving concentrated liquidity positions:", error);

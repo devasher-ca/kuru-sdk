@@ -147,8 +147,8 @@ export abstract class PositionViewer {
         }
 
         return {
-            bids,
-            asks,
+            bids: bids.sort((a, b) => Number(b.price - a.price)),
+            asks: asks.sort((a, b) => Number(b.price - a.price)),
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
         };
@@ -260,8 +260,8 @@ export abstract class PositionViewer {
         }
 
         return {
-            bids,
-            asks,
+            bids: bids.sort((a, b) => Number(b.price - a.price)),
+            asks: asks.sort((a, b) => Number(b.price - a.price)),
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
         };
@@ -373,8 +373,8 @@ export abstract class PositionViewer {
         }
 
         return {
-            bids,
-            asks,
+            bids: bids.sort((a, b) => Number(b.price - a.price)),
+            asks: asks.sort((a, b) => Number(b.price - a.price)),
             quoteLiquidity: quoteLiquidity ?? BigInt(0),
             baseLiquidity: baseLiquidity ?? BigInt(0),
         };
