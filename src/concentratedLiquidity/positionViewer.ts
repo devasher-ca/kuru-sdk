@@ -53,6 +53,9 @@ export abstract class PositionViewer {
         const bids: Position[] = [];
         const asks: Position[] = [];
 
+        console.log('startPrice', startPrice);
+        console.log('bestAskPrice', bestAskPrice);
+
         while (startPrice < bestAskPrice) {
             numBids++;
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
@@ -90,6 +93,7 @@ export abstract class PositionViewer {
         }
 
         if (quoteLiquidity !== undefined && baseLiquidity == undefined) {
+            console.log('quoteLiquidity !== undefined && baseLiquidity == undefined', minSize, bids, asks);
             baseLiquidity = BigInt(0);
             const quotePerTick = quoteLiquidity / numBids;
 
@@ -109,18 +113,34 @@ export abstract class PositionViewer {
                     throw new Error('ask liquidity is less than minSize');
                 }
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity == undefined) {
-            quoteLiquidity = BigInt(0);
+            console.log('baseLiquidity !== undefined && quoteLiquidity == undefined', minSize, bids, asks);
+            let quoteLiquidity = BigInt(0);
+
+            console.log('ask', asks);
+
             const sumAskPrices = asks.reduce((sum, ask) => sum + ask.price, BigInt(0));
+
+            console.log('sumAskPrices', sumAskPrices);
 
             for (const ask of asks) {
                 ask.liquidity =
                     (baseLiquidity * ask.price * sizePrecision) / (sumAskPrices * BigInt(10) ** baseAssetDecimals);
-                if (ask.liquidity < minSize) {
-                    throw new Error('ask liquidity is less than minSize');
-                }
+
+                console.log('current ask', ask);
+
+                // if (ask.liquidity < minSize) {
+                //     throw new Error('ask liquidity is less than minSize');
+                // }
             }
 
             for (const bid of bids) {
@@ -129,13 +149,27 @@ export abstract class PositionViewer {
                     (sumAskPrices * bid.price * BigInt(10) ** baseAssetDecimals);
                 quoteLiquidity +=
                     (bid.liquidity * bid.price * BigInt(10) ** quoteAssetDecimals) / (sizePrecision * pricePrecision);
-                if (bid.liquidity < minSize) {
-                    throw new Error('bid liquidity is less than minSize');
-                }
+
+                console.log('current bid', bid);
+
+                // if (bid.liquidity < minSize) {
+                //     throw new Error('bid liquidity is less than minSize');
+                // }
             }
+
+            console.log('bids', bids);
+            console.log('asks', asks);
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity !== undefined) {
+            console.log('baseLiquidity !== undefined && quoteLiquidity !== undefined', minSize, bids, asks);
             for (const ask of asks) {
                 ask.liquidity = (baseLiquidity * sizePrecision) / (numAsks * BigInt(10) ** baseAssetDecimals);
                 if (ask.liquidity < minSize) {
@@ -151,13 +185,20 @@ export abstract class PositionViewer {
                     throw new Error('bid liquidity is less than minSize');
                 }
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         return {
-            bids: bids.sort((a, b) => Number(b.price - a.price)),
-            asks: asks.sort((a, b) => Number(b.price - a.price)),
-            quoteLiquidity: quoteLiquidity ?? BigInt(0),
-            baseLiquidity: baseLiquidity ?? BigInt(0),
+            bids: [],
+            asks: [],
+            quoteLiquidity: BigInt(0),
+            baseLiquidity: BigInt(0),
         };
     }
 
@@ -242,6 +283,13 @@ export abstract class PositionViewer {
                         pricePrecision) /
                     (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
@@ -258,6 +306,13 @@ export abstract class PositionViewer {
             quoteInFarthestBid = (quoteInFarthestAsk * (numAsks + BigInt(1))) / numBids;
 
             quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInFarthestBid) / BigInt(2);
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         for (const bid of bids) {
@@ -366,6 +421,13 @@ export abstract class PositionViewer {
                     (quoteInClosestAsk * BigInt(askIndex) * BigInt(10) ** baseAssetDecimals * pricePrecision) /
                     (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
@@ -379,6 +441,13 @@ export abstract class PositionViewer {
             quoteInClosestBid = quoteInClosestAsk;
 
             quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInClosestBid) / BigInt(2);
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         for (const bid of bids) {
