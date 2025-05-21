@@ -9,20 +9,24 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "prepare": "husky install",
+    "lint": "lint-staged"
   },
   "keywords": [],
   "author": "Kuru Labs",
   "license": "ISC",
   "dependencies": {
     "cross-fetch": "^4.0.0",
-    "ethers": "5.7.1"
+    "ethers": "5.7.1",
+    "lint-staged": "^16.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^20.10.5",
     "@types/pg": "^8.10.9",
     "jest": "^29.7.0",
+    "prettier": "^3.5.3",
     "socket.io-client": "^4.8.1",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
@@ -31,5 +35,10 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node"
+  },
+  "lint-staged": {
+    "*.{jsx,tsx,js,ts}": [
+      "prettier --write"
+    ]
   }
 }
