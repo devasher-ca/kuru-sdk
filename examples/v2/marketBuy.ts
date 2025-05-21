@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
+import * as KuruSdk from '../../src';
+import * as KuruConfig from './../config.json';
 
 const { rpcUrl, contractAddress } = KuruConfig;
 
@@ -17,11 +17,8 @@ const minAmountOut = parseFloat(args[1]);
     const signer = new ethers.Wallet(privateKey, provider);
     try {
         const nonce = await signer.getTransactionCount();
-        
-        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(
-            provider,
-            contractAddress
-        );
+
+        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
         const receipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
             approveTokens: true,
             size,
@@ -33,11 +30,11 @@ const minAmountOut = parseFloat(args[1]);
                 priorityFee: 0.001,
                 nonce: nonce,
                 gasPrice: ethers.utils.parseUnits('1', 'gwei'),
-                gasLimit: ethers.utils.parseUnits('1000000', 1)
+                gasLimit: ethers.utils.parseUnits('1000000', 1),
             },
         });
-        console.log("Transaction hash:", receipt.transactionHash);
+        console.log('Transaction hash:', receipt.transactionHash);
     } catch (error) {
-        console.error("Error placing market buy order:", error);
+        console.error('Error placing market buy order:', error);
     }
 })();

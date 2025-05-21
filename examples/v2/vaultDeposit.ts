@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "../config.json";
-import erc20Abi from "../../abi/IERC20.json";
+import { ethers } from 'ethers';
+import * as KuruSdk from '../../src';
+import * as KuruConfig from '../config.json';
+import erc20Abi from '../../abi/IERC20.json';
 const {
     rpcUrl,
     vaultAddress,
@@ -14,33 +14,33 @@ const {
 const privateKey = process.env.PRIVATE_KEY;
 
 if (!privateKey) {
-    throw new Error("process.env.PRIVATE_KEY is not set");
+    throw new Error('process.env.PRIVATE_KEY is not set');
 }
 
-const marketAddress = "0x473d60358019406a3fdb222c3d20658145614175";
+const marketAddress = '0x473d60358019406a3fdb222c3d20658145614175';
 
 (async () => {
-    console.log("Starting vault deposit");
+    console.log('Starting vault deposit');
 
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
 
-    console.log("Getting provider and signer");
+    console.log('Getting provider and signer');
 
     // const baseAmount = ethers.utils.parseEther("0.01");
-    const quoteAmount = ethers.utils.parseEther("0.01");
+    const quoteAmount = ethers.utils.parseEther('0.01');
 
-    console.log("Vault liquidity");
+    console.log('Vault liquidity');
 
     const { token1, token2 } = await KuruSdk.Vault.getVaultLiquidity(
         vaultAddress,
         baseTokenAddress,
         quoteTokenAddress,
         marginAccountAddress,
-        provider
+        provider,
     );
 
-    console.log("Vault liquidity in terms of token1 and token2", {
+    console.log('Vault liquidity in terms of token1 and token2', {
         token1: token1.balance.toString(),
         token2: token2.balance.toString(),
     });
@@ -51,10 +51,10 @@ const marketAddress = "0x473d60358019406a3fdb222c3d20658145614175";
         quoteAmount,
         marketAddress,
         marketParams,
-        provider
+        provider,
     );
 
-    console.log("Calculated quote amount", calculatedAmount1.toString());
+    console.log('Calculated quote amount', calculatedAmount1.toString());
 
     const token1Balance = await (token1.address === ethers.constants.AddressZero
         ? await signer.getBalance()
@@ -83,30 +83,30 @@ const marketAddress = "0x473d60358019406a3fdb222c3d20658145614175";
         baseTokenAddress,
         quoteTokenAddress,
         vaultAddress,
-        signer
+        signer,
     );
 
-    console.log("Deposited transaction constructed", constructedDepositTx);
+    console.log('Deposited transaction constructed', constructedDepositTx);
 
     const depositedTx = await signer.sendTransaction(constructedDepositTx);
 
-    console.log("Deposit successful. Transaction hash:", depositedTx.hash);
+    console.log('Deposit successful. Transaction hash:', depositedTx.hash);
 
     // withdraw 50% of the shares
 
     const vault = new ethers.Contract(
         vaultAddress,
-        ["function balanceOf(address account) public view returns (uint256)"],
-        signer
+        ['function balanceOf(address account) public view returns (uint256)'],
+        signer,
     );
     const vaultBalance = await vault.balanceOf(await signer.getAddress());
-    console.log("Vault balance (shares):", vaultBalance.toString());
+    console.log('Vault balance (shares):', vaultBalance.toString());
 
     // Withdraw half of the shares
     const halfShares = vaultBalance.div(2);
     const constructedWithdrawTx = await KuruSdk.Vault.constructWithdrawTransaction(halfShares, vaultAddress, signer);
-    console.log("Withdrawal transaction constructed", constructedWithdrawTx);
+    console.log('Withdrawal transaction constructed', constructedWithdrawTx);
 
     const withdrawnTx = await signer.sendTransaction(constructedWithdrawTx);
-    console.log("Withdrawal successful. Transaction hash:", withdrawnTx.hash);
+    console.log('Withdrawal successful. Transaction hash:', withdrawnTx.hash);
 })().catch(console.error);

@@ -1,11 +1,11 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber } from 'ethers';
 
 // ============ Internal Imports ============
-import { VaultParams } from "../types";
+import { VaultParams } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
+import orderbookAbi from '../../abi/OrderBook.json';
 
 export abstract class VaultParamFetcher {
     /**
@@ -16,15 +16,11 @@ export abstract class VaultParamFetcher {
      */
     static async getVaultParams(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-        orderbookAddress: string
+        orderbookAddress: string,
     ): Promise<VaultParams> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const vaultParamsData = await orderbook.getVaultParams({from: ethers.constants.AddressZero});
+        const vaultParamsData = await orderbook.getVaultParams({ from: ethers.constants.AddressZero });
         return {
             kuruAmmVault: vaultParamsData[0],
             vaultBestBid: BigNumber.from(vaultParamsData[1]),
@@ -33,7 +29,7 @@ export abstract class VaultParamFetcher {
             askPartiallyFilledSize: BigNumber.from(vaultParamsData[4]),
             vaultBidOrderSize: BigNumber.from(vaultParamsData[5]),
             vaultAskOrderSize: BigNumber.from(vaultParamsData[6]),
-            spread: BigNumber.from(vaultParamsData[7])
+            spread: BigNumber.from(vaultParamsData[7]),
         };
     }
 }

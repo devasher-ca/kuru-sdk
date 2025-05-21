@@ -11,17 +11,18 @@ npm install @kuru-labs/kuru-sdk
 ## Configuration
 
 Ensure you export your private key to use the examples
+
 ```bash
 export PRIVATE_KEY=<0xpvt_key>
 ```
 
 Ensure you export kuru api url
+
 ```bash
 export KURU_API=<kuru_api_url>
 ```
 
 ## Example Usage for Orderbook
-
 
 ### Deposit
 
@@ -42,7 +43,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
-	
+
     try {
         const receipt = await KuruSdk.MarginDeposit.deposit(
             signer,
@@ -180,7 +181,7 @@ import * as KuruSdk from "../../src";
 import orderbookAbi from "../../abi/OrderBook.json";
 
 const rpcUrl = <your_rpc_url>; // RPC URL
-const marketAddress = <your_market_address>; // Market address  
+const marketAddress = <your_market_address>; // Market address
 
 const amount = 100; // Amount of quoteAsset to receive after selling (ex:USDC)
 
@@ -192,7 +193,7 @@ const amount = 100; // Amount of quoteAsset to receive after selling (ex:USDC)
     const orderbook = new ethers.Contract(marketAddress, orderbookAbi.abi, provider);
     const l2Book = await orderbook.getL2Book();
     const vaultParams = await orderbook.getVaultParams();
-    
+
 
 	try {
 		const estimate = await KuruSdk.CostEstimator.estimateRequiredBaseForSell(
@@ -275,7 +276,7 @@ const amount = 100; // Amount of fromToken to swap (ex:USDC)
             <fromTokenAddress>,
             <toTokenAddress>,
             amount,
-            "amountIn" // "amountIn" or "amountOut" 
+            "amountIn" // "amountIn" or "amountOut"
         );
 
         console.log(bestPath);
@@ -384,12 +385,13 @@ const customBaseTokens = [
 ### Standard Market Creation
 
 The standard market creation is more suitable when:
+
 - You already have existing tokens
 - You want to create markets between any two ERC20 tokens
 - You need more control over the market parameters
 
-Note: The tick size in BPS is recommended to be around 10 BPS for liquid tokens and 100 BPS for long-tail assets. For example, if you are pairing 50 million MON with 10 million USDC, a tick size of 10 BPS is recommended. 
-If you are pairing 1 billion CHOG with say, 100 MON, we recommend a tick size of 100 BPS. This will allow limit orders to be created efficiently. 
+Note: The tick size in BPS is recommended to be around 10 BPS for liquid tokens and 100 BPS for long-tail assets. For example, if you are pairing 50 million MON with 10 million USDC, a tick size of 10 BPS is recommended.
+If you are pairing 1 billion CHOG with say, 100 MON, we recommend a tick size of 100 BPS. This will allow limit orders to be created efficiently.
 
 To create a standard market using the ParamCreator:
 
@@ -445,6 +447,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
 ### Native-Paired Market Creation
 
 The MonadDeployer method is particularly useful when you want to:
+
 - Create a new token and its corresponding market in one transaction
 - Pair your token with the chain's native token (e.g., MON)
 - Automatically set up initial liquidity with the native token
@@ -465,7 +468,7 @@ const privateKey = process.env.PRIVATE_KEY as string;
 (async () => {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(privateKey, provider);
-    
+
     const monadDeployer = new MonadDeployer();
     const paramCreator = new ParamCreator();
 
@@ -515,6 +518,3 @@ const privateKey = process.env.PRIVATE_KEY as string;
     }
 })();
 ```
-
-
-

@@ -1,8 +1,8 @@
-import { ethers } from "ethers";
-import { PoolFetcher } from "../../src/pools/fetcher";
-import { BaseToken } from "../../src/types/pool";
+import { ethers } from 'ethers';
+import { PoolFetcher } from '../../src/pools/fetcher';
+import { BaseToken } from '../../src/types/pool';
 
-const kuruApi = "https://api.staging.kuru.io:3001";
+const kuruApi = 'https://api.staging.kuru.io:3001';
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -11,8 +11,8 @@ const tokenOutAddress = args[1];
 
 // Define custom base tokens
 const customBaseTokens: BaseToken[] = [
-    { symbol: "ETH", address: ethers.constants.AddressZero },
-    { symbol: "USDC", address: "0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94" },
+    { symbol: 'ETH', address: ethers.constants.AddressZero },
+    { symbol: 'USDC', address: '0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94' },
 ];
 
 (async () => {
@@ -20,13 +20,9 @@ const customBaseTokens: BaseToken[] = [
 
     try {
         // Get all pools with custom base tokens
-        const pools = await poolFetcher.getAllPools(
-            tokenInAddress,
-            tokenOutAddress,
-            customBaseTokens
-        );
+        const pools = await poolFetcher.getAllPools(tokenInAddress, tokenOutAddress, customBaseTokens);
 
-        console.log("Found pools:");
+        console.log('Found pools:');
         pools.forEach((pool, index) => {
             console.log(`\nPool ${index + 1}:`);
             console.log(`Base Token: ${pool.baseToken}`);
@@ -34,6 +30,6 @@ const customBaseTokens: BaseToken[] = [
             console.log(`Orderbook: ${pool.orderbook}`);
         });
     } catch (error) {
-        console.error("Error finding pools:", error);
+        console.error('Error finding pools:', error);
     }
 })();

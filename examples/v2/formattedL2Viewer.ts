@@ -1,10 +1,9 @@
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "../config.json";
+import * as KuruSdk from '../../src';
+import * as KuruConfig from '../config.json';
 
 const { rpcUrl, contractAddress } = KuruConfig;
-
 
 export interface OrderBookData {
     asks: number[][];
@@ -26,50 +25,48 @@ class OrderbookWatcher {
                 const currentOrderbook = await KuruSdk.OrderBook.getFormattedL2OrderBook(
                     provider,
                     contractAddress,
-                    marketParams
+                    marketParams,
                 );
                 const currentOrderbookJson = JSON.stringify(currentOrderbook, null, 4); // 4-space indentation for pretty printing
                 if (this.lastOrderbookJson !== currentOrderbookJson) {
                     const asksArray = currentOrderbook.asks
                         .map(([price, quantity]) => ({ price, quantity }))
-                        .sort((a, b) => a.price - b.price)  // Sort asks ascending
+                        .sort((a, b) => a.price - b.price) // Sort asks ascending
                         .slice(0, 30)
-                        .sort((a, b) => b.price - a.price);  // Take first 30 asks
-                    
+                        .sort((a, b) => b.price - a.price); // Take first 30 asks
+
                     const bidsArray = currentOrderbook.bids
                         .map(([price, quantity]) => ({ price, quantity }))
-                        .sort((a, b) => b.price - a.price)  // Sort bids descending
-                        .slice(0, 30);  // Take first 30 bids
+                        .sort((a, b) => b.price - a.price) // Sort bids descending
+                        .slice(0, 30); // Take first 30 bids
 
                     const maxBaseSize = Math.max(
-                        ...asksArray.map(a => a.quantity),
-                        ...bidsArray.map(b => b.quantity)
+                        ...asksArray.map((a) => a.quantity),
+                        ...bidsArray.map((b) => b.quantity),
                     );
                     const maxBaseSizeLength = maxBaseSize.toString().length;
-                    const printLine = (price: number, size: number, color: "red" | "green") => {
+                    const printLine = (price: number, size: number, color: 'red' | 'green') => {
                         const priceStr = price.toString(); // Assuming two decimal places for price
-                        const sizeStr = size.toString().padStart(maxBaseSizeLength, " ");
-                        console.log(
-                          priceStr + " " + `\u001b[3${color === "green" ? 2 : 1}m` + sizeStr + "\u001b[0m"
-                        );
+                        const sizeStr = size.toString().padStart(maxBaseSizeLength, ' ');
+                        console.log(priceStr + ' ' + `\u001b[3${color === 'green' ? 2 : 1}m` + sizeStr + '\u001b[0m');
                     };
 
                     console.clear();
-                    console.log("=================================");
-                    console.log("Asks");
-                    console.log("=================================");
+                    console.log('=================================');
+                    console.log('Asks');
+                    console.log('=================================');
                     asksArray.forEach(({ price, quantity }) => {
                         if (quantity != 0) {
-                            printLine(price, quantity, "red");
+                            printLine(price, quantity, 'red');
                         }
                     });
 
-                    console.log("=================================");
-                    console.log("Bids");
-                    console.log("=================================");
+                    console.log('=================================');
+                    console.log('Bids');
+                    console.log('=================================');
                     bidsArray.forEach(({ price, quantity }) => {
                         if (quantity != 0) {
-                            printLine(price, quantity, "green");
+                            printLine(price, quantity, 'green');
                         }
                     });
 
@@ -83,6 +80,6 @@ class OrderbookWatcher {
 }
 
 (async () => {
-    const watcher = new OrderbookWatcher;
+    const watcher = new OrderbookWatcher();
     watcher.startWatching(); // Default polling interval set to 500 milliseconds
 })();

@@ -1,17 +1,15 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber } from 'ethers';
 
 // Add TransactionOptions type import
-import { TransactionOptions } from "../types";
+import { TransactionOptions } from '../types';
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from "../utils";
-import erc20Abi from "../../abi/IERC20.json";
-import buildTransactionRequest from "./txConfig";
+import { extractErrorMessage } from '../utils';
+import erc20Abi from '../../abi/IERC20.json';
+import buildTransactionRequest from './txConfig';
 
-const getOwnerAddress = async (
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
-): Promise<string> => {
+const getOwnerAddress = async (providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer): Promise<string> => {
     if (providerOrSigner instanceof ethers.providers.JsonRpcProvider) {
         return await providerOrSigner.getSigner().getAddress();
     }
@@ -33,21 +31,18 @@ export async function constructApproveTransaction(
     tokenContractAddress: string,
     approveTo: string,
     size: BigNumber,
-    txOptions?: TransactionOptions
+    txOptions?: TransactionOptions,
 ): Promise<ethers.providers.TransactionRequest> {
     const address = await signer.getAddress();
     const tokenInterface = new ethers.utils.Interface(erc20Abi.abi);
-    const data = tokenInterface.encodeFunctionData("approve", [
-        approveTo,
-        size,
-    ]);
+    const data = tokenInterface.encodeFunctionData('approve', [approveTo, size]);
 
     return buildTransactionRequest({
         to: tokenContractAddress,
         from: address,
         data,
         txOptions,
-        signer
+        signer,
     });
 }
 
@@ -67,17 +62,14 @@ export async function approveToken(
     size: BigNumber,
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     txOptions?: TransactionOptions,
-    waitForReceipt: boolean = true
+    waitForReceipt: boolean = true,
 ): Promise<string | null> {
     try {
         const ownerAddress = await getOwnerAddress(providerOrSigner);
-        const existingApproval = await tokenContract.allowance(
-            ownerAddress,
-            approveTo
-        );
+        const existingApproval = await tokenContract.allowance(ownerAddress, approveTo);
 
         if (existingApproval.gte(size)) {
-            console.log("Approval already exists");
+            console.log('Approval already exists');
             return null;
         }
 
@@ -86,7 +78,7 @@ export async function approveToken(
             tokenContract.address,
             approveTo,
             size,
-            txOptions
+            txOptions,
         );
         const transaction = await tokenContract.signer.sendTransaction(tx);
 
@@ -108,13 +100,10 @@ export async function approveToken(
 export async function estimateApproveGas(
     tokenContract: ethers.Contract,
     approveTo: string,
-    size: BigNumber
+    size: BigNumber,
 ): Promise<BigNumber> {
     try {
-        const gasEstimate = await tokenContract.estimateGas.approve(
-            approveTo,
-            size
-        );
+        const gasEstimate = await tokenContract.estimateGas.approve(approveTo, size);
         return gasEstimate;
     } catch (e: any) {
         if (!e.error) {
@@ -136,18 +125,11 @@ export async function getAllowance(
     tokenAddress: string,
     ownerAddress: string,
     spenderAddress: string,
-    provider: ethers.providers.Provider
+    provider: ethers.providers.Provider,
 ): Promise<BigNumber> {
     try {
-        const tokenContract = new ethers.Contract(
-            tokenAddress,
-            erc20Abi.abi,
-            provider
-        );
-        const allowance = await tokenContract.allowance(
-            ownerAddress,
-            spenderAddress
-        );
+        const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, provider);
+        const allowance = await tokenContract.allowance(ownerAddress, spenderAddress);
         return allowance;
     } catch (e: any) {
         if (!e.error) {

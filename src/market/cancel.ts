@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from 'ethers';
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from "../utils";
-import { TransactionOptions } from "../types";
+import { extractErrorMessage } from '../utils';
+import { TransactionOptions } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "../utils/txConfig";
+import orderbookAbi from '../../abi/OrderBook.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class OrderCanceler {
     /**
@@ -22,15 +22,12 @@ export abstract class OrderCanceler {
         signer: ethers.Signer,
         orderbookAddress: string,
         orderIds: BigNumber[],
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData(
-            "batchCancelOrders",
-            [orderIds]
-        );
+        const data = orderbookInterface.encodeFunctionData('batchCancelOrders', [orderIds]);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -53,20 +50,16 @@ export abstract class OrderCanceler {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         orderIds: BigNumber[],
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
-            const orderbook = new ethers.Contract(
-                orderbookAddress,
-                orderbookAbi.abi,
-                providerOrSigner
-            );
+            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
             const tx = await OrderCanceler.constructCancelOrdersTransaction(
                 orderbook.signer,
                 orderbookAddress,
                 orderIds,
-                txOptions
+                txOptions,
             );
 
             const transaction = await orderbook.signer.sendTransaction(tx);
@@ -85,18 +78,12 @@ export abstract class OrderCanceler {
     static async estimateGas(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        orderIds: BigNumber[]
+        orderIds: BigNumber[],
     ): Promise<BigNumber> {
         try {
-            const orderbook = new ethers.Contract(
-                orderbookAddress,
-                orderbookAbi.abi,
-                providerOrSigner
-            );
+            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(
-                orderIds
-            );
+            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(orderIds);
             return gasEstimate;
         } catch (e: any) {
             console.log({ e });

@@ -1,8 +1,8 @@
-import { ethers, ContractReceipt } from "ethers";
-import { BatchLPDetails } from "./positionViewer";
-import { TransactionOptions } from "../types";
-import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "../utils/txConfig";
+import { ethers, ContractReceipt } from 'ethers';
+import { BatchLPDetails } from './positionViewer';
+import { TransactionOptions } from '../types';
+import orderbookAbi from '../../abi/OrderBook.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class PositionProvider {
     /**
@@ -15,14 +15,10 @@ export abstract class PositionProvider {
     static async provisionLiquidity(
         signer: ethers.Signer,
         contractAddress: string,
-        batchDetails: BatchLPDetails
+        batchDetails: BatchLPDetails,
     ): Promise<ContractReceipt> {
         // Create contract instance
-        const contract = new ethers.Contract(
-            contractAddress,
-            orderbookAbi.abi,
-            signer
-        );
+        const contract = new ethers.Contract(contractAddress, orderbookAbi.abi, signer);
 
         const prices: bigint[] = [];
         const flipPrices: bigint[] = [];
@@ -46,13 +42,7 @@ export abstract class PositionProvider {
         }
 
         // Call the contract with provisionOrRevert = false
-        const tx = await contract.batchProvisionLiquidity(
-            prices,
-            flipPrices,
-            sizes,
-            isBuy,
-            false
-        );
+        const tx = await contract.batchProvisionLiquidity(prices, flipPrices, sizes, isBuy, false);
 
         const receipt = await tx.wait();
 
@@ -71,7 +61,7 @@ export abstract class PositionProvider {
         signer: ethers.Signer,
         contractAddress: string,
         batchDetails: BatchLPDetails,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
@@ -97,10 +87,13 @@ export abstract class PositionProvider {
         }
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData(
-            "batchProvisionLiquidity",
-            [prices, flipPrices, sizes, isBuy, false]
-        );
+        const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
+            prices,
+            flipPrices,
+            sizes,
+            isBuy,
+            false,
+        ]);
 
         return buildTransactionRequest({
             from: address,

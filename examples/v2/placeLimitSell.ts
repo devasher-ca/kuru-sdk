@@ -1,9 +1,9 @@
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
+import * as KuruSdk from '../../src';
+import * as KuruConfig from './../config.json';
 
-const {rpcUrl, contractAddress} = KuruConfig;
+const { rpcUrl, contractAddress } = KuruConfig;
 
 const privateKey = process.env.PRIVATE_KEY as string;
 
@@ -18,25 +18,20 @@ const size = parseFloat(args[1]);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	try {
-        const receipt = await KuruSdk.GTC.placeLimit(
-            signer,
-            contractAddress,
-            marketParams,
-            {
-                price,
-                size,
-                isBuy: false,
-                postOnly: true,
-                txOptions: {
-                    priorityFee: 0.001,
-                    // gasLimit: ethers.utils.parseUnits('1000000', 1),
-                    // gasPrice: ethers.utils.parseUnits('1', 'gwei')
-                }
+    try {
+        const receipt = await KuruSdk.GTC.placeLimit(signer, contractAddress, marketParams, {
+            price,
+            size,
+            isBuy: false,
+            postOnly: true,
+            txOptions: {
+                priorityFee: 0.001,
+                // gasLimit: ethers.utils.parseUnits('1000000', 1),
+                // gasPrice: ethers.utils.parseUnits('1', 'gwei')
             },
-        );
-        console.log("Transaction hash:", receipt.transactionHash);
-    } catch(e) {
-        console.error("Error placing limit sell order:", e);
+        });
+        console.log('Transaction hash:', receipt.transactionHash);
+    } catch (e) {
+        console.error('Error placing limit sell order:', e);
     }
 })();

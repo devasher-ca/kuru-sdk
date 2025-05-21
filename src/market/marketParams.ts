@@ -1,11 +1,11 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber } from 'ethers';
 
 // ============ Internal Imports ============
-import { MarketParams } from "../types";
+import { MarketParams } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
+import orderbookAbi from '../../abi/OrderBook.json';
 
 export abstract class ParamFetcher {
     /**
@@ -16,14 +16,10 @@ export abstract class ParamFetcher {
      */
     static async getMarketParams(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
-        orderbookAddress: string
+        orderbookAddress: string,
     ): Promise<MarketParams> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
-        const marketParamsData = await orderbook.getMarketParams({from: ethers.constants.AddressZero});
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+        const marketParamsData = await orderbook.getMarketParams({ from: ethers.constants.AddressZero });
         return {
             pricePrecision: BigNumber.from(marketParamsData[0]),
             sizePrecision: BigNumber.from(marketParamsData[1]),

@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { TransactionOptions } from "src/types";
-import { extractErrorMessage } from "../utils";
+import { TransactionOptions } from 'src/types';
+import { extractErrorMessage } from '../utils';
 
 // ============ Config Imports ============
-import monadDeployerAbi from "../../abi/MonadDeployer.json";
-import buildTransactionRequest from "../utils/txConfig";
+import monadDeployerAbi from '../../abi/MonadDeployer.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export interface TokenParams {
     name: string;
@@ -35,25 +35,16 @@ export class MonadDeployer {
         deployerAddress: string,
         tokenParams: TokenParams,
         marketParams: PoolParams,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const deployer = new ethers.Contract(
-            deployerAddress,
-            monadDeployerAbi.abi,
-            signer
-        );
+        const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
 
         // Get the kuruCollectiveFee
         const kuruCollectiveFee = await deployer.kuruCollectiveFee();
 
-        const deployerInterface = new ethers.utils.Interface(
-            monadDeployerAbi.abi
-        );
-        const data = deployerInterface.encodeFunctionData(
-            "deployTokenAndMarket",
-            [tokenParams, marketParams]
-        );
+        const deployerInterface = new ethers.utils.Interface(monadDeployerAbi.abi);
+        const data = deployerInterface.encodeFunctionData('deployTokenAndMarket', [tokenParams, marketParams]);
 
         return buildTransactionRequest({
             from: address,
@@ -70,23 +61,18 @@ export class MonadDeployer {
         deployerAddress: string,
         tokenParams: TokenParams,
         marketParams: PoolParams,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<{ tokenAddress: string; marketAddress: string; hash: string }> {
-        const deployer = new ethers.Contract(
-            deployerAddress,
-            monadDeployerAbi.abi,
-            signer
-        );
+        const deployer = new ethers.Contract(deployerAddress, monadDeployerAbi.abi, signer);
 
         try {
-            const tx =
-                await MonadDeployer.constructDeployTokenAndMarketTransaction(
-                    signer,
-                    deployerAddress,
-                    tokenParams,
-                    marketParams,
-                    txOptions
-                );
+            const tx = await MonadDeployer.constructDeployTokenAndMarketTransaction(
+                signer,
+                deployerAddress,
+                tokenParams,
+                marketParams,
+                txOptions,
+            );
 
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
@@ -94,16 +80,14 @@ export class MonadDeployer {
             const pumpingTimeLog = receipt.logs.find((log) => {
                 try {
                     const parsedLog = deployer.interface.parseLog(log);
-                    return parsedLog.name === "PumpingTime";
+                    return parsedLog.name === 'PumpingTime';
                 } catch {
                     return false;
                 }
             });
 
             if (!pumpingTimeLog) {
-                throw new Error(
-                    "PumpingTime event not found in transaction receipt"
-                );
+                throw new Error('PumpingTime event not found in transaction receipt');
             }
 
             const parsedLog = deployer.interface.parseLog(pumpingTimeLog);

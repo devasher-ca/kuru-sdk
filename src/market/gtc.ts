@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from 'ethers';
 
 // ============ Internal Imports ============
-import { clipToDecimals, extractErrorMessage, log10BigNumber } from "../utils";
-import { MarketParams, LIMIT, TransactionOptions } from "../types";
+import { clipToDecimals, extractErrorMessage, log10BigNumber } from '../utils';
+import { MarketParams, LIMIT, TransactionOptions } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "../utils/txConfig";
+import orderbookAbi from '../../abi/OrderBook.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class GTC {
     /**
@@ -23,78 +23,34 @@ export abstract class GTC {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
     ): Promise<ContractReceipt> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const clippedPrice = clipToDecimals(
-            order.price,
-            log10BigNumber(marketParams.pricePrecision)
-        );
-        const clippedSize = clipToDecimals(
-            order.size,
-            log10BigNumber(marketParams.sizePrecision)
-        );
+        const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
+        const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(
-            clippedPrice,
-            log10BigNumber(marketParams.pricePrecision)
-        );
-        const sizeBn: BigNumber = ethers.utils.parseUnits(
-            clippedSize,
-            log10BigNumber(marketParams.sizePrecision)
-        );
+        const priceBn: BigNumber = ethers.utils.parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
-            ? GTC.addBuyOrder(
-                  orderbook,
-                  priceBn,
-                  sizeBn,
-                  order.postOnly,
-                  order.txOptions
-              )
-            : GTC.addSellOrder(
-                  orderbook,
-                  priceBn,
-                  sizeBn,
-                  order.postOnly,
-                  order.txOptions
-              );
+            ? GTC.addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
+            : GTC.addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
     }
 
     static async estimateGas(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        order: LIMIT
+        order: LIMIT,
     ): Promise<BigNumber> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const clippedPrice = clipToDecimals(
-            order.price,
-            log10BigNumber(marketParams.pricePrecision)
-        );
-        const clippedSize = clipToDecimals(
-            order.size,
-            log10BigNumber(marketParams.sizePrecision)
-        );
+        const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
+        const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(
-            clippedPrice,
-            log10BigNumber(marketParams.pricePrecision)
-        );
-        const sizeBn: BigNumber = ethers.utils.parseUnits(
-            clippedSize,
-            log10BigNumber(marketParams.sizePrecision)
-        );
+        const priceBn: BigNumber = ethers.utils.parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
             ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
@@ -117,16 +73,12 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData("addBuyOrder", [
-            price,
-            size,
-            postOnly,
-        ]);
+        const data = orderbookInterface.encodeFunctionData('addBuyOrder', [price, size, postOnly]);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -153,16 +105,12 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData("addSellOrder", [
-            price,
-            size,
-            postOnly,
-        ]);
+        const data = orderbookInterface.encodeFunctionData('addSellOrder', [price, size, postOnly]);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -181,7 +129,7 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructBuyOrderTransaction(
@@ -190,7 +138,7 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
-                txOptions
+                txOptions,
             );
 
             const transaction = await orderbook.signer.sendTransaction(tx);
@@ -214,7 +162,7 @@ export abstract class GTC {
         price: BigNumber,
         size: BigNumber,
         postOnly: boolean,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
             const tx = await GTC.constructSellOrderTransaction(
@@ -223,7 +171,7 @@ export abstract class GTC {
                 price,
                 size,
                 postOnly,
-                txOptions
+                txOptions,
             );
 
             const transaction = await orderbook.signer.sendTransaction(tx);
@@ -246,14 +194,10 @@ async function estimateGasBuy(
     orderbook: ethers.Contract,
     price: BigNumber,
     size: BigNumber,
-    postOnly: boolean
+    postOnly: boolean,
 ): Promise<BigNumber> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addBuyOrder(
-            price,
-            size,
-            postOnly
-        );
+        const gasEstimate = await orderbook.estimateGas.addBuyOrder(price, size, postOnly);
         return gasEstimate;
     } catch (e: any) {
         if (!e.error) {
@@ -267,14 +211,10 @@ async function estimateGasSell(
     orderbook: ethers.Contract,
     price: BigNumber,
     size: BigNumber,
-    postOnly: boolean
+    postOnly: boolean,
 ): Promise<BigNumber> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addSellOrder(
-            price,
-            size,
-            postOnly
-        );
+        const gasEstimate = await orderbook.estimateGas.addSellOrder(price, size, postOnly);
         return gasEstimate;
     } catch (e: any) {
         if (!e.error) {

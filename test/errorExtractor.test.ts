@@ -18,8 +18,8 @@ describe('Error Extractor Tests', () => {
                 maxPriorityFeePerGas: { type: 'BigNumber', hex: '0x59682f00' },
                 nonce: {},
                 gasLimit: {},
-                chainId: {}
-            }
+                chainId: {},
+            },
         };
 
         // Add the nested error structure that contains the actual error data
@@ -32,11 +32,12 @@ describe('Error Extractor Tests', () => {
                 body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x0a5c4f1f"},"id":51}',
                 error: {
                     code: -32603,
-                    data: '0x0a5c4f1f'
+                    data: '0x0a5c4f1f',
                 },
-                requestBody: '{"method":"eth_estimateGas","params":[{"type":"0x2","maxFeePerGas":"0x596836d0","maxPriorityFeePerGas":"0x59682f00","from":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","to":"0x9865f96cdf1a158c6d835a833cd668c17a58a083","data":"0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"}],"id":51,"jsonrpc":"2.0"}',
+                requestBody:
+                    '{"method":"eth_estimateGas","params":[{"type":"0x2","maxFeePerGas":"0x596836d0","maxPriorityFeePerGas":"0x59682f00","from":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","to":"0x9865f96cdf1a158c6d835a833cd668c17a58a083","data":"0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"}],"id":51,"jsonrpc":"2.0"}',
                 requestMethod: 'POST',
-                url: 'https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS'
+                url: 'https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS',
             },
             method: 'estimateGas',
             transaction: {
@@ -46,13 +47,13 @@ describe('Error Extractor Tests', () => {
                 to: '0x9865F96Cdf1A158c6D835a833Cd668C17a58A083',
                 data: '0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001',
                 type: 2,
-                accessList: null
-            }
+                accessList: null,
+            },
         };
 
         const result = extractErrorMessage(ethersError);
         console.log('Nested Ethers.js UNPREDICTABLE_GAS_LIMIT Error Result:', JSON.stringify(result, null, 2));
-        expect(result.message).toBe("Size Error");
+        expect(result.message).toBe('Size Error');
         expect(result.code).toBe(-32603);
         expect(result.details).toBe('cannot estimate gas; transaction may fail or may require manual gas limit');
         expect(result.originalError).toBeDefined();
@@ -72,11 +73,12 @@ describe('Error Extractor Tests', () => {
                     body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x0a5c4f1f"},"id":51}',
                     error: {
                         code: -32603,
-                        data: '0x0a5c4f1f'
+                        data: '0x0a5c4f1f',
                     },
-                    requestBody: '{"method":"eth_estimateGas","params":[{"type":"0x2","maxFeePerGas":"0x596836d0","maxPriorityFeePerGas":"0x59682f00","from":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","to":"0x9865f96cdf1a158c6d835a833cd668c17a58a083","data":"0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"}],"id":51,"jsonrpc":"2.0"}',
+                    requestBody:
+                        '{"method":"eth_estimateGas","params":[{"type":"0x2","maxFeePerGas":"0x596836d0","maxPriorityFeePerGas":"0x59682f00","from":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","to":"0x9865f96cdf1a158c6d835a833cd668c17a58a083","data":"0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"}],"id":51,"jsonrpc":"2.0"}',
                     requestMethod: 'POST',
-                    url: 'https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS'
+                    url: 'https://devnet1.monad.xyz/rpc/WbScX50z7Xsvsuk6UB1uMci8Ekee3PJqhBZ2RRx0xSjyqx9hjipbfMh60vr7a1gS',
                 },
                 method: 'estimateGas',
                 transaction: {
@@ -86,14 +88,14 @@ describe('Error Extractor Tests', () => {
                     to: '0x9865F96Cdf1A158c6D835a833Cd668C17a58A083',
                     data: '0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001',
                     type: 2,
-                    accessList: null
-                }
-            }
+                    accessList: null,
+                },
+            },
         };
 
         const result = extractErrorMessage(ethersError);
         console.log('Ethers.js Complex Error Result:', JSON.stringify(result, null, 2));
-        expect(result.message).toBe("Size Error");
+        expect(result.message).toBe('Size Error');
         expect(result.code).toBe(-32603);
     });
 
@@ -111,21 +113,21 @@ describe('Error Extractor Tests', () => {
                     body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x0a5c4f1f"},"id":46}',
                     error: {
                         code: -32603,
-                        data: '0x0a5c4f1f'
-                    }
+                        data: '0x0a5c4f1f',
+                    },
                 },
                 method: 'estimateGas',
                 transaction: {
                     from: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
                     to: '0x9865F96Cdf1A158c6D835a833Cd668C17a58A083',
                     data: '0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001',
-                    accessList: null
-                }
-            }
+                    accessList: null,
+                },
+            },
         };
 
         const result = extractErrorMessage(parsedError);
-        expect(result.message).toBe("Size Error");
+        expect(result.message).toBe('Size Error');
         expect(result.code).toBe(-32603);
         expect(result.details).toBe('cannot estimate gas; transaction may fail or may require manual gas limit');
         console.log('Parsed Error Result:', JSON.stringify(result, null, 2));
@@ -145,30 +147,30 @@ describe('Error Extractor Tests', () => {
                     body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x0a5c4f1f"},"id":51}',
                     error: {
                         code: -32603,
-                        data: '0x0a5c4f1f'
-                    }
+                        data: '0x0a5c4f1f',
+                    },
                 },
                 method: 'estimateGas',
                 transaction: {
                     from: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
                     maxPriorityFeePerGas: {
                         type: 'BigNumber',
-                        hex: '0x59682f00'
+                        hex: '0x59682f00',
                     },
                     maxFeePerGas: {
                         type: 'BigNumber',
-                        hex: '0x596836d0'
+                        hex: '0x596836d0',
                     },
                     to: '0x9865F96Cdf1A158c6D835a833Cd668C17a58A083',
                     data: '0x40e79b1b000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001',
                     type: 2,
-                    accessList: null
-                }
-            }
+                    accessList: null,
+                },
+            },
         };
 
         const result = extractErrorMessage(ethersError);
-        expect(result.message).toBe("Size Error");
+        expect(result.message).toBe('Size Error');
         expect(result.code).toBe(-32603);
         expect(result.details).toBeDefined();
         console.log('Ethers Error Result:', JSON.stringify(result, null, 2));
@@ -178,19 +180,19 @@ describe('Error Extractor Tests', () => {
     it('should handle direct RPC error format', () => {
         const rpcError = {
             code: -32603,
-            message: "Internal JSON-RPC error.",
+            message: 'Internal JSON-RPC error.',
             data: {
                 code: -32603,
-                message: "execution reverted",
-                data: "0x8199f5f3", // Slippage Exceeded
-                cause: null
-            }
+                message: 'execution reverted',
+                data: '0x8199f5f3', // Slippage Exceeded
+                cause: null,
+            },
         };
 
         const result = extractErrorMessage(rpcError);
-        expect(result.message).toBe("Slippage Exceeded");
+        expect(result.message).toBe('Slippage Exceeded');
         expect(result.code).toBe(-32603);
-        expect(result.details).toBe("execution reverted");
+        expect(result.details).toBe('execution reverted');
         console.log('RPC Error Result:', JSON.stringify(result, null, 2));
     });
 
@@ -199,18 +201,18 @@ describe('Error Extractor Tests', () => {
         const wrappedError = {
             error: {
                 code: -32603,
-                message: "Internal JSON-RPC error.",
+                message: 'Internal JSON-RPC error.',
                 data: {
                     code: -32603,
-                    message: "execution reverted",
-                    data: "0x8199f5f3", // Slippage Exceeded
-                    cause: null
-                }
-            }
+                    message: 'execution reverted',
+                    data: '0x8199f5f3', // Slippage Exceeded
+                    cause: null,
+                },
+            },
         };
 
         const result = extractErrorMessage(wrappedError);
-        expect(result.message).toBe("Slippage Exceeded");
+        expect(result.message).toBe('Slippage Exceeded');
         expect(result.code).toBe(-32603);
         expect(result.details).toBeDefined();
         console.log('Wrapped RPC Error Result:', JSON.stringify(result, null, 2));
@@ -218,9 +220,9 @@ describe('Error Extractor Tests', () => {
 
     // Test for invalid input
     it('should handle invalid input gracefully', () => {
-        const invalidError = "not a valid error object";
+        const invalidError = 'not a valid error object';
         const result = extractErrorMessage(invalidError);
-        expect(result.message).toBe("Failed to extract error message");
+        expect(result.message).toBe('Failed to extract error message');
         expect(result.originalError).toBeDefined();
         console.log('Invalid Error Result:', JSON.stringify(result, null, 2));
     });
@@ -228,7 +230,7 @@ describe('Error Extractor Tests', () => {
     // Test for null input
     it('should handle null input gracefully', () => {
         const result = extractErrorMessage(null);
-        expect(result.message).toBe("Failed to extract error message");
+        expect(result.message).toBe('Failed to extract error message');
         expect(result.originalError).toBe(null);
         console.log('Null Error Result:', JSON.stringify(result, null, 2));
     });
@@ -239,19 +241,20 @@ describe('Error Extractor Tests', () => {
             body: '{"jsonrpc":"2.0","error":{"code":-32603,"message":"execution reverted","data":"0x8199f5f3"},"id":84}',
             error: {
                 code: -32603,
-                data: "0x8199f5f3"
+                data: '0x8199f5f3',
             },
-            requestBody: '{"method":"eth_estimateGas","params":[{"from":"0x18b908f74d83257407487463dbc11d4223017187","to":"0x6a8faed69841182a785e9b411b4208018856d1f7","data":"0x64216b0f00000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000a9fa93cbc62d80000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001","chainId":"0xa1ee"}],"id":84,"jsonrpc":"2.0"}',
-            requestMethod: "POST",
-            url: "/api/proxy-rpc",
-            code: "SERVER_ERROR",
-            version: "web/5.7.1"
+            requestBody:
+                '{"method":"eth_estimateGas","params":[{"from":"0x18b908f74d83257407487463dbc11d4223017187","to":"0x6a8faed69841182a785e9b411b4208018856d1f7","data":"0x64216b0f00000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000a9fa93cbc62d80000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001","chainId":"0xa1ee"}],"id":84,"jsonrpc":"2.0"}',
+            requestMethod: 'POST',
+            url: '/api/proxy-rpc',
+            code: 'SERVER_ERROR',
+            version: 'web/5.7.1',
         };
 
         const result = extractErrorMessage(privyError);
-        expect(result.message).toBe("Slippage Exceeded");
+        expect(result.message).toBe('Slippage Exceeded');
         expect(result.code).toBe(-32603);
-        expect(result.details).toBe("execution reverted");
+        expect(result.details).toBe('execution reverted');
         console.log('Privy Error Result:', JSON.stringify(result, null, 2));
     });
 });

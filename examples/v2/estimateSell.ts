@@ -1,9 +1,9 @@
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
-import * as KuruSdk from "../../src";
-import * as KuruConfig from "./../config.json";
+import * as KuruSdk from '../../src';
+import * as KuruConfig from './../config.json';
 
-const {rpcUrl, contractAddress} = KuruConfig;
+const { rpcUrl, contractAddress } = KuruConfig;
 
 const args = process.argv.slice(2);
 const amount = parseFloat(args[0]);
@@ -13,16 +13,16 @@ const amount = parseFloat(args[0]);
 
     const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-	try {
-		const estimate = await KuruSdk.CostEstimator.estimateMarketSell(
-			provider,
-			contractAddress,
-			marketParams,
-			amount
-		);
+    try {
+        const estimate = await KuruSdk.CostEstimator.estimateMarketSell(
+            provider,
+            contractAddress,
+            marketParams,
+            amount,
+        );
 
-		console.log(estimate);
-	} catch (error) {
-		console.error("Error estimating market sell:", error);
-	}
+        console.log(estimate);
+    } catch (error) {
+        console.error('Error estimating market sell:', error);
+    }
 })();

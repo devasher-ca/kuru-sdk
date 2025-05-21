@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ContractReceipt, ethers } from "ethers";
+import { ContractReceipt, ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { extractErrorMessage } from "../utils";
+import { extractErrorMessage } from '../utils';
 
 // ============ Config Imports ============
-import marginAccountAbi from "../../abi/MarginAccount.json";
-import { TransactionOptions } from "src/types";
-import buildTransactionRequest from "../utils/txConfig";
+import marginAccountAbi from '../../abi/MarginAccount.json';
+import { TransactionOptions } from 'src/types';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class MarginWithdraw {
     static async withdraw(
@@ -16,25 +16,19 @@ export abstract class MarginWithdraw {
         tokenAddress: string,
         amount: number,
         decimals: number,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
         try {
-            const signer =
-                providerOrSigner instanceof ethers.Signer
-                    ? providerOrSigner
-                    : providerOrSigner.getSigner();
+            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
-            const formattedAmount = ethers.utils.parseUnits(
-                amount.toString(),
-                decimals
-            );
+            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
 
             const tx = await MarginWithdraw.constructWithdrawTransaction(
                 signer,
                 marginAccountAddress,
                 tokenAddress,
                 formattedAmount.toString(),
-                txOptions
+                txOptions,
             );
 
             const transaction = await signer.sendTransaction(tx);
@@ -52,17 +46,12 @@ export abstract class MarginWithdraw {
         marginAccountAddress: string,
         tokenAddress: string,
         amount: string,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(
-            marginAccountAbi.abi
-        );
+        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const data = marginAccountInterface.encodeFunctionData("withdraw", [
-            amount,
-            tokenAddress,
-        ]);
+        const data = marginAccountInterface.encodeFunctionData('withdraw', [amount, tokenAddress]);
 
         return buildTransactionRequest({
             to: marginAccountAddress,
@@ -77,18 +66,15 @@ export abstract class MarginWithdraw {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         marginAccountAddress: string,
         tokens: string[],
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ContractReceipt> {
-        const signer =
-            providerOrSigner instanceof ethers.Signer
-                ? providerOrSigner
-                : providerOrSigner.getSigner();
+        const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
 
         const tx = await MarginWithdraw.constructBatchClaimMaxTokensTransaction(
             signer,
             marginAccountAddress,
             tokens,
-            txOptions
+            txOptions,
         );
 
         const transaction = await signer.sendTransaction(tx);
@@ -99,17 +85,12 @@ export abstract class MarginWithdraw {
         signer: ethers.Signer,
         marginAccountAddress: string,
         tokens: string[],
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(
-            marginAccountAbi.abi
-        );
+        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
 
-        const data = marginAccountInterface.encodeFunctionData(
-            "batchClaimMaxTokens",
-            [tokens]
-        );
+        const data = marginAccountInterface.encodeFunctionData('batchClaimMaxTokens', [tokens]);
 
         return buildTransactionRequest({
             to: marginAccountAddress,
