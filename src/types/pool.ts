@@ -23,7 +23,7 @@ export interface SlippageOptions {
     defaultSlippageBps: number;
     tradeSize: number;
     priceImpactBps: number;
-    ohlcvData: { close: number, volume: number }[];
+    ohlcvData: { close: number; volume: number }[];
 }
 
 export interface MarketResponse {

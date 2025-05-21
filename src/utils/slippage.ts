@@ -10,28 +10,26 @@ export function calculateDynamicSlippage(
     defaultSlippageBps: number,
     tradeSize: number,
     priceImpactBps: number,
-    ohlcvData: { close: number, volume: number }[]
+    ohlcvData: { close: number; volume: number }[],
 ): number {
     const MIN_SLIPPAGE_BPS = 5;
     const MAX_SLIPPAGE_BPS = 200;
-    
+
     // Calculate volatility component
-    const returns = ohlcvData.slice(1).map((data, i) => 
-        Math.log(data.close / ohlcvData[i].close)
-    );
+    const returns = ohlcvData.slice(1).map((data, i) => Math.log(data.close / ohlcvData[i].close));
     const volatility = calculateStandardDeviation(returns);
-    
+
     // Calculate volume component (trade size relative to average volume)
     const avgVolume = ohlcvData.reduce((sum, d) => sum + d.volume, 0) / ohlcvData.length;
     const volumeRatio = tradeSize / avgVolume;
-    
+
     // Combine factors: base slippage + volatility adjustment + volume impact + price impact
-    let dynamicSlippage = defaultSlippageBps * (
-        1 + 
-        volatility * 2 + // Volatility factor
-        Math.sqrt(volumeRatio) * 0.5 + // Volume impact
-        priceImpactBps / 100 // Direct price impact
-    );
+    let dynamicSlippage =
+        defaultSlippageBps *
+        (1 +
+            volatility * 2 + // Volatility factor
+            Math.sqrt(volumeRatio) * 0.5 + // Volume impact
+            priceImpactBps / 100); // Direct price impact
 
     return Math.min(Math.max(dynamicSlippage, MIN_SLIPPAGE_BPS), MAX_SLIPPAGE_BPS);
 }

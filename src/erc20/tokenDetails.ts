@@ -1,6 +1,6 @@
-import { ethers } from "ethers";
-import KuruUtilsABI from "../../abi/KuruUtils.json";
-import { TokenInfo } from "../types";
+import { ethers } from 'ethers';
+import KuruUtilsABI from '../../abi/KuruUtils.json';
+import { TokenInfo } from '../types';
 
 export abstract class TokenDetailsReader {
     /**
@@ -15,18 +15,18 @@ export abstract class TokenDetailsReader {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         kuruUtilsAddress: string,
         tokens: string[],
-        holder: string
+        holder: string,
     ): Promise<TokenInfo[]> {
         const kuruUtils = new ethers.Contract(kuruUtilsAddress, KuruUtilsABI.abi, providerOrSigner);
-        
+
         const result = await kuruUtils.getTokensInfo(tokens, holder);
-        
+
         return result.map((info: any) => ({
             name: info.name,
             symbol: info.symbol,
             balance: info.balance.toString(),
             decimals: info.decimals,
-            totalSupply: info.totalSupply.toString()
+            totalSupply: info.totalSupply.toString(),
         }));
     }
 }

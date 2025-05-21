@@ -39,11 +39,11 @@ export abstract class PositionViewer {
         tickSize: bigint,
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
-        baseLiquidity?: bigint // In base asset decimals
+        baseLiquidity?: bigint, // In base asset decimals
     ): Promise<BatchLPDetails> {
         // don't allow both quoteLiquidity and baseLiquidity to be undefined
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
-            throw new Error("quoteLiquidity and baseLiquidity cannot be undefined");
+            throw new Error('quoteLiquidity and baseLiquidity cannot be undefined');
         }
 
         startPrice = startPrice - (startPrice % tickSize);
@@ -60,7 +60,7 @@ export abstract class PositionViewer {
                 nextPrice = startPrice + tickSize;
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
-            
+
             const position = {
                 price: startPrice,
                 liquidity: BigInt(0),
@@ -94,17 +94,19 @@ export abstract class PositionViewer {
             const quotePerTick = quoteLiquidity / numBids;
 
             for (const bid of bids) {
-                bid.liquidity = (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity =
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
                 if (bid.liquidity < minSize) {
-                    throw new Error("bid liquidity is less than minSize");
+                    throw new Error('bid liquidity is less than minSize');
                 }
             }
 
             for (const ask of asks) {
-                ask.liquidity = (quotePerTick * sizePrecision * pricePrecision) / (ask.price * BigInt(10) ** quoteAssetDecimals);
-                baseLiquidity += ask.liquidity * BigInt(10) ** baseAssetDecimals / sizePrecision;
+                ask.liquidity =
+                    (quotePerTick * sizePrecision * pricePrecision) / (ask.price * BigInt(10) ** quoteAssetDecimals);
+                baseLiquidity += (ask.liquidity * BigInt(10) ** baseAssetDecimals) / sizePrecision;
                 if (ask.liquidity < minSize) {
-                    throw new Error("ask liquidity is less than minSize");
+                    throw new Error('ask liquidity is less than minSize');
                 }
             }
         }
@@ -114,34 +116,39 @@ export abstract class PositionViewer {
             const sumAskPrices = asks.reduce((sum, ask) => sum + ask.price, BigInt(0));
 
             for (const ask of asks) {
-                ask.liquidity = (baseLiquidity * ask.price * sizePrecision) / (sumAskPrices * BigInt(10) ** baseAssetDecimals);
+                ask.liquidity =
+                    (baseLiquidity * ask.price * sizePrecision) / (sumAskPrices * BigInt(10) ** baseAssetDecimals);
                 if (ask.liquidity < minSize) {
-                    throw new Error("ask liquidity is less than minSize");
+                    throw new Error('ask liquidity is less than minSize');
                 }
             }
 
             for (const bid of bids) {
-                bid.liquidity = (asks[0].price * baseLiquidity * sizePrecision) / (sumAskPrices * bid.price * BigInt(10) ** baseAssetDecimals);
-                quoteLiquidity += bid.liquidity * bid.price * BigInt(10) ** quoteAssetDecimals / (sizePrecision * pricePrecision);
+                bid.liquidity =
+                    (asks[0].price * baseLiquidity * sizePrecision) /
+                    (sumAskPrices * bid.price * BigInt(10) ** baseAssetDecimals);
+                quoteLiquidity +=
+                    (bid.liquidity * bid.price * BigInt(10) ** quoteAssetDecimals) / (sizePrecision * pricePrecision);
                 if (bid.liquidity < minSize) {
-                    throw new Error("bid liquidity is less than minSize");
+                    throw new Error('bid liquidity is less than minSize');
                 }
             }
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity !== undefined) {
-
             for (const ask of asks) {
                 ask.liquidity = (baseLiquidity * sizePrecision) / (numAsks * BigInt(10) ** baseAssetDecimals);
                 if (ask.liquidity < minSize) {
-                    throw new Error("ask liquidity is less than minSize");
+                    throw new Error('ask liquidity is less than minSize');
                 }
             }
 
             for (const bid of bids) {
-                bid.liquidity = (quoteLiquidity * sizePrecision * pricePrecision) / (numBids * bid.price * BigInt(10) ** quoteAssetDecimals);
+                bid.liquidity =
+                    (quoteLiquidity * sizePrecision * pricePrecision) /
+                    (numBids * bid.price * BigInt(10) ** quoteAssetDecimals);
                 if (bid.liquidity < minSize) {
-                    throw new Error("bid liquidity is less than minSize");
+                    throw new Error('bid liquidity is less than minSize');
                 }
             }
         }
@@ -166,11 +173,11 @@ export abstract class PositionViewer {
         tickSize: bigint,
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
-        baseLiquidity?: bigint // In base asset decimals
+        baseLiquidity?: bigint, // In base asset decimals
     ): Promise<BatchLPDetails> {
         // don't allow both quoteLiquidity and baseLiquidity to be undefined
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
-            throw new Error("quoteLiquidity and baseLiquidity cannot be undefined");
+            throw new Error('quoteLiquidity and baseLiquidity cannot be undefined');
         }
 
         startPrice = startPrice - (startPrice % tickSize);
@@ -187,7 +194,7 @@ export abstract class PositionViewer {
                 nextPrice = startPrice + tickSize;
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
-            
+
             const position = {
                 price: startPrice,
                 liquidity: BigInt(0),
@@ -222,40 +229,54 @@ export abstract class PositionViewer {
         if (quoteLiquidity !== undefined && baseLiquidity === undefined) {
             baseLiquidity = BigInt(0);
 
-            quoteInFarthestBid = BigInt(2) * quoteLiquidity / (numBids**BigInt(2) + numBids);
-            quoteInFarthestAsk = BigInt(2) * quoteLiquidity / (numAsks**BigInt(2) + numAsks + BigInt(1));
+            quoteInFarthestBid = (BigInt(2) * quoteLiquidity) / (numBids ** BigInt(2) + numBids);
+            quoteInFarthestAsk = (BigInt(2) * quoteLiquidity) / (numAsks ** BigInt(2) + numAsks + BigInt(1));
 
             for (const ask of asks) {
                 const askIndex = asks.indexOf(ask);
 
-                baseLiquidity += (quoteInFarthestAsk * (numAsks - BigInt(askIndex)) * BigInt(10)**baseAssetDecimals * pricePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
+                baseLiquidity +=
+                    (quoteInFarthestAsk *
+                        (numAsks - BigInt(askIndex)) *
+                        BigInt(10) ** baseAssetDecimals *
+                        pricePrecision) /
+                    (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
             for (const ask of asks) {
                 const askIndex = asks.indexOf(ask) + 1;
-                quoteInFarthestAsk += baseLiquidity * BigInt(10)**quoteAssetDecimals * pricePrecision * (numAsks - BigInt(askIndex) + BigInt(1)) / (ask.price * BigInt(10)**baseAssetDecimals);
+                quoteInFarthestAsk +=
+                    (baseLiquidity *
+                        BigInt(10) ** quoteAssetDecimals *
+                        pricePrecision *
+                        (numAsks - BigInt(askIndex) + BigInt(1))) /
+                    (ask.price * BigInt(10) ** baseAssetDecimals);
             }
 
-            quoteInFarthestBid = quoteInFarthestAsk * (numAsks + BigInt(1)) / numBids;
+            quoteInFarthestBid = (quoteInFarthestAsk * (numAsks + BigInt(1))) / numBids;
 
-            quoteLiquidity = numBids * (numBids + BigInt(1)) * quoteInFarthestBid / BigInt(2);
+            quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInFarthestBid) / BigInt(2);
         }
 
         for (const bid of bids) {
             const bidIndex = bids.indexOf(bid) + 1;
-            bid.liquidity = (quoteInFarthestBid * BigInt(bidIndex) * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+            bid.liquidity =
+                (quoteInFarthestBid * BigInt(bidIndex) * pricePrecision * sizePrecision) /
+                (BigInt(10) ** quoteAssetDecimals * bid.price);
             if (bid.liquidity < minSize) {
-                throw new Error("bid liquidity is less than minSize");
+                throw new Error('bid liquidity is less than minSize');
             }
         }
 
         for (const ask of asks) {
             const askIndex = asks.indexOf(ask);
-            ask.liquidity = (quoteInFarthestAsk * (numAsks - BigInt(askIndex)) * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
+            ask.liquidity =
+                (quoteInFarthestAsk * (numAsks - BigInt(askIndex)) * pricePrecision * sizePrecision) /
+                (BigInt(10) ** quoteAssetDecimals * ask.price);
             if (ask.liquidity < minSize) {
-                throw new Error("ask liquidity is less than minSize");
+                throw new Error('ask liquidity is less than minSize');
             }
         }
 
@@ -279,11 +300,11 @@ export abstract class PositionViewer {
         tickSize: bigint,
         minSize: bigint,
         quoteLiquidity?: bigint, // In quote asset decimals
-        baseLiquidity?: bigint // In base asset decimals
+        baseLiquidity?: bigint, // In base asset decimals
     ): Promise<BatchLPDetails> {
         // don't allow both quoteLiquidity and baseLiquidity to be undefined
         if (quoteLiquidity === undefined && baseLiquidity === undefined) {
-            throw new Error("quoteLiquidity and baseLiquidity cannot be undefined");
+            throw new Error('quoteLiquidity and baseLiquidity cannot be undefined');
         }
 
         startPrice = startPrice - (startPrice % tickSize);
@@ -300,7 +321,7 @@ export abstract class PositionViewer {
                 nextPrice = startPrice + tickSize;
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
-            
+
             const position = {
                 price: startPrice,
                 liquidity: BigInt(0),
@@ -335,40 +356,48 @@ export abstract class PositionViewer {
         if (quoteLiquidity !== undefined && baseLiquidity === undefined) {
             baseLiquidity = BigInt(0);
 
-            quoteInClosestBid = BigInt(2) * quoteLiquidity / (numBids**BigInt(2) + numBids);
-            quoteInClosestAsk = BigInt(2) * quoteLiquidity / (numAsks**BigInt(2) + numAsks + BigInt(1));
+            quoteInClosestBid = (BigInt(2) * quoteLiquidity) / (numBids ** BigInt(2) + numBids);
+            quoteInClosestAsk = (BigInt(2) * quoteLiquidity) / (numAsks ** BigInt(2) + numAsks + BigInt(1));
 
             for (const ask of asks) {
                 const askIndex = asks.indexOf(ask) + 1;
 
-                baseLiquidity += (quoteInClosestAsk * BigInt(askIndex) * BigInt(10)**baseAssetDecimals * pricePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
+                baseLiquidity +=
+                    (quoteInClosestAsk * BigInt(askIndex) * BigInt(10) ** baseAssetDecimals * pricePrecision) /
+                    (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
             for (const ask of asks) {
                 const askIndex = asks.indexOf(ask) + 1;
-                quoteInClosestAsk += baseLiquidity * BigInt(10)**quoteAssetDecimals * pricePrecision * (BigInt(askIndex)) / (ask.price * BigInt(10)**baseAssetDecimals);
+                quoteInClosestAsk +=
+                    (baseLiquidity * BigInt(10) ** quoteAssetDecimals * pricePrecision * BigInt(askIndex)) /
+                    (ask.price * BigInt(10) ** baseAssetDecimals);
             }
 
             quoteInClosestBid = quoteInClosestAsk;
 
-            quoteLiquidity = numBids * (numBids + BigInt(1)) * quoteInClosestBid / BigInt(2);
+            quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInClosestBid) / BigInt(2);
         }
 
         for (const bid of bids) {
             const bidIndex = bids.indexOf(bid);
-            bid.liquidity = (quoteInClosestBid * (numBids - BigInt(bidIndex)) * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * bid.price);
+            bid.liquidity =
+                (quoteInClosestBid * (numBids - BigInt(bidIndex)) * pricePrecision * sizePrecision) /
+                (BigInt(10) ** quoteAssetDecimals * bid.price);
             if (bid.liquidity < minSize) {
-                throw new Error("bid liquidity is less than minSize");
+                throw new Error('bid liquidity is less than minSize');
             }
         }
 
         for (const ask of asks) {
             const askIndex = asks.indexOf(ask) + 1;
-            ask.liquidity = (quoteInClosestAsk * BigInt(askIndex) * pricePrecision * sizePrecision) / (BigInt(10) ** quoteAssetDecimals * ask.price);
+            ask.liquidity =
+                (quoteInClosestAsk * BigInt(askIndex) * pricePrecision * sizePrecision) /
+                (BigInt(10) ** quoteAssetDecimals * ask.price);
             if (ask.liquidity < minSize) {
-                throw new Error("ask liquidity is less than minSize");
+                throw new Error('ask liquidity is less than minSize');
             }
         }
 

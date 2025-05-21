@@ -1,14 +1,14 @@
 // ============ External Imports ============
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { MarketParams } from "../types";
-import { OrderBook } from "./orderBook";
-import { log10BigNumber } from "../utils";
+import { MarketParams } from '../types';
+import { OrderBook } from './orderBook';
+import { log10BigNumber } from '../utils';
 
 // ============ Config Imports ============
-import { extractErrorMessage } from "../utils";
-import orderbookAbi from "../../abi/OrderBook.json";
+import { extractErrorMessage } from '../utils';
+import orderbookAbi from '../../abi/OrderBook.json';
 
 export abstract class CostEstimator {
     /**
@@ -23,28 +23,23 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        size: number
-    ): Promise<{ output: number, estimatedGas: BigNumber }> {
+        size: number,
+    ): Promise<{ output: number; estimatedGas: BigNumber }> {
         const sizeInPrecision = ethers.utils.parseUnits(
             size.toFixed(log10BigNumber(marketParams.sizePrecision)),
-            log10BigNumber(marketParams.sizePrecision)
+            log10BigNumber(marketParams.sizePrecision),
         );
 
         try {
             const { output, estimatedGas } = await this.returnMarketSellEstimate(
                 providerOrSigner,
                 orderbookAddress,
-                sizeInPrecision
+                sizeInPrecision,
             );
 
             return {
-                output: Number(
-                    ethers.utils.formatUnits(
-                        output,
-                        marketParams.quoteAssetDecimals
-                    )
-                ),
-                estimatedGas
+                output: Number(ethers.utils.formatUnits(output, marketParams.quoteAssetDecimals)),
+                estimatedGas,
             };
         } catch (e: any) {
             if (!e.error) {
@@ -57,29 +52,17 @@ export abstract class CostEstimator {
     static async returnMarketSellEstimate(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        size: BigNumber
+        size: BigNumber,
     ): Promise<{ output: BigNumber; estimatedGas: BigNumber }> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
-        
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
         const [estimate, estimatedGas] = await Promise.all([
-            orderbook.callStatic.placeAndExecuteMarketSell(
-                size,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
-            ),
-            orderbook.estimateGas.placeAndExecuteMarketSell(
-                size,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
-            )
+            orderbook.callStatic.placeAndExecuteMarketSell(size, 0, false, false, {
+                from: ethers.constants.AddressZero,
+            }),
+            orderbook.estimateGas.placeAndExecuteMarketSell(size, 0, false, false, {
+                from: ethers.constants.AddressZero,
+            }),
         ]);
 
         return { output: estimate, estimatedGas };
@@ -99,7 +82,7 @@ export abstract class CostEstimator {
         marketParams: MarketParams,
         quoteAmount: number,
         l2Book: any,
-        contractVaultParams: any
+        contractVaultParams: any,
     ): Promise<number> {
         const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
         const grossQuoteAmount = quoteAmount / (1 - takerFeeBps);
@@ -109,7 +92,7 @@ export abstract class CostEstimator {
             orderbookAddress,
             marketParams,
             l2Book,
-            contractVaultParams
+            contractVaultParams,
         );
 
         let remainingQuote = grossQuoteAmount;
@@ -149,25 +132,23 @@ export abstract class CostEstimator {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        quoteAmount: number
-    ): Promise<{ output: number, estimatedGas: BigNumber }> {
+        quoteAmount: number,
+    ): Promise<{ output: number; estimatedGas: BigNumber }> {
         const sizeInPrecision = ethers.utils.parseUnits(
             quoteAmount.toFixed(log10BigNumber(marketParams.pricePrecision)),
-            log10BigNumber(marketParams.pricePrecision)
+            log10BigNumber(marketParams.pricePrecision),
         );
 
         try {
             const { output, estimatedGas } = await this.returnMarketBuyEstimate(
                 providerOrSigner,
                 orderbookAddress,
-                sizeInPrecision
+                sizeInPrecision,
             );
 
             return {
-                output: parseFloat(
-                    ethers.utils.formatUnits(output, marketParams.baseAssetDecimals)
-                ),
-                estimatedGas
+                output: parseFloat(ethers.utils.formatUnits(output, marketParams.baseAssetDecimals)),
+                estimatedGas,
             };
         } catch (e: any) {
             if (!e.error) {
@@ -180,29 +161,17 @@ export abstract class CostEstimator {
     static async returnMarketBuyEstimate(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        size: BigNumber
+        size: BigNumber,
     ): Promise<{ output: BigNumber; estimatedGas: BigNumber }> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const [estimate, estimatedGas] = await Promise.all([
-            orderbook.callStatic.placeAndExecuteMarketBuy(
-                size,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
-            ),
-            orderbook.estimateGas.placeAndExecuteMarketBuy(
-                size,
-                0,
-                false,
-                false,
-                { from: ethers.constants.AddressZero }
-            )
+            orderbook.callStatic.placeAndExecuteMarketBuy(size, 0, false, false, {
+                from: ethers.constants.AddressZero,
+            }),
+            orderbook.estimateGas.placeAndExecuteMarketBuy(size, 0, false, false, {
+                from: ethers.constants.AddressZero,
+            }),
         ]);
 
         return { output: estimate, estimatedGas };
@@ -222,7 +191,7 @@ export abstract class CostEstimator {
         marketParams: MarketParams,
         baseTokenAmount: number,
         l2Book: any,
-        contractVaultParams: any
+        contractVaultParams: any,
     ): Promise<number> {
         const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
         const grossBaseTokenAmount = baseTokenAmount / (1 - takerFeeBps);
@@ -232,7 +201,7 @@ export abstract class CostEstimator {
             orderbookAddress,
             marketParams,
             l2Book,
-            contractVaultParams
+            contractVaultParams,
         );
 
         let remainingBase = grossBaseTokenAmount;

@@ -1,4 +1,4 @@
-import errorCodes from "./errors.json"
+import errorCodes from './errors.json';
 
 interface ParsedError {
     message: string;
@@ -9,7 +9,7 @@ interface ParsedError {
 
 export function searchForErrorCode(data: string): string | null {
     if (!data || typeof data !== 'string') return null;
-    
+
     // Remove '0x' prefix if present
     const cleanedData = data.startsWith('0x') ? data.slice(2) : data;
 
@@ -34,8 +34,8 @@ export function extractErrorMessage(error: any): ParsedError {
         // Handle null or undefined input
         if (!error) {
             return {
-                message: "Failed to extract error message",
-                originalError: error
+                message: 'Failed to extract error message',
+                originalError: error,
             };
         }
 
@@ -46,9 +46,9 @@ export function extractErrorMessage(error: any): ParsedError {
                 jsonObj = JSON.parse(error);
             } catch (e) {
                 return {
-                    message: "Failed to extract error message",
-                    details: e instanceof Error ? e.message : "Unknown error occurred",
-                    originalError: error
+                    message: 'Failed to extract error message',
+                    details: e instanceof Error ? e.message : 'Unknown error occurred',
+                    originalError: error,
                 };
             }
         }
@@ -63,7 +63,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: jsonObj.reason || jsonObj.message,
-                        originalError: jsonObj
+                        originalError: jsonObj,
                     };
                 }
             }
@@ -79,7 +79,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: jsonObj.reason || jsonObj.message,
-                        originalError: jsonObj
+                        originalError: jsonObj,
                     };
                 }
             }
@@ -88,7 +88,7 @@ export function extractErrorMessage(error: any): ParsedError {
                 message: jsonObj.message || jsonObj.reason,
                 code: jsonObj.code,
                 details: jsonObj.error?.reason || jsonObj.error?.message,
-                originalError: jsonObj
+                originalError: jsonObj,
             };
         }
 
@@ -102,7 +102,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: bodyError.error.message,
-                        originalError: jsonObj
+                        originalError: jsonObj,
                     };
                 }
             }
@@ -112,8 +112,8 @@ export function extractErrorMessage(error: any): ParsedError {
                 return {
                     message: knownError,
                     code: jsonObj.error.code,
-                    details: bodyError?.error?.message || "Unknown error",
-                    originalError: jsonObj
+                    details: bodyError?.error?.message || 'Unknown error',
+                    originalError: jsonObj,
                 };
             }
         }
@@ -128,7 +128,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: jsonObj.originalError.reason || jsonObj.details,
-                        originalError: jsonObj.originalError
+                        originalError: jsonObj.originalError,
                     };
                 }
             }
@@ -145,7 +145,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: jsonObj.reason || jsonObj.message,
-                        originalError: jsonObj
+                        originalError: jsonObj,
                     };
                 }
             }
@@ -161,7 +161,7 @@ export function extractErrorMessage(error: any): ParsedError {
                         message: knownError,
                         code: bodyError.error.code,
                         details: jsonObj.reason || jsonObj.message,
-                        originalError: jsonObj
+                        originalError: jsonObj,
                     };
                 }
             }
@@ -175,7 +175,7 @@ export function extractErrorMessage(error: any): ParsedError {
                     message: knownError,
                     code: jsonObj.error.data.code,
                     details: jsonObj.error.data.message,
-                    originalError: jsonObj
+                    originalError: jsonObj,
                 };
             }
         }
@@ -188,7 +188,7 @@ export function extractErrorMessage(error: any): ParsedError {
                     message: knownError,
                     code: jsonObj.data.code,
                     details: jsonObj.data.message,
-                    originalError: jsonObj
+                    originalError: jsonObj,
                 };
             }
         }
@@ -201,24 +201,24 @@ export function extractErrorMessage(error: any): ParsedError {
                     message: knownError,
                     code: jsonObj.error.code,
                     details: jsonObj.error.message,
-                    originalError: jsonObj
+                    originalError: jsonObj,
                 };
             }
         }
 
         // Fallback to original message/reason
         return {
-            message: jsonObj.reason || jsonObj.message || "Unknown error",
+            message: jsonObj.reason || jsonObj.message || 'Unknown error',
             code: jsonObj.code,
             details: jsonObj.details,
-            originalError: jsonObj
+            originalError: jsonObj,
         };
     } catch (e) {
-        console.error("Error while extracting error message:", e);
+        console.error('Error while extracting error message:', e);
         return {
-            message: "Failed to extract error message",
-            details: e instanceof Error ? e.message : "Unknown error occurred",
-            originalError: error
+            message: 'Failed to extract error message',
+            details: e instanceof Error ? e.message : 'Unknown error occurred',
+            originalError: error,
         };
     }
 }

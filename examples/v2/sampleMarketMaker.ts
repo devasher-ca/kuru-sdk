@@ -1,32 +1,32 @@
 // SDK Imports
-import * as KuruSdk from "../../src";
-import { BATCH, LIMIT } from "../../src/types/order";
-import { log10BigNumber } from "../../src/utils/math";
-import { MarginBalance } from "../../src/margin/balance";
-import { MarketParams } from "../../src/types";
+import * as KuruSdk from '../../src';
+import { BATCH, LIMIT } from '../../src/types/order';
+import { log10BigNumber } from '../../src/utils/math';
+import { MarginBalance } from '../../src/margin/balance';
+import { MarketParams } from '../../src/types';
 
 // Config
-import * as KuruConfig from "../config.json";
+import * as KuruConfig from '../config.json';
 
 // External Modules
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, ethers } from 'ethers';
 import fetch from 'cross-fetch';
 import { io, Socket } from 'socket.io-client';
 
 const { rpcUrl, contractAddress } = KuruConfig;
 const privateKey = process.env.PRIVATE_KEY as string;
 
-const BINANCE_API_URL = "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT";
+const BINANCE_API_URL = 'https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT';
 
 // Global state management
-let activeOrderIds: BigNumber[] = [];  // Tracks currently active order IDs
-let currentNonce: number = 0;          // Manages transaction nonce
+let activeOrderIds: BigNumber[] = []; // Tracks currently active order IDs
+let currentNonce: number = 0; // Manages transaction nonce
 let currentGasPrice: BigNumber | undefined = undefined;
 
 const LOG_LEVELS = {
     INFO: 'INFO',
     ERROR: 'ERROR',
-    DEBUG: 'DEBUG'
+    DEBUG: 'DEBUG',
 } as const;
 
 function log(level: keyof typeof LOG_LEVELS, message: string) {
@@ -46,7 +46,7 @@ interface InventoryBalance {
 
 let currentInventory: InventoryBalance = {
     baseBalance: 0,
-    quoteBalance: 0
+    quoteBalance: 0,
 };
 
 // Nonce management functions
@@ -74,40 +74,42 @@ async function parseEvents(receipt: ethers.ContractReceipt): Promise<{
 }> {
     const newOrderIds: BigNumber[] = [];
     const trades: TradeInfo[] = [];
-    
+
     receipt.logs.forEach((log) => {
         // Check for OrderCreated events
-        if (log.topics[0] === ethers.utils.id("OrderCreated(uint40,address,uint96,uint32,bool)")) {
+        if (log.topics[0] === ethers.utils.id('OrderCreated(uint40,address,uint96,uint32,bool)')) {
             try {
                 const decodedLog = ethers.utils.defaultAbiCoder.decode(
                     ['uint40', 'address', 'uint96', 'uint32', 'bool'],
-                    log.data
+                    log.data,
                 );
                 const orderId = BigNumber.from(decodedLog[0]);
                 newOrderIds.push(orderId);
             } catch (error) {
-                console.error("Error decoding OrderCreated event:", error);
+                console.error('Error decoding OrderCreated event:', error);
             }
         }
         // Check for Trade events
-        else if (log.topics[0] === ethers.utils.id("Trade(uint40,address,bool,uint256,uint96,address,address,uint96)")) {
+        else if (
+            log.topics[0] === ethers.utils.id('Trade(uint40,address,bool,uint256,uint96,address,address,uint96)')
+        ) {
             try {
                 const decodedLog = ethers.utils.defaultAbiCoder.decode(
                     ['uint40', 'address', 'bool', 'uint256', 'uint96', 'address', 'address', 'uint96'],
-                    log.data
+                    log.data,
                 );
                 trades.push({
                     orderId: BigNumber.from(decodedLog[0]),
                     price: BigNumber.from(decodedLog[3]),
                     filledSize: BigNumber.from(decodedLog[7]),
-                    isBuy: decodedLog[2]
+                    isBuy: decodedLog[2],
                 });
             } catch (error) {
-                console.error("Error decoding trade event:", error);
+                console.error('Error decoding trade event:', error);
             }
         }
     });
-    
+
     return { newOrderIds, trades };
 }
 
@@ -118,7 +120,7 @@ async function getSolPrice() {
         const data = await response.json();
         return parseFloat(data.price);
     } catch (error) {
-        console.error("Error fetching SOL price from Binance:", error);
+        console.error('Error fetching SOL price from Binance:', error);
         throw error;
     }
 }
@@ -158,7 +160,7 @@ class OrderTracker {
     // Add method to set market params
     public setMarketParams(params: MarketParams) {
         this.marketParams = params;
-        console.log("Market params set in OrderTracker");
+        console.log('Market params set in OrderTracker');
     }
 
     private setupSocketListeners() {
@@ -171,13 +173,11 @@ class OrderTracker {
                 return;
             }
 
-            if (trade.updatedSize === "0") {
+            if (trade.updatedSize === '0') {
                 const orderIdStr = BigNumber.from(trade.orderId).toString();
                 if (this.activeOrders.has(orderIdStr)) {
                     this.activeOrders.delete(orderIdStr);
-                    activeOrderIds = activeOrderIds.filter(id => 
-                        id.toString() !== orderIdStr
-                    );
+                    activeOrderIds = activeOrderIds.filter((id) => id.toString() !== orderIdStr);
                 }
             }
         });
@@ -191,39 +191,44 @@ class OrderTracker {
         });
 
         // Add balance update listener
-        this.socket.on('BalanceUpdate', (update: {
-            owner: string;
-            token: string;
-            balance: string;
-            market: string;
-            isBaseAsset: boolean;
-            timestamp: string;
-        }) => {
-            // Verify it's for our signer and market
-            if (update.owner.toLowerCase() !== this.signerAddress.toLowerCase() ||
-                update.market.toLowerCase() !== contractAddress.toLowerCase() ||
-                !this.marketParams) {
-                return;
-            }
+        this.socket.on(
+            'BalanceUpdate',
+            (update: {
+                owner: string;
+                token: string;
+                balance: string;
+                market: string;
+                isBaseAsset: boolean;
+                timestamp: string;
+            }) => {
+                // Verify it's for our signer and market
+                if (
+                    update.owner.toLowerCase() !== this.signerAddress.toLowerCase() ||
+                    update.market.toLowerCase() !== contractAddress.toLowerCase() ||
+                    !this.marketParams
+                ) {
+                    return;
+                }
 
-            // Update the appropriate balance
-            const balance = BigNumber.from(update.balance);
-            if (update.isBaseAsset) {
-                currentInventory.baseBalance = parseFloat(
-                    ethers.utils.formatUnits(balance, this.marketParams.baseAssetDecimals)
-                );
-                log('DEBUG', `Base asset balance updated: ${currentInventory.baseBalance}`);
-            } else {
-                currentInventory.quoteBalance = parseFloat(
-                    ethers.utils.formatUnits(balance, this.marketParams.quoteAssetDecimals)
-                );
-                log('DEBUG', `Quote asset balance updated: ${currentInventory.quoteBalance}`);
-            }
-        });
+                // Update the appropriate balance
+                const balance = BigNumber.from(update.balance);
+                if (update.isBaseAsset) {
+                    currentInventory.baseBalance = parseFloat(
+                        ethers.utils.formatUnits(balance, this.marketParams.baseAssetDecimals),
+                    );
+                    log('DEBUG', `Base asset balance updated: ${currentInventory.baseBalance}`);
+                } else {
+                    currentInventory.quoteBalance = parseFloat(
+                        ethers.utils.formatUnits(balance, this.marketParams.quoteAssetDecimals),
+                    );
+                    log('DEBUG', `Quote asset balance updated: ${currentInventory.quoteBalance}`);
+                }
+            },
+        );
     }
 
     public trackOrders(orderIds: BigNumber[]) {
-        orderIds.forEach(id => {
+        orderIds.forEach((id) => {
             this.activeOrders.add(id.toString());
         });
     }
@@ -241,27 +246,27 @@ const PARAMS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 async function getMarketParams(provider: ethers.providers.JsonRpcProvider): Promise<any> {
     const now = Date.now();
-    
+
     // Return cached params if they're still valid
-    if (cachedMarketParams && (now - lastParamsFetch) < PARAMS_CACHE_DURATION) {
+    if (cachedMarketParams && now - lastParamsFetch < PARAMS_CACHE_DURATION) {
         return cachedMarketParams;
     }
 
     // Fetch new params
     cachedMarketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
     lastParamsFetch = now;
-    console.log("Market params refreshed at:", new Date().toISOString());
-    
+    console.log('Market params refreshed at:', new Date().toISOString());
+
     return cachedMarketParams;
 }
 
 // Core market making logic
 async function updateLimitOrders(
     provider: ethers.providers.JsonRpcProvider,
-    signer: ethers.Wallet, 
-    basePrice: number, 
-    size: number, 
-    orderTracker: OrderTracker
+    signer: ethers.Wallet,
+    basePrice: number,
+    size: number,
+    orderTracker: OrderTracker,
 ) {
     const marketParams = await getMarketParams(provider);
     const BPS_INCREMENT = 0.001;
@@ -287,8 +292,8 @@ async function updateLimitOrders(
                 priorityFee: 0.001,
                 nonce: getAndIncrementNonce(),
                 gasLimit: ethers.BigNumber.from(totalGasLimit),
-                gasPrice: currentGasPrice
-            }
+                gasPrice: currentGasPrice,
+            },
         };
 
         // Get price precision and tick size
@@ -307,7 +312,7 @@ async function updateLimitOrders(
                 price: finalAskPrice,
                 size,
                 isBuy: false,
-                postOnly: false
+                postOnly: false,
             };
             batchUpdate.limitOrders.push(askOrder);
         }
@@ -321,58 +326,54 @@ async function updateLimitOrders(
                 price: finalBidPrice,
                 size,
                 isBuy: true,
-                postOnly: false
+                postOnly: false,
             };
             batchUpdate.limitOrders.push(bidOrder);
         }
 
-        const receipt = await KuruSdk.OrderBatcher.batchUpdate(
-            signer,
-            contractAddress,
-            marketParams,
-            batchUpdate
-        );
+        const receipt = await KuruSdk.OrderBatcher.batchUpdate(signer, contractAddress, marketParams, batchUpdate);
 
         // Parse events and update active orders
         const { newOrderIds, trades } = await parseEvents(receipt);
         activeOrderIds = newOrderIds;
         orderTracker.trackOrders(newOrderIds);
-        
+
         // Consolidated logging
         console.log('\n=== Market Making Update ===');
         console.log(`Timestamp: ${new Date().toISOString()}`);
         console.log(`Transaction Hash: ${receipt.transactionHash}`);
-        
+
         console.log('\nMarket State:');
         console.log(`- SOL Price: $${basePrice.toFixed(3)}`);
         console.log(`- Base Balance: ${currentInventory.baseBalance.toFixed(4)} SOL`);
         console.log(`- Quote Balance: $${currentInventory.quoteBalance.toFixed(2)}`);
-        
+
         console.log('\nOrder Updates:');
         console.log(`- Cancelled Orders: ${batchUpdate.cancelOrders.length}`);
         console.log(`- New Orders: ${newOrderIds.length}`);
-        
+
         console.log('\nNew Orders:');
         console.log('Sells:');
         batchUpdate.limitOrders.slice(0, 2).forEach((order, i) => {
             console.log(`  ${i + 1}. ${order.size} SOL @ $${order.price.toFixed(3)}`);
         });
-        
+
         console.log('Buys:');
         batchUpdate.limitOrders.slice(2).forEach((order, i) => {
             console.log(`  ${i + 1}. ${order.size} SOL @ $${order.price.toFixed(3)}`);
         });
-        
+
         if (trades.length > 0) {
             console.log('\nExecuted Trades:');
-            trades.forEach(trade => {
-                console.log(`- ${trade.isBuy ? 'Buy' : 'Sell'}: ${trade.filledSize.toString()} SOL @ $${trade.price.toString()}`);
+            trades.forEach((trade) => {
+                console.log(
+                    `- ${trade.isBuy ? 'Buy' : 'Sell'}: ${trade.filledSize.toString()} SOL @ $${trade.price.toString()}`,
+                );
             });
         }
         console.log('===========================\n');
-
     } catch (error) {
-        console.error("Error updating limit orders:", error);
+        console.error('Error updating limit orders:', error);
     }
 }
 
@@ -380,7 +381,7 @@ async function updateLimitOrders(
 async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
     try {
         currentGasPrice = await provider.getGasPrice();
-        log('DEBUG', `Gas price synced to: ${ethers.utils.formatUnits(currentGasPrice, "gwei")} gwei`);
+        log('DEBUG', `Gas price synced to: ${ethers.utils.formatUnits(currentGasPrice, 'gwei')} gwei`);
     } catch (error) {
         log('ERROR', `Error syncing gas price: ${error}`);
     }
@@ -390,7 +391,7 @@ async function syncGasPrice(provider: ethers.providers.JsonRpcProvider) {
 async function updateInventoryBalances(
     provider: ethers.providers.JsonRpcProvider,
     signer: ethers.Wallet,
-    marketParams: MarketParams
+    marketParams: MarketParams,
 ) {
     try {
         const [baseBalance, quoteBalance] = await Promise.all([
@@ -398,31 +399,31 @@ async function updateInventoryBalances(
                 provider,
                 KuruConfig.marginAccountAddress,
                 signer.address,
-                marketParams.baseAssetAddress
+                marketParams.baseAssetAddress,
             ),
             MarginBalance.getBalance(
                 provider,
                 KuruConfig.marginAccountAddress,
                 signer.address,
-                marketParams.quoteAssetAddress
-            )
+                marketParams.quoteAssetAddress,
+            ),
         ]);
 
         currentInventory = {
             baseBalance: parseFloat(ethers.utils.formatUnits(baseBalance, marketParams.baseAssetDecimals)),
-            quoteBalance: parseFloat(ethers.utils.formatUnits(quoteBalance, marketParams.quoteAssetDecimals))
+            quoteBalance: parseFloat(ethers.utils.formatUnits(quoteBalance, marketParams.quoteAssetDecimals)),
         };
 
-        log('DEBUG', `Updated inventory - Base: ${currentInventory.baseBalance}, Quote: ${currentInventory.quoteBalance}`);
+        log(
+            'DEBUG',
+            `Updated inventory - Base: ${currentInventory.baseBalance}, Quote: ${currentInventory.quoteBalance}`,
+        );
     } catch (error) {
         log('ERROR', `Error updating inventory balances: ${error}`);
     }
 }
 
-async function cancelAllOrders(
-    signer: ethers.Wallet,
-    marketParams: MarketParams
-) {
+async function cancelAllOrders(signer: ethers.Wallet, marketParams: MarketParams) {
     if (activeOrderIds.length === 0) {
         log('INFO', 'No active orders to cancel');
         return;
@@ -437,16 +438,11 @@ async function cancelAllOrders(
                 priorityFee: 0.001,
                 nonce: getAndIncrementNonce(),
                 gasLimit: ethers.BigNumber.from(85_000 + activeOrderIds.length * 40_000),
-                gasPrice: currentGasPrice
-            }
+                gasPrice: currentGasPrice,
+            },
         };
 
-        const receipt = await KuruSdk.OrderBatcher.batchUpdate(
-            signer,
-            contractAddress,
-            marketParams,
-            batchUpdate
-        );
+        const receipt = await KuruSdk.OrderBatcher.batchUpdate(signer, contractAddress, marketParams, batchUpdate);
 
         log('INFO', `Successfully cancelled ${activeOrderIds.length} orders. TX: ${receipt.transactionHash}`);
         activeOrderIds = [];
@@ -460,7 +456,7 @@ async function startMarketMaking() {
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     provider._pollingInterval = 100;
     const signer = new ethers.Wallet(privateKey, provider);
-    
+
     const orderTracker = new OrderTracker(signer.address);
 
     // Get initial market params and set them in the tracker
@@ -471,7 +467,7 @@ async function startMarketMaking() {
     await Promise.all([
         syncNonce(signer),
         syncGasPrice(provider),
-        updateInventoryBalances(provider, signer, marketParams)
+        updateInventoryBalances(provider, signer, marketParams),
     ]);
 
     // Sync nonce, gas price, and balances every 3 seconds
@@ -479,33 +475,39 @@ async function startMarketMaking() {
         await Promise.all([
             syncNonce(signer),
             syncGasPrice(provider),
-            updateInventoryBalances(provider, signer, marketParams)
+            updateInventoryBalances(provider, signer, marketParams),
         ]);
     }, 3000);
 
     // Execute immediately first
     try {
         const solPrice = await getSolPrice();
-        console.log("Initial SOL price:", solPrice);
-        console.log("Current active orders:", activeOrderIds.map(id => id.toString()));
-        
+        console.log('Initial SOL price:', solPrice);
+        console.log(
+            'Current active orders:',
+            activeOrderIds.map((id) => id.toString()),
+        );
+
         const size = 1;
         await updateLimitOrders(provider, signer, solPrice, size, orderTracker);
     } catch (error) {
-        console.error("Error in initial market making:", error);
+        console.error('Error in initial market making:', error);
     }
 
     // Then run market making every 3 seconds
     setInterval(async () => {
         try {
             const solPrice = await getSolPrice();
-            console.log("Current SOL price:", solPrice);
-            console.log("Current active orders:", activeOrderIds.map(id => id.toString()));
-            
+            console.log('Current SOL price:', solPrice);
+            console.log(
+                'Current active orders:',
+                activeOrderIds.map((id) => id.toString()),
+            );
+
             const size = 1;
             await updateLimitOrders(provider, signer, solPrice, size, orderTracker);
         } catch (error) {
-            console.error("Error in market making loop:", error);
+            console.error('Error in market making loop:', error);
         }
     }, 6000);
 
@@ -513,10 +515,10 @@ async function startMarketMaking() {
     process.on('SIGINT', async () => {
         log('INFO', 'Shutting down market maker...');
         orderTracker.disconnect();
-        
+
         // Cancel all outstanding orders before exit
         await cancelAllOrders(signer, marketParams);
-        
+
         log('INFO', 'Market maker shutdown complete');
         process.exit();
     });

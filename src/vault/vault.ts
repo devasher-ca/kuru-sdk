@@ -1,15 +1,15 @@
 // ============ External Imports ============
-import { BigNumber, ContractReceipt, ethers } from "ethers";
-import { VaultParamFetcher } from "./params";
-import { MarketParams, TransactionOptions, VaultParams } from "src/types";
-import { parseUnits } from "ethers/lib/utils";
+import { BigNumber, ContractReceipt, ethers } from 'ethers';
+import { VaultParamFetcher } from './params';
+import { MarketParams, TransactionOptions, VaultParams } from 'src/types';
+import { parseUnits } from 'ethers/lib/utils';
 
 // ============ Internal Imports ============
-import { getTokenDecimals, approveToken } from "../utils";
-import vaultAbi from "../../abi/Vault.json";
-import marginAbi from "../../abi/MarginAccount.json";
-import erc20Abi from "../../abi/IERC20.json";
-import buildTransactionRequest from "../utils/txConfig";
+import { getTokenDecimals, approveToken } from '../utils';
+import vaultAbi from '../../abi/Vault.json';
+import marginAbi from '../../abi/MarginAccount.json';
+import erc20Abi from '../../abi/IERC20.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class Vault {
     static async deposit(
@@ -17,13 +17,9 @@ export abstract class Vault {
         ammVaultAddress: string,
         amount1: BigNumber,
         amount2: BigNumber,
-        receiver: string
+        receiver: string,
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            ammVaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(ammVaultAddress, vaultAbi.abi, providerOrSigner);
 
         const tx = await vaultContract.deposit(amount1, amount2, receiver);
 
@@ -34,13 +30,9 @@ export abstract class Vault {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         shares: BigNumber,
         receiver: string,
-        owner: string
+        owner: string,
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            owner,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(owner, vaultAbi.abi, providerOrSigner);
 
         const tx = await vaultContract.withdraw(shares, receiver, owner);
 
@@ -57,13 +49,9 @@ export abstract class Vault {
     static async getVaultShares(
         vaultAddress: string,
         userAddress: string,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
         return await vaultContract.balanceOf(userAddress, {
             from: ethers.constants.AddressZero,
         });
@@ -83,28 +71,16 @@ export abstract class Vault {
         baseAssetAddress: string,
         quoteAssetAddress: string,
         marginAccountAddress: string,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ) {
-        const marginAccountContract = new ethers.Contract(
-            marginAccountAddress,
-            marginAbi.abi,
-            providerOrSigner
-        );
+        const marginAccountContract = new ethers.Contract(marginAccountAddress, marginAbi.abi, providerOrSigner);
 
-        const token1 = await marginAccountContract.getBalance(
-            vaultAddress,
-            baseAssetAddress,
-            {
-                from: ethers.constants.AddressZero,
-            }
-        );
-        const token2 = await marginAccountContract.getBalance(
-            vaultAddress,
-            quoteAssetAddress,
-            {
-                from: ethers.constants.AddressZero,
-            }
-        );
+        const token1 = await marginAccountContract.getBalance(vaultAddress, baseAssetAddress, {
+            from: ethers.constants.AddressZero,
+        });
+        const token2 = await marginAccountContract.getBalance(vaultAddress, quoteAssetAddress, {
+            from: ethers.constants.AddressZero,
+        });
 
         return {
             token1: {
@@ -128,13 +104,9 @@ export abstract class Vault {
     static async calculateDepositForShares(
         shares: BigNumber,
         vaultAddress: string,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
         const [amount1, amount2] = await vaultContract.previewMint(shares, {
             from: ethers.constants.AddressZero,
         });
@@ -151,13 +123,9 @@ export abstract class Vault {
     static async calculateWithdrawForShares(
         shares: BigNumber,
         vaultAddress: string,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<{ amount1: BigNumber; amount2: BigNumber }> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
         const [amount1, amount2] = await vaultContract.previewRedeem(shares, {
             from: ethers.constants.AddressZero,
         });
@@ -176,13 +144,9 @@ export abstract class Vault {
         amount1: BigNumber,
         amount2: BigNumber,
         vaultAddress: string,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            providerOrSigner
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, providerOrSigner);
         return await vaultContract.previewDeposit(amount1, amount2, {
             from: ethers.constants.AddressZero,
         });
@@ -199,27 +163,18 @@ export abstract class Vault {
         amount1: BigNumber,
         marketAddress: string,
         marketParams: MarketParams,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
-        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
-            providerOrSigner,
-            marketAddress
-        );
+        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
-        const token1Decimals = await getTokenDecimals(
-            marketParams.baseAssetAddress,
-            providerOrSigner
-        );
-        const token2Decimals = await getTokenDecimals(
-            marketParams.quoteAssetAddress,
-            providerOrSigner
-        );
+        const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
+        const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount2 = (amount1 * price * 10^token2Decimals) / (10^token1Decimals * 10^18)
         return amount1
             .mul(price)
-            .mul(parseUnits("1", token2Decimals))
-            .div(parseUnits("1", token1Decimals))
-            .div(parseUnits("1", 18));
+            .mul(parseUnits('1', token2Decimals))
+            .div(parseUnits('1', token1Decimals))
+            .div(parseUnits('1', 18));
     }
 
     /**
@@ -233,27 +188,18 @@ export abstract class Vault {
         amount2: BigNumber,
         marketAddress: string,
         marketParams: MarketParams,
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer
+        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     ): Promise<BigNumber> {
-        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(
-            providerOrSigner,
-            marketAddress
-        );
+        const vaultParams: VaultParams = await VaultParamFetcher.getVaultParams(providerOrSigner, marketAddress);
         const price = vaultParams.vaultBestAsk;
-        const token1Decimals = await getTokenDecimals(
-            marketParams.baseAssetAddress,
-            providerOrSigner
-        );
-        const token2Decimals = await getTokenDecimals(
-            marketParams.quoteAssetAddress,
-            providerOrSigner
-        );
+        const token1Decimals = await getTokenDecimals(marketParams.baseAssetAddress, providerOrSigner);
+        const token2Decimals = await getTokenDecimals(marketParams.quoteAssetAddress, providerOrSigner);
         //amount1 = (amount2 * 10^token1Decimals * 10^18) / (price * 10^token2Decimals)
         return amount2
-            .mul(parseUnits("1", token1Decimals))
-            .mul(parseUnits("1", 18))
+            .mul(parseUnits('1', token1Decimals))
+            .mul(parseUnits('1', 18))
             .div(price)
-            .div(parseUnits("1", token2Decimals));
+            .div(parseUnits('1', token2Decimals));
     }
 
     /**
@@ -270,18 +216,10 @@ export abstract class Vault {
         marketParams: MarketParams,
         vaultAddress: string,
         signer: ethers.Signer,
-        shouldApprove: boolean = false
+        shouldApprove: boolean = false,
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            signer
-        );
-        const { amount1, amount2 } = await this.calculateDepositForShares(
-            shares,
-            vaultAddress,
-            signer
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const { amount1, amount2 } = await this.calculateDepositForShares(shares, vaultAddress, signer);
         const token1Address = marketParams.baseAssetAddress;
         const token2Address = marketParams.quoteAssetAddress;
 
@@ -290,30 +228,18 @@ export abstract class Vault {
         if (token1Address === ethers.constants.AddressZero) {
             overrides = { value: amount1 };
         } else if (shouldApprove) {
-            const tokenContract = new ethers.Contract(
-                token1Address,
-                erc20Abi.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(token1Address, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, amount1, signer);
         }
 
         if (token2Address === ethers.constants.AddressZero) {
             overrides = { value: amount2 };
         } else if (shouldApprove) {
-            const tokenContract = new ethers.Contract(
-                token2Address,
-                erc20Abi.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(token2Address, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.mint(
-            shares,
-            await signer.getAddress(),
-            overrides
-        );
+        const tx = await vaultContract.mint(shares, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
@@ -327,18 +253,10 @@ export abstract class Vault {
     static async withdrawBasedOnShares(
         shares: BigNumber,
         vaultAddress: string,
-        signer: ethers.Signer
+        signer: ethers.Signer,
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            signer
-        );
-        const tx = await vaultContract.redeem(
-            shares,
-            await signer.getAddress(),
-            await signer.getAddress()
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
+        const tx = await vaultContract.redeem(shares, await signer.getAddress(), await signer.getAddress());
         return await tx.wait();
     }
 
@@ -359,44 +277,27 @@ export abstract class Vault {
         quoteAssetAddress: string,
         vaultAddress: string,
         signer: ethers.Signer,
-        shouldApprove: boolean = false
+        shouldApprove: boolean = false,
     ): Promise<ContractReceipt> {
-        const vaultContract = new ethers.Contract(
-            vaultAddress,
-            vaultAbi.abi,
-            signer
-        );
+        const vaultContract = new ethers.Contract(vaultAddress, vaultAbi.abi, signer);
 
         let overrides: ethers.PayableOverrides = {};
 
         if (baseAssetAddress === ethers.constants.AddressZero) {
             overrides.value = amount1;
         } else if (shouldApprove) {
-            const tokenContract = new ethers.Contract(
-                baseAssetAddress,
-                erc20Abi.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(baseAssetAddress, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, amount1, signer);
         }
 
         if (quoteAssetAddress === ethers.constants.AddressZero) {
             overrides.value = amount2;
         } else if (shouldApprove) {
-            const tokenContract = new ethers.Contract(
-                quoteAssetAddress,
-                erc20Abi.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(quoteAssetAddress, erc20Abi.abi, signer);
             await approveToken(tokenContract, vaultAddress, amount2, signer);
         }
 
-        const tx = await vaultContract.deposit(
-            amount1,
-            amount2,
-            await signer.getAddress(),
-            overrides
-        );
+        const tx = await vaultContract.deposit(amount1, amount2, await signer.getAddress(), overrides);
         return await tx.wait();
     }
 
@@ -407,35 +308,21 @@ export abstract class Vault {
         quoteAssetAddress: string,
         vaultAddress: string,
         signer: ethers.Signer,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const promises = [];
 
-        const shouldApproveToken1 =
-            baseAssetAddress !== ethers.constants.AddressZero;
-        const shouldApproveToken2 =
-            quoteAssetAddress !== ethers.constants.AddressZero;
+        const shouldApproveToken1 = baseAssetAddress !== ethers.constants.AddressZero;
+        const shouldApproveToken2 = quoteAssetAddress !== ethers.constants.AddressZero;
 
         if (shouldApproveToken1) {
-            const token1Contract = new ethers.Contract(
-                baseAssetAddress,
-                erc20Abi.abi,
-                signer
-            );
-            promises.push(
-                approveToken(token1Contract, vaultAddress, amount1, signer)
-            );
+            const token1Contract = new ethers.Contract(baseAssetAddress, erc20Abi.abi, signer);
+            promises.push(approveToken(token1Contract, vaultAddress, amount1, signer));
         }
 
         if (shouldApproveToken2) {
-            const token2Contract = new ethers.Contract(
-                quoteAssetAddress,
-                erc20Abi.abi,
-                signer
-            );
-            promises.push(
-                approveToken(token2Contract, vaultAddress, amount2, signer)
-            );
+            const token2Contract = new ethers.Contract(quoteAssetAddress, erc20Abi.abi, signer);
+            promises.push(approveToken(token2Contract, vaultAddress, amount2, signer));
         }
 
         await Promise.all(promises);
@@ -443,19 +330,15 @@ export abstract class Vault {
         const address = await signer.getAddress();
 
         const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
-        const data = vaultInterface.encodeFunctionData("deposit", [
-            amount1,
-            amount2,
-            address,
-        ]);
+        const data = vaultInterface.encodeFunctionData('deposit', [amount1, amount2, address]);
 
         // Calculate the total value for native token deposits
         const txValue =
             baseAssetAddress === ethers.constants.AddressZero
                 ? amount1
                 : quoteAssetAddress === ethers.constants.AddressZero
-                ? amount2
-                : BigNumber.from(0);
+                  ? amount2
+                  : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: vaultAddress,
@@ -471,17 +354,13 @@ export abstract class Vault {
         shares: BigNumber,
         vaultAddress: string,
         signer: ethers.Signer,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
 
         const fromAddress = await signer.getAddress();
 
-        const data = vaultInterface.encodeFunctionData("withdraw", [
-            shares,
-            fromAddress,
-            fromAddress,
-        ]);
+        const data = vaultInterface.encodeFunctionData('withdraw', [shares, fromAddress, fromAddress]);
 
         return buildTransactionRequest({
             to: vaultAddress,

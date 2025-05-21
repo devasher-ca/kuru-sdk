@@ -1,6 +1,6 @@
-import { ethers } from "ethers";
-import { ParamCreator } from "../../src/create/market";
-import {routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress} from "../config.json";
+import { ethers } from 'ethers';
+import { ParamCreator } from '../../src/create/market';
+import { routerAddress, rpcUrl, baseTokenAddress, quoteTokenAddress } from '../config.json';
 
 async function main() {
     // Connect to provider with custom fetch
@@ -10,7 +10,7 @@ async function main() {
     provider.pollingInterval = 100;
     const privateKey = process.env.PRIVATE_KEY;
     if (!privateKey) {
-        throw new Error("PRIVATE_KEY environment variable not set");
+        throw new Error('PRIVATE_KEY environment variable not set');
     }
     const signer = new ethers.Wallet(privateKey, provider);
 
@@ -27,18 +27,12 @@ async function main() {
     const maxPrice = 10; // Maximum expected price
     const minSize = 0.01; // Minimum order size
 
-    const precisions = paramCreator.calculatePrecisions(
-        currentQuote,
-        currentBase, 
-        maxPrice,
-        minSize,
-        10
-    );
-    console.log("Price precision", precisions.pricePrecision.toString());
-    console.log("Size precision", precisions.sizePrecision.toString());
-    console.log("Tick size", precisions.tickSize.toString());
-    console.log("Min size", precisions.minSize.toString());
-    console.log("Max size", precisions.maxSize.toString());
+    const precisions = paramCreator.calculatePrecisions(currentQuote, currentBase, maxPrice, minSize, 10);
+    console.log('Price precision', precisions.pricePrecision.toString());
+    console.log('Size precision', precisions.sizePrecision.toString());
+    console.log('Tick size', precisions.tickSize.toString());
+    console.log('Min size', precisions.minSize.toString());
+    console.log('Max size', precisions.maxSize.toString());
     const takerFeeBps = 30; // 0.3%
     const makerFeeBps = 10; // -0.1% (rebate)
     const kuruAmmSpread = ethers.BigNumber.from(100); // 1%
@@ -56,19 +50,19 @@ async function main() {
             precisions.maxSize,
             takerFeeBps,
             makerFeeBps,
-            kuruAmmSpread
+            kuruAmmSpread,
         );
 
-        console.log("Market deployed at:", marketAddress);
-        console.log("Calculated precisions:", {
+        console.log('Market deployed at:', marketAddress);
+        console.log('Calculated precisions:', {
             pricePrecision: precisions.pricePrecision.toString(),
             sizePrecision: precisions.sizePrecision.toString(),
             tickSize: precisions.tickSize.toString(),
             minSize: precisions.minSize.toString(),
-            maxSize: precisions.maxSize.toString()
+            maxSize: precisions.maxSize.toString(),
         });
     } catch (error) {
-        console.error("Error deploying market:", error);
+        console.error('Error deploying market:', error);
     }
 }
 

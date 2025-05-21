@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { TransactionOptions } from "src/types";
-import { extractErrorMessage } from "../utils";
+import { TransactionOptions } from 'src/types';
+import { extractErrorMessage } from '../utils';
 
 // ============ Config Imports ============
-import routerAbi from "../../abi/Router.json";
-import buildTransactionRequest from "../utils/txConfig";
+import routerAbi from '../../abi/Router.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export class ParamCreator {
     static DEFAULT_PRICE_PRECISION_DECIMALS = 4;
@@ -26,12 +26,12 @@ export class ParamCreator {
         takerFeeBps: number,
         makerFeeBps: number,
         kuruAmmSpread: ethers.BigNumber,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const routerInterface = new ethers.utils.Interface(routerAbi.abi);
-        const data = routerInterface.encodeFunctionData("deployProxy", [
+        const data = routerInterface.encodeFunctionData('deployProxy', [
             type,
             baseAssetAddress,
             quoteAssetAddress,
@@ -68,13 +68,9 @@ export class ParamCreator {
         takerFeeBps: number,
         makerFeeBps: number,
         kuruAmmSpread: ethers.BigNumber,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<string> {
-        const router = new ethers.Contract(
-            routerAddress,
-            routerAbi.abi,
-            signer
-        );
+        const router = new ethers.Contract(routerAddress, routerAbi.abi, signer);
 
         try {
             const tx = await ParamCreator.constructDeployMarketTransaction(
@@ -91,7 +87,7 @@ export class ParamCreator {
                 takerFeeBps,
                 makerFeeBps,
                 kuruAmmSpread,
-                txOptions
+                txOptions,
             );
 
             const transaction = await signer.sendTransaction(tx);
@@ -100,16 +96,14 @@ export class ParamCreator {
             const marketRegisteredLog = receipt.logs.find((log) => {
                 try {
                     const parsedLog = router.interface.parseLog(log);
-                    return parsedLog.name === "MarketRegistered";
+                    return parsedLog.name === 'MarketRegistered';
                 } catch {
                     return false;
                 }
             });
 
             if (!marketRegisteredLog) {
-                throw new Error(
-                    "MarketRegistered event not found in transaction receipt"
-                );
+                throw new Error('MarketRegistered event not found in transaction receipt');
             }
 
             const parsedLog = router.interface.parseLog(marketRegisteredLog);
@@ -123,20 +117,14 @@ export class ParamCreator {
         }
     }
 
-    calculatePrecisions(
-        quote: number,
-        base: number,
-        maxPrice: number,
-        minSize: number,
-        tickSizeBps: number = 10
-    ) {
+    calculatePrecisions(quote: number, base: number, maxPrice: number, minSize: number, tickSizeBps: number = 10) {
         let currentPrice = quote / base;
 
         // Calculate tick size based on BPS but ensure minimum tick size
         let tickSize = Math.max(
             currentPrice * (tickSizeBps / 10000), // BPS-based tick size
             currentPrice / 1000000, // Minimum tick size (1 millionth of price)
-            0.00000001 // Absolute minimum tick size
+            0.00000001, // Absolute minimum tick size
         );
 
         // Convert to fixed notation with max 9 decimals
@@ -146,14 +134,11 @@ export class ParamCreator {
         const priceStr = currentPrice.toFixed(9);
 
         // Look for recurring patterns in the decimal part
-        const decimalPart = priceStr.split(".")[1];
+        const decimalPart = priceStr.split('.')[1];
         if (decimalPart) {
             // Skip leading zeros before looking for patterns
             let significantStart = 0;
-            while (
-                significantStart < decimalPart.length &&
-                decimalPart[significantStart] === "0"
-            ) {
+            while (significantStart < decimalPart.length && decimalPart[significantStart] === '0') {
                 significantStart++;
             }
 
@@ -162,15 +147,11 @@ export class ParamCreator {
             for (let len = 1; len <= 4; len++) {
                 const pattern = significantPart.slice(0, len);
                 const nextPattern = significantPart.slice(len, len * 2);
-                if (pattern === nextPattern && pattern !== "0") {
+                if (pattern === nextPattern && pattern !== '0') {
                     // Add check to ignore '0' pattern
                     // Found a recurring pattern, limit it to 2 repetitions
-                    const limitedDecimal =
-                        decimalPart.slice(0, significantStart) +
-                        pattern.repeat(2);
-                    const newPrice = `${
-                        priceStr.split(".")[0]
-                    }.${limitedDecimal}`;
+                    const limitedDecimal = decimalPart.slice(0, significantStart) + pattern.repeat(2);
+                    const newPrice = `${priceStr.split('.')[0]}.${limitedDecimal}`;
                     currentPrice = Number(newPrice);
                     break;
                 }
@@ -182,13 +163,10 @@ export class ParamCreator {
         }
 
         // Handle recurring decimals in tick size the same way
-        const tickDecimalPart = tickStr.split(".")[1];
+        const tickDecimalPart = tickStr.split('.')[1];
         if (tickDecimalPart) {
             let significantStart = 0;
-            while (
-                significantStart < tickDecimalPart.length &&
-                tickDecimalPart[significantStart] === "0"
-            ) {
+            while (significantStart < tickDecimalPart.length && tickDecimalPart[significantStart] === '0') {
                 significantStart++;
             }
 
@@ -196,13 +174,9 @@ export class ParamCreator {
             for (let len = 1; len <= 4; len++) {
                 const pattern = significantPart.slice(0, len);
                 const nextPattern = significantPart.slice(len, len * 2);
-                if (pattern === nextPattern && pattern !== "0") {
-                    const limitedDecimal =
-                        tickDecimalPart.slice(0, significantStart) +
-                        pattern.repeat(2);
-                    const newTick = `${
-                        tickStr.split(".")[0]
-                    }.${limitedDecimal}`;
+                if (pattern === nextPattern && pattern !== '0') {
+                    const limitedDecimal = tickDecimalPart.slice(0, significantStart) + pattern.repeat(2);
+                    const newTick = `${tickStr.split('.')[0]}.${limitedDecimal}`;
                     tickSize = Number(newTick);
                     break;
                 }
@@ -212,42 +186,28 @@ export class ParamCreator {
         const priceDecimals = Math.max(
             this.countDecimals(Number(priceStr)),
             ParamCreator.DEFAULT_PRICE_PRECISION_DECIMALS,
-            this.countDecimals(Number(tickStr))
+            this.countDecimals(Number(tickStr)),
         );
 
         if (priceDecimals > 9) {
-            throw new Error("Price precision exceeds maximum (9 decimals)");
+            throw new Error('Price precision exceeds maximum (9 decimals)');
         }
 
         // Use the fixed notation strings for further calculations
-        const pricePrecision = ethers.BigNumber.from(
-            Math.pow(10, priceDecimals)
-        );
-        const tickSizeInPrecision = ethers.utils.parseUnits(
-            tickStr,
-            priceDecimals
-        );
+        const pricePrecision = ethers.BigNumber.from(Math.pow(10, priceDecimals));
+        const tickSizeInPrecision = ethers.utils.parseUnits(tickStr, priceDecimals);
 
         // Calculate size precision based on max price * price precision
         const maxPriceWithPrecision = maxPrice * Math.pow(10, priceDecimals);
         const sizeDecimalsPower = Math.floor(Math.log10(maxPriceWithPrecision));
-        const sizeDecimals = Math.max(
-            this.countDecimals(minSize),
-            sizeDecimalsPower
-        );
+        const sizeDecimals = Math.max(this.countDecimals(minSize), sizeDecimalsPower);
         const sizePrecision = ethers.BigNumber.from(Math.pow(10, sizeDecimals));
 
         const maxSizeInPrecision = this.getMaxSizeAtPrice(
-            ethers.utils.parseUnits(
-                currentPrice.toFixed(priceDecimals),
-                priceDecimals
-            ),
-            ethers.BigNumber.from(sizePrecision)
+            ethers.utils.parseUnits(currentPrice.toFixed(priceDecimals), priceDecimals),
+            ethers.BigNumber.from(sizePrecision),
         );
-        const minSizeInPrecision = ethers.utils.parseUnits(
-            minSize.toString(),
-            sizeDecimals
-        );
+        const minSizeInPrecision = ethers.utils.parseUnits(minSize.toString(), sizeDecimals);
         return {
             pricePrecision: pricePrecision,
             sizePrecision: sizePrecision,
@@ -257,25 +217,20 @@ export class ParamCreator {
         };
     }
 
-    getPricePrecision(
-        currentPrice: number,
-        maxPrice: number
-    ): { precision: number } | { error: string } {
+    getPricePrecision(currentPrice: number, maxPrice: number): { precision: number } | { error: string } {
         const currentDecimals = this.countDecimals(currentPrice);
         const maxDecimals = this.countDecimals(maxPrice);
 
         const neededPrecision = Math.max(currentDecimals, maxDecimals);
 
         if (neededPrecision > 8) {
-            return { error: "Price is greater than 10**9" };
+            return { error: 'Price is greater than 10**9' };
         }
 
         return { precision: Math.pow(10, neededPrecision) };
     }
 
-    getSizePrecision(
-        maxPriceInPricePrecision: ethers.BigNumber
-    ): { precision: number } | { error: string } {
+    getSizePrecision(maxPriceInPricePrecision: ethers.BigNumber): { precision: number } | { error: string } {
         const numDigits = maxPriceInPricePrecision.toString().length;
 
         return { precision: Math.pow(10, numDigits) };
@@ -291,10 +246,7 @@ export class ParamCreator {
         return { minPrice, maxPrice };
     }
 
-    getMaxSizeAtPrice(
-        price: ethers.BigNumber,
-        sizePrecision: ethers.BigNumber
-    ): ethers.BigNumber {
+    getMaxSizeAtPrice(price: ethers.BigNumber, sizePrecision: ethers.BigNumber): ethers.BigNumber {
         const UINT32_MAX = ethers.BigNumber.from(2).pow(32).sub(1);
         const rawMaxSize = UINT32_MAX.mul(sizePrecision).div(price);
         // Convert to string to count digits
@@ -324,23 +276,23 @@ export class ParamCreator {
 
         // Convert to string and remove scientific notation
         let str = value.toString();
-        if (str.includes("e")) {
-            const [_base, exponent] = str.split("e");
+        if (str.includes('e')) {
+            const [_base, exponent] = str.split('e');
             const exp = parseInt(exponent);
             if (exp < 0) {
                 // For negative exponents (small decimals)
                 return Math.abs(exp);
             } else {
                 // For positive exponents (large numbers)
-                str = value.toLocaleString("fullwide", { useGrouping: false });
+                str = value.toLocaleString('fullwide', { useGrouping: false });
             }
         }
 
         // If no decimal point, return 0
-        if (!str.includes(".")) return 0;
+        if (!str.includes('.')) return 0;
 
         // Split on decimal and get length of decimal portion
-        const decimalPart = str.split(".")[1];
+        const decimalPart = str.split('.')[1];
         return decimalPart ? decimalPart.length : 0;
     }
 }

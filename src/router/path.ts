@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { ParamFetcher, CostEstimator } from "../market";
-import { PoolFetcher } from "../pools";
-import { Pool, Route, RouteOutput } from "../types/pool";
-import { MarketParams } from "../types";
-import orderbookAbi from "../../abi/OrderBook.json";
-import utilsAbi from "../../abi/KuruUtils.json";
+import { ParamFetcher, CostEstimator } from '../market';
+import { PoolFetcher } from '../pools';
+import { Pool, Route, RouteOutput } from '../types/pool';
+import { MarketParams } from '../types';
+import orderbookAbi from '../../abi/OrderBook.json';
+import utilsAbi from '../../abi/KuruUtils.json';
 
 export abstract class PathFinder {
     static async findBestPath(
@@ -15,10 +15,10 @@ export abstract class PathFinder {
         tokenIn: string,
         tokenOut: string,
         amountIn: number,
-        amountType: "amountOut" | "amountIn" = "amountIn",
+        amountType: 'amountOut' | 'amountIn' = 'amountIn',
         poolFetcher?: PoolFetcher,
         pools?: Pool[],
-        estimatorContractAddress?: string
+        estimatorContractAddress?: string,
     ): Promise<RouteOutput> {
         // Normalize input addresses to lowercase
         const normalizedTokenIn = tokenIn.toLowerCase();
@@ -26,16 +26,16 @@ export abstract class PathFinder {
 
         if (!pools) {
             if (!poolFetcher) {
-                throw new Error("Either pools or poolFetcher must be provided");
+                throw new Error('Either pools or poolFetcher must be provided');
             }
             pools = await poolFetcher.getAllPools(normalizedTokenIn, normalizedTokenOut);
         } else {
             // Normalize pool addresses
-            pools = pools.map(pool => ({
+            pools = pools.map((pool) => ({
                 ...pool,
                 orderbook: pool.orderbook.toLowerCase(),
                 baseToken: pool.baseToken.toLowerCase(),
-                quoteToken: pool.quoteToken.toLowerCase()
+                quoteToken: pool.quoteToken.toLowerCase(),
             }));
         }
 
@@ -44,8 +44,8 @@ export abstract class PathFinder {
         let bestRoute: RouteOutput = {
             route: {
                 path: [],
-                tokenIn: "",
-                tokenOut: "",
+                tokenIn: '',
+                tokenOut: '',
             },
             isBuy: [],
             nativeSend: [],
@@ -56,11 +56,11 @@ export abstract class PathFinder {
 
         let bestOutput = 0;
         const routeOutputs = await Promise.all(
-            routes.map(async route => 
-                amountType === "amountOut"
+            routes.map(async (route) =>
+                amountType === 'amountOut'
                     ? await computeRouteInput(providerOrSigner, route, amountIn)
-                    : await computeRouteOutput(providerOrSigner, route, amountIn)
-            )
+                    : await computeRouteOutput(providerOrSigner, route, amountIn),
+            ),
         );
 
         for (const routeOutput of routeOutputs) {
@@ -71,10 +71,10 @@ export abstract class PathFinder {
         }
         if (estimatorContractAddress) {
             bestRoute.priceImpact = await calculatePriceImpact(
-                providerOrSigner, 
-                estimatorContractAddress, 
-                bestRoute, 
-                amountIn
+                providerOrSigner,
+                estimatorContractAddress,
+                bestRoute,
+                amountIn,
             );
         }
         return bestRoute;
@@ -85,21 +85,14 @@ async function calculatePriceImpact(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     estimatorContractAddress: string,
     route: RouteOutput,
-    amountIn: number
+    amountIn: number,
 ): Promise<number> {
-    const estimatorContract = new ethers.Contract(
-        estimatorContractAddress,
-        utilsAbi.abi,
-        providerOrSigner
-    );
-    const orderbookAddresses = route.route.path.map(pool => pool.orderbook);
-    const price = await estimatorContract.calculatePriceOverRoute(
-        orderbookAddresses,
-        route.isBuy
-    );
+    const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
+    const orderbookAddresses = route.route.path.map((pool) => pool.orderbook);
+    const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, route.isBuy);
     const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
     const actualPrice = parseFloat((amountIn / route.output).toFixed(18));
-    return parseFloat(((100 * actualPrice / priceInUnits) - 100).toFixed(2));
+    return parseFloat(((100 * actualPrice) / priceInUnits - 100).toFixed(2));
 }
 
 function computeAllRoutes(
@@ -109,14 +102,12 @@ function computeAllRoutes(
     currentPath: Pool[] = [],
     allPaths: Route[] = [],
     startTokenIn: string = tokenIn,
-    maxHops = 2
+    maxHops = 2,
 ): Route[] {
     for (const pool of pools) {
-        if (currentPath.indexOf(pool) !== -1 || !involvesToken(pool, tokenIn))
-            continue;
+        if (currentPath.indexOf(pool) !== -1 || !involvesToken(pool, tokenIn)) continue;
 
-        const outputToken =
-            pool.baseToken === tokenIn ? pool.quoteToken : pool.baseToken;
+        const outputToken = pool.baseToken === tokenIn ? pool.quoteToken : pool.baseToken;
         if (outputToken === tokenOut) {
             allPaths.push({
                 path: [...currentPath, pool],
@@ -124,15 +115,7 @@ function computeAllRoutes(
                 tokenOut,
             });
         } else if (maxHops > 1) {
-            computeAllRoutes(
-                outputToken,
-                tokenOut,
-                pools,
-                [...currentPath, pool],
-                allPaths,
-                startTokenIn,
-                maxHops - 1
-            );
+            computeAllRoutes(outputToken, tokenOut, pools, [...currentPath, pool], allPaths, startTokenIn, maxHops - 1);
         }
     }
 
@@ -143,7 +126,7 @@ async function computeRouteInput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
     amountOut: number,
-    marketParamsMap?: Map<string, MarketParams>
+    marketParamsMap?: Map<string, MarketParams>,
 ) {
     let currentToken = route.tokenIn;
     let output: number = amountOut;
@@ -157,17 +140,10 @@ async function computeRouteInput(
         // Get market parameters from map if available, otherwise fetch them
         let poolMarketParams = marketParamsMap?.get(orderbookAddress);
         if (!poolMarketParams) {
-            poolMarketParams = await ParamFetcher.getMarketParams(
-                providerOrSigner,
-                orderbookAddress
-            );
+            poolMarketParams = await ParamFetcher.getMarketParams(providerOrSigner, orderbookAddress);
         }
 
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const l2Book = await orderbook.getL2Book({
             from: ethers.constants.AddressZero,
@@ -176,9 +152,7 @@ async function computeRouteInput(
             from: ethers.constants.AddressZero,
         });
 
-        currentToken === ethers.constants.AddressZero
-            ? nativeSend.push(true)
-            : nativeSend.push(false);
+        currentToken === ethers.constants.AddressZero ? nativeSend.push(true) : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
             // If the current token is the base token, we are selling base for quote
             output = await CostEstimator.estimateRequiredBaseForSell(
@@ -187,7 +161,7 @@ async function computeRouteInput(
                 poolMarketParams,
                 output,
                 l2Book,
-                vaultParams
+                vaultParams,
             );
             currentToken = pool.quoteToken; // Update current token to quote token
             isBuy.push(false);
@@ -199,7 +173,7 @@ async function computeRouteInput(
                 poolMarketParams,
                 output,
                 l2Book,
-                vaultParams
+                vaultParams,
             );
             currentToken = pool.baseToken; // Update current token to base token
             isBuy.push(true);
@@ -223,7 +197,7 @@ async function computeRouteOutput(
     providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
     route: Route,
     amountIn: number,
-    marketParamsMap?: Map<string, MarketParams>
+    marketParamsMap?: Map<string, MarketParams>,
 ): Promise<RouteOutput> {
     let currentToken = route.tokenIn;
     let output: number = amountIn;
@@ -238,33 +212,22 @@ async function computeRouteOutput(
         // Get market parameters from map if available, otherwise fetch them
         let poolMarketParams = marketParamsMap?.get(orderbookAddress);
         if (!poolMarketParams) {
-            poolMarketParams = await ParamFetcher.getMarketParams(
-                providerOrSigner,
-                orderbookAddress
-            );
+            poolMarketParams = await ParamFetcher.getMarketParams(providerOrSigner, orderbookAddress);
         }
 
-        currentToken === ethers.constants.AddressZero
-            ? nativeSend.push(true)
-            : nativeSend.push(false);
+        currentToken === ethers.constants.AddressZero ? nativeSend.push(true) : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
             // If the current token is the base token, we are selling base for quote
-            output = (await CostEstimator.estimateMarketSell(
-                providerOrSigner,
-                orderbookAddress,
-                poolMarketParams,
-                output
-            )).output;
+            output = (
+                await CostEstimator.estimateMarketSell(providerOrSigner, orderbookAddress, poolMarketParams, output)
+            ).output;
             currentToken = pool.quoteToken; // Update current token to quote token
             isBuy.push(false);
         } else {
             // If the current token is the quote token, we are buying base with quote
-            output = (await CostEstimator.estimateMarketBuy(
-                providerOrSigner,
-                orderbookAddress,
-                poolMarketParams,
-                output
-            )).output;
+            output = (
+                await CostEstimator.estimateMarketBuy(providerOrSigner, orderbookAddress, poolMarketParams, output)
+            ).output;
             currentToken = pool.baseToken; // Update current token to base token
             isBuy.push(true);
         }
@@ -283,11 +246,8 @@ async function computeRouteOutput(
     };
 }
 
-
-
 function involvesToken(pool: Pool, token: string): boolean {
     // Make comparison case insensitive
     const normalizedToken = token.toLowerCase();
-    return pool.baseToken.toLowerCase() === normalizedToken || 
-           pool.quoteToken.toLowerCase() === normalizedToken;
+    return pool.baseToken.toLowerCase() === normalizedToken || pool.quoteToken.toLowerCase() === normalizedToken;
 }

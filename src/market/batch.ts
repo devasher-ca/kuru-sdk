@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from "ethers";
+import { ethers, BigNumber, ContractReceipt } from 'ethers';
 
 // ============ Internal Imports ============
-import { extractErrorMessage, log10BigNumber } from "../utils";
-import { MarketParams, BATCH } from "../types";
+import { extractErrorMessage, log10BigNumber } from '../utils';
+import { MarketParams, BATCH } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "../utils/txConfig";
+import orderbookAbi from '../../abi/OrderBook.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class OrderBatcher {
     /**
@@ -22,13 +22,9 @@ export abstract class OrderBatcher {
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
-        batchUpdate: BATCH
+        batchUpdate: BATCH,
     ): Promise<ContractReceipt> {
-        const orderbook = new ethers.Contract(
-            orderbookAddress,
-            orderbookAbi.abi,
-            providerOrSigner
-        );
+        const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         // Initialize arrays for buy and sell prices and sizes
         const buyPrices: BigNumber[] = [];
@@ -45,14 +41,8 @@ export abstract class OrderBatcher {
             const priceStr = Number(order.price).toFixed(pricePrecision);
             const sizeStr = Number(order.size).toFixed(sizePrecision);
 
-            const priceBn: BigNumber = ethers.utils.parseUnits(
-                priceStr,
-                pricePrecision
-            );
-            const sizeBn: BigNumber = ethers.utils.parseUnits(
-                sizeStr,
-                sizePrecision
-            );
+            const priceBn: BigNumber = ethers.utils.parseUnits(priceStr, pricePrecision);
+            const sizeBn: BigNumber = ethers.utils.parseUnits(sizeStr, sizePrecision);
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);
@@ -67,7 +57,7 @@ export abstract class OrderBatcher {
             const signer = orderbook.signer;
             const address = await signer.getAddress();
 
-            const data = orderbook.interface.encodeFunctionData("batchUpdate", [
+            const data = orderbook.interface.encodeFunctionData('batchUpdate', [
                 buyPrices,
                 buySizes,
                 sellPrices,

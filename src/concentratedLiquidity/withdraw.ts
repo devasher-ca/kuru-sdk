@@ -1,7 +1,7 @@
-import { ethers, ContractReceipt } from "ethers";
-import { TransactionOptions } from "../types";
-import orderbookAbi from "../../abi/OrderBook.json";
-import buildTransactionRequest from "../utils/txConfig";
+import { ethers, ContractReceipt } from 'ethers';
+import { TransactionOptions } from '../types';
+import orderbookAbi from '../../abi/OrderBook.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class PositionWithdrawer {
     /**
@@ -14,14 +14,10 @@ export abstract class PositionWithdrawer {
     static async withdrawLiquidity(
         signer: ethers.Signer,
         contractAddress: string,
-        orderIds: number[]
+        orderIds: number[],
     ): Promise<ContractReceipt> {
         // Create contract instance
-        const contract = new ethers.Contract(
-            contractAddress,
-            orderbookAbi.abi,
-            signer
-        );
+        const contract = new ethers.Contract(contractAddress, orderbookAbi.abi, signer);
 
         // Call the contract to cancel orders
         const tx = await contract.batchCancelFlipOrders(orderIds);
@@ -42,15 +38,12 @@ export abstract class PositionWithdrawer {
         signer: ethers.Signer,
         contractAddress: string,
         orderIds: number[],
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
-        const data = orderbookInterface.encodeFunctionData(
-            "batchCancelFlipOrders",
-            [orderIds]
-        );
+        const data = orderbookInterface.encodeFunctionData('batchCancelFlipOrders', [orderIds]);
 
         return buildTransactionRequest({
             from: address,

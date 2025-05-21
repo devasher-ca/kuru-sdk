@@ -1,20 +1,16 @@
 // ============ External Imports ============
-import { ContractReceipt, ethers, BigNumber } from "ethers";
+import { ContractReceipt, ethers, BigNumber } from 'ethers';
 
 // ============ Internal Imports ============
-import { TransactionOptions, SlippageOptions } from "../types";
-import {
-    extractErrorMessage,
-    approveToken,
-    estimateApproveGas,
-} from "../utils";
-import { RouteOutput } from "../types/pool";
-import { calculateDynamicSlippage } from "../utils";
+import { TransactionOptions, SlippageOptions } from '../types';
+import { extractErrorMessage, approveToken, estimateApproveGas } from '../utils';
+import { RouteOutput } from '../types/pool';
+import { calculateDynamicSlippage } from '../utils';
 
 // ============ Config Imports ============
-import erc20Abi from "../../abi/IERC20.json";
-import routerAbi from "../../abi/Router.json";
-import buildTransactionRequest from "../utils/txConfig";
+import erc20Abi from '../../abi/IERC20.json';
+import routerAbi from '../../abi/Router.json';
+import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class TokenSwap {
     /**
@@ -33,12 +29,12 @@ export abstract class TokenSwap {
         routeOutput: RouteOutput,
         tokenInAmount: BigNumber,
         minTokenOutAmount: BigNumber,
-        txOptions?: TransactionOptions
+        txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const routerInterface = new ethers.utils.Interface(routerAbi.abi);
-        const data = routerInterface.encodeFunctionData("anyToAnySwap", [
+        const data = routerInterface.encodeFunctionData('anyToAnySwap', [
             routeOutput.route.path.map((pool) => pool.orderbook),
             routeOutput.isBuy,
             routeOutput.nativeSend,
@@ -48,9 +44,7 @@ export abstract class TokenSwap {
             minTokenOutAmount,
         ]);
 
-        const value = routeOutput.nativeSend[0]
-            ? tokenInAmount
-            : BigNumber.from(0);
+        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigNumber.from(0);
 
         return buildTransactionRequest({
             to: routerAddress,
@@ -88,51 +82,32 @@ export abstract class TokenSwap {
         approveTokens: boolean,
         approvalCallback: (txHash: string | null) => void,
         txOptions?: TransactionOptions,
-        slippageOptions?: SlippageOptions
+        slippageOptions?: SlippageOptions,
     ): Promise<ContractReceipt> {
         try {
-            const router = new ethers.Contract(
-                routerAddress,
-                routerAbi.abi,
-                providerOrSigner
-            );
+            const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
 
-            const tokenContract = new ethers.Contract(
-                routeOutput.route.tokenIn,
-                erc20Abi.abi,
-                providerOrSigner
-            );
+            const tokenContract = new ethers.Contract(routeOutput.route.tokenIn, erc20Abi.abi, providerOrSigner);
 
-            const tokenInAmount = ethers.utils.parseUnits(
-                amountIn.toString(),
-                inTokenDecimals
-            );
+            const tokenInAmount = ethers.utils.parseUnits(amountIn.toString(), inTokenDecimals);
 
             slippageTolerance = slippageOptions
                 ? calculateDynamicSlippage(
                       slippageOptions.defaultSlippageBps,
                       amountIn,
                       slippageOptions.priceImpactBps,
-                      slippageOptions.ohlcvData
+                      slippageOptions.ohlcvData,
                   )
                 : slippageTolerance;
 
-            const clippedOutput = Number(
-                (routeOutput.output * (100 - slippageTolerance)) / 100
-            ).toFixed(outTokenDecimals);
-
-            const minTokenOutAmount = ethers.utils.parseUnits(
-                clippedOutput.toString(),
-                outTokenDecimals
+            const clippedOutput = Number((routeOutput.output * (100 - slippageTolerance)) / 100).toFixed(
+                outTokenDecimals,
             );
 
+            const minTokenOutAmount = ethers.utils.parseUnits(clippedOutput.toString(), outTokenDecimals);
+
             if (approveTokens) {
-                const txHash = await approveToken(
-                    tokenContract,
-                    routerAddress,
-                    tokenInAmount,
-                    providerOrSigner
-                );
+                const txHash = await approveToken(tokenContract, routerAddress, tokenInAmount, providerOrSigner);
 
                 if (approvalCallback) {
                     approvalCallback(txHash);
@@ -145,7 +120,7 @@ export abstract class TokenSwap {
                 routeOutput,
                 tokenInAmount,
                 minTokenOutAmount,
-                txOptions
+                txOptions,
             );
             console.log(tx);
 
@@ -168,39 +143,21 @@ export abstract class TokenSwap {
         inTokenDecimals: number,
         outTokenDecimals: number,
         slippageTolerance: number,
-        approveTokens: boolean
+        approveTokens: boolean,
     ): Promise<ethers.BigNumber> {
         try {
-            const tokenContract = new ethers.Contract(
-                routeOutput.route.tokenIn,
-                erc20Abi.abi,
-                providerOrSigner
-            );
-            const tokenInAmount = ethers.utils.parseUnits(
-                amountIn.toString(),
-                inTokenDecimals
-            );
+            const tokenContract = new ethers.Contract(routeOutput.route.tokenIn, erc20Abi.abi, providerOrSigner);
+            const tokenInAmount = ethers.utils.parseUnits(amountIn.toString(), inTokenDecimals);
 
             if (approveTokens) {
-                return estimateApproveGas(
-                    tokenContract,
-                    routerAddress,
-                    tokenInAmount
-                );
+                return estimateApproveGas(tokenContract, routerAddress, tokenInAmount);
             }
 
-            const router = new ethers.Contract(
-                routerAddress,
-                routerAbi.abi,
-                providerOrSigner
-            );
+            const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
 
             const minTokenOutAmount = ethers.utils.parseUnits(
-                (
-                    (routeOutput.output * (100 - slippageTolerance)) /
-                    100
-                ).toString(),
-                outTokenDecimals
+                ((routeOutput.output * (100 - slippageTolerance)) / 100).toString(),
+                outTokenDecimals,
             );
 
             const gasEstimate = await router.estimateGas.anyToAnySwap(
@@ -210,7 +167,7 @@ export abstract class TokenSwap {
                 routeOutput.route.tokenIn,
                 routeOutput.route.tokenOut,
                 tokenInAmount,
-                minTokenOutAmount
+                minTokenOutAmount,
             );
 
             return gasEstimate;

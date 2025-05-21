@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber } from "ethers";
+import { BigNumber } from 'ethers';
 
 /**
  * @dev Calculates the base-10 logarithm of a BigNumber.
@@ -8,25 +8,21 @@ import { BigNumber } from "ethers";
  */
 export function log10BigNumber(bn: BigNumber): number {
     if (bn.isZero()) {
-        throw new Error("Log10 of zero is undefined");
+        throw new Error('Log10 of zero is undefined');
     }
 
     const bnString = bn.toString();
     return bnString.length - 1;
 }
 
-export function mulDivRound(
-    value: BigNumber,
-    multiplier: BigNumber,
-    divisor: BigNumber
-): BigNumber {
+export function mulDivRound(value: BigNumber, multiplier: BigNumber, divisor: BigNumber): BigNumber {
     const product = value.mul(multiplier);
     const halfDenominator = divisor.div(2);
     return product.add(halfDenominator).div(divisor);
 }
 
 export function clipToDecimals(value: string, decimals: number): string {
-    const [integer, decimal] = value.split(".");
+    const [integer, decimal] = value.split('.');
     if (decimal) {
         return `${integer}.${decimal.slice(0, decimals)}`;
     }

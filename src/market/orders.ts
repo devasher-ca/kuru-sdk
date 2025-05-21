@@ -1,11 +1,11 @@
 // ============ External Imports ============
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 
 // ============ Internal Imports ============
-import { Order } from "../types";
+import { Order } from '../types';
 
 // ============ Config Imports ============
-import orderbookAbi from "../../abi/OrderBook.json";
+import orderbookAbi from '../../abi/OrderBook.json';
 
 export abstract class Orders {
     /**
@@ -18,11 +18,11 @@ export abstract class Orders {
     static async getOrder(
         providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
-        orderId: number
+        orderId: number,
     ): Promise<Order> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-        const order: Order = await orderbook.s_orders(orderId, {from: ethers.constants.AddressZero});
+        const order: Order = await orderbook.s_orders(orderId, { from: ethers.constants.AddressZero });
 
         return order;
     }
