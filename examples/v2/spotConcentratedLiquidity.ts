@@ -58,7 +58,8 @@ Start Price:    ${ethers.utils.formatUnits(startPrice.toString(), KuruSdk.log10B
             BigInt(marketParams.baseAssetDecimals.toString()),
             BigInt(marketParams.tickSize.toString()),
             BigInt(marketParams.minSize.toString()),
-            BigInt(1) * BigInt(10) ** BigInt(marketParams.quoteAssetDecimals.toString()),
+            undefined,
+            BigInt(100) * BigInt(10) ** BigInt(marketParams.baseAssetDecimals.toString()),
         );
         console.timeEnd('getSpotBatchLPDetails');
 
