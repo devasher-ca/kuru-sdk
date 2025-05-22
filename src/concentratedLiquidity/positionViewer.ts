@@ -109,30 +109,87 @@ export abstract class PositionViewer {
                     throw new Error('ask liquidity is less than minSize');
                 }
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity == undefined) {
-            quoteLiquidity = BigInt(0);
-            const sumAskPrices = asks.reduce((sum, ask) => sum + ask.price, BigInt(0));
+            // We have total base liquidity but need to infer the amount of quote
+            // per price-point (i.e. quotePerTick) such that each bid/ask bucket
+            // receives the same amount of quote.  The relationship between the
+            // base size at the first ask (b₁) and the total base B is
+            //   B = Σ_{i=1}^{N} (b₁ * p₁) / p_i
+            // Solving for the constant quotePerTick = b₁ * p₁ gives
+            //   quotePerTick = B / (Σ 1/p_i)
+            // We implement this in integer arithmetic by scaling the reciprocal
+            // terms with `pricePrecision ** 2` so that we avoid fractional
+            // values while maintaining precision.
 
+            // ------------------------------------------
+            // 1. Compute the scaled reciprocal sum Σ pricePrecision^2 / p_i
+            // ------------------------------------------
+            const reciprocalSumScaled = asks.reduce(
+                (sum, ask) => sum + (pricePrecision * pricePrecision) / ask.price,
+                BigInt(0),
+            );
+
+            if (reciprocalSumScaled === BigInt(0)) {
+                throw new Error('reciprocalSumScaled is zero – check price inputs');
+            }
+
+            // ------------------------------------------
+            // 2. Compute ask liquidity in sizePrecision units
+            //    Formula: L_i = (B * sizePrecision * pricePrecision^2) /
+            //                     (ΣRecipScaled * p_i * 10^{baseDecimals})
+            // ------------------------------------------
             for (const ask of asks) {
                 ask.liquidity =
-                    (baseLiquidity * ask.price * sizePrecision) / (sumAskPrices * BigInt(10) ** baseAssetDecimals);
+                    (baseLiquidity * sizePrecision * pricePrecision * pricePrecision) /
+                    (reciprocalSumScaled * ask.price * BigInt(10) ** baseAssetDecimals);
+
                 if (ask.liquidity < minSize) {
                     throw new Error('ask liquidity is less than minSize');
                 }
             }
 
+            // ------------------------------------------
+            // 3. Derive the constant quotePerTick from the first ask bucket.
+            //    quotePerTick = L_1 * p_1 * 10^{quoteDecimals} / (sizePrecision * pricePrecision)
+            // ------------------------------------------
+            const firstAsk = asks[0];
+            const quotePerTick =
+                (firstAsk.liquidity * firstAsk.price * BigInt(10) ** quoteAssetDecimals) /
+                (sizePrecision * pricePrecision);
+
+            // ------------------------------------------
+            // 4. Allocate liquidity for bids (inverse conversion)
+            //    L_bid = quotePerTick * sizePrecision * pricePrecision /
+            //            (p_bid * 10^{quoteDecimals})
+            // ------------------------------------------
+            let inferredQuoteLiquidity: bigint = BigInt(0);
+
             for (const bid of bids) {
                 bid.liquidity =
-                    (asks[0].price * baseLiquidity * sizePrecision) /
-                    (sumAskPrices * bid.price * BigInt(10) ** baseAssetDecimals);
-                quoteLiquidity +=
-                    (bid.liquidity * bid.price * BigInt(10) ** quoteAssetDecimals) / (sizePrecision * pricePrecision);
+                    (quotePerTick * sizePrecision * pricePrecision) / (bid.price * BigInt(10) ** quoteAssetDecimals);
+
+                inferredQuoteLiquidity += quotePerTick; // one quotePerTick per bid
+
                 if (bid.liquidity < minSize) {
                     throw new Error('bid liquidity is less than minSize');
                 }
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: inferredQuoteLiquidity,
+                baseLiquidity: baseLiquidity,
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity !== undefined) {
@@ -151,13 +208,20 @@ export abstract class PositionViewer {
                     throw new Error('bid liquidity is less than minSize');
                 }
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         return {
-            bids: bids.sort((a, b) => Number(b.price - a.price)),
-            asks: asks.sort((a, b) => Number(b.price - a.price)),
-            quoteLiquidity: quoteLiquidity ?? BigInt(0),
-            baseLiquidity: baseLiquidity ?? BigInt(0),
+            bids: [],
+            asks: [],
+            quoteLiquidity: BigInt(0),
+            baseLiquidity: BigInt(0),
         };
     }
 
@@ -242,6 +306,13 @@ export abstract class PositionViewer {
                         pricePrecision) /
                     (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
@@ -258,6 +329,13 @@ export abstract class PositionViewer {
             quoteInFarthestBid = (quoteInFarthestAsk * (numAsks + BigInt(1))) / numBids;
 
             quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInFarthestBid) / BigInt(2);
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         for (const bid of bids) {
@@ -366,6 +444,13 @@ export abstract class PositionViewer {
                     (quoteInClosestAsk * BigInt(askIndex) * BigInt(10) ** baseAssetDecimals * pricePrecision) /
                     (BigInt(10) ** quoteAssetDecimals * ask.price);
             }
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         if (baseLiquidity !== undefined && quoteLiquidity === undefined) {
@@ -379,6 +464,13 @@ export abstract class PositionViewer {
             quoteInClosestBid = quoteInClosestAsk;
 
             quoteLiquidity = (numBids * (numBids + BigInt(1)) * quoteInClosestBid) / BigInt(2);
+
+            return {
+                bids: bids.sort((a, b) => Number(b.price - a.price)),
+                asks: asks.sort((a, b) => Number(b.price - a.price)),
+                quoteLiquidity: quoteLiquidity ?? BigInt(0),
+                baseLiquidity: baseLiquidity ?? BigInt(0),
+            };
         }
 
         for (const bid of bids) {

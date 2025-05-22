@@ -25,13 +25,10 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
         // Get current orderbook to determine best ask price
-        const orderbook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+        // const orderbook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
 
         // Extract best ask price from orderbook
-        const bestAskPrice =
-            orderbook.asks.length > 0
-                ? BigInt(Math.floor(orderbook.asks[0][0] * 10000)) // Convert to bigint with 4 decimal places
-                : BigInt(0);
+        const bestAskPrice = BigInt(33940070);
 
         if (bestAskPrice === BigInt(0)) {
             throw new Error('Could not determine best ask price from orderbook');
@@ -39,8 +36,14 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
 
         // Define price range for concentrated liquidity
         const minFeesBps = BigInt(30); // 0.3% fee
-        const startPrice = bestAskPrice - (bestAskPrice * BigInt(1)) / BigInt(100); // 1% below best ask
-        const endPrice = bestAskPrice + (bestAskPrice * BigInt(1)) / BigInt(100); // 1% above best ask
+        const startPrice = BigInt(33906140);
+        const endPrice = BigInt(34174020);
+
+        console.log(`
+End Price:      ${ethers.utils.formatUnits(endPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
+Best Ask Price: ${ethers.utils.formatUnits(bestAskPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
+Start Price:    ${ethers.utils.formatUnits(startPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
+`);
 
         // Get concentrated liquidity positions
         console.time('getSpotBatchLPDetails');
@@ -55,7 +58,8 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
             BigInt(marketParams.baseAssetDecimals.toString()),
             BigInt(marketParams.tickSize.toString()),
             BigInt(marketParams.minSize.toString()),
-            BigInt(1000) * BigInt(10) ** BigInt(marketParams.quoteAssetDecimals.toString()),
+            undefined,
+            BigInt(100) * BigInt(10) ** BigInt(marketParams.baseAssetDecimals.toString()),
         );
         console.timeEnd('getSpotBatchLPDetails');
 
