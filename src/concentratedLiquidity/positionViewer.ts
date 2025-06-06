@@ -53,7 +53,9 @@ export abstract class PositionViewer {
         const bids: Position[] = [];
         const asks: Position[] = [];
 
-        while (startPrice < bestAskPrice) {
+        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
+
+        while (startPrice < maxPrice) {
             numBids++;
             var nextPrice = (startPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice == startPrice) {
@@ -268,10 +270,12 @@ export abstract class PositionViewer {
         const asks: Position[] = [];
         let currentPrice = startPrice;
 
+        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
+
         // #############################################################
         // # 1. Generate Bid & Ask Position Grids
         // #############################################################
-        while (currentPrice < bestAskPrice) {
+        while (currentPrice < maxPrice) {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
@@ -445,11 +449,13 @@ export abstract class PositionViewer {
 
         let currentPrice = startPrice;
 
+        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
+
         // #############################################################
         // # 1. Generate Bid & Ask Position Grids
         // #############################################################
         // Bids are created from the farthest price (startPrice) inwards to the center.
-        while (currentPrice < bestAskPrice) {
+        while (currentPrice < maxPrice) {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
