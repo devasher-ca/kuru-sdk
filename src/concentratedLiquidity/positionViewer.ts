@@ -53,7 +53,7 @@ export abstract class PositionViewer {
         const bids: Position[] = [];
         const asks: Position[] = [];
 
-        const maxPrice = Math.max(Number(bestAskPrice), Number(endPrice));
+        const maxPrice = Math.min(Number(bestAskPrice), Number(endPrice));
 
         while (startPrice < maxPrice) {
             numBids++;
