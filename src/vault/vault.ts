@@ -310,23 +310,6 @@ export abstract class Vault {
         signer: ethers.Signer,
         txOptions?: TransactionOptions,
     ): Promise<ethers.providers.TransactionRequest> {
-        const promises = [];
-
-        const shouldApproveToken1 = baseAssetAddress !== ethers.constants.AddressZero;
-        const shouldApproveToken2 = quoteAssetAddress !== ethers.constants.AddressZero;
-
-        if (shouldApproveToken1) {
-            const token1Contract = new ethers.Contract(baseAssetAddress, erc20Abi.abi, signer);
-            promises.push(approveToken(token1Contract, vaultAddress, amount1, signer));
-        }
-
-        if (shouldApproveToken2) {
-            const token2Contract = new ethers.Contract(quoteAssetAddress, erc20Abi.abi, signer);
-            promises.push(approveToken(token2Contract, vaultAddress, amount2, signer));
-        }
-
-        await Promise.all(promises);
-
         const address = await signer.getAddress();
 
         const vaultInterface = new ethers.utils.Interface(vaultAbi.abi);
