@@ -28,7 +28,7 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
         // const orderbook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
 
         // Extract best ask price from orderbook
-        const bestAskPrice = BigInt(33940070);
+        const bestAskPrice = BigInt(6941420);
 
         if (bestAskPrice === BigInt(0)) {
             throw new Error('Could not determine best ask price from orderbook');
@@ -36,8 +36,8 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
 
         // Define price range for concentrated liquidity
         const minFeesBps = BigInt(30); // 0.3% fee
-        const startPrice = BigInt(33906140);
-        const endPrice = BigInt(34174020);
+        const startPrice = BigInt(6293270);
+        const endPrice = BigInt(7791200);
 
         console.log(`
 End Price:      ${ethers.utils.formatUnits(endPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}

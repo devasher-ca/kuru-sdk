@@ -81,6 +81,10 @@ export abstract class PositionViewer {
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
 
+            // Prevent asks from exceeding the specified endPrice
+            if (nextPrice > endPrice) {
+                break;
+            }
             const position = {
                 price: nextPrice,
                 liquidity: BigInt(0),
@@ -287,6 +291,11 @@ export abstract class PositionViewer {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
+
+            // Prevent asks from exceeding endPrice
+            if (nextPrice > endPrice) {
+                break;
+            }
             asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice: currentPrice });
             currentPrice = nextPrice;
         }
@@ -470,6 +479,10 @@ export abstract class PositionViewer {
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
 
+            // Prevent asks from exceeding endPrice
+            if (nextPrice > endPrice) {
+                break;
+            }
             asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice: currentPrice });
             currentPrice = nextPrice;
         }
