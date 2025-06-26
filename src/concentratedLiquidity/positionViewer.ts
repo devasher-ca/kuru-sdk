@@ -71,7 +71,7 @@ export abstract class PositionViewer {
             const position = {
                 price: startPrice,
                 liquidity: BigInt(0),
-                flipPrice: flipPrice,
+                flipPrice,
             };
             bids.push(position);
 
@@ -99,7 +99,7 @@ export abstract class PositionViewer {
             const position = {
                 price: nextPrice,
                 liquidity: BigInt(0),
-                flipPrice: flipPrice,
+                flipPrice,
             };
             asks.push(position);
 
