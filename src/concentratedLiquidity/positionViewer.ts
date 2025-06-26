@@ -62,11 +62,16 @@ export abstract class PositionViewer {
                 nextPrice = startPrice + tickSize;
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == nextPrice) {
+                flipPrice = nextPrice + tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
 
             const position = {
                 price: startPrice,
                 liquidity: BigInt(0),
-                flipPrice: nextPrice,
+                flipPrice,
             };
             bids.push(position);
 
@@ -81,6 +86,12 @@ export abstract class PositionViewer {
             }
             nextPrice = nextPrice - (nextPrice % tickSize);
 
+            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == startPrice) {
+                flipPrice = startPrice - tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
             // Prevent asks from exceeding the specified endPrice
             if (nextPrice > endPrice) {
                 break;
@@ -88,7 +99,7 @@ export abstract class PositionViewer {
             const position = {
                 price: nextPrice,
                 liquidity: BigInt(0),
-                flipPrice: startPrice,
+                flipPrice,
             };
             asks.push(position);
 
@@ -283,7 +294,14 @@ export abstract class PositionViewer {
             let nextPrice = (currentPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
-            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice: nextPrice });
+
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == nextPrice) {
+                flipPrice = nextPrice + tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
@@ -296,7 +314,14 @@ export abstract class PositionViewer {
             if (nextPrice > endPrice) {
                 break;
             }
-            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice: currentPrice });
+
+            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == startPrice) {
+                flipPrice = startPrice - tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
@@ -469,7 +494,13 @@ export abstract class PositionViewer {
             if (nextPrice === currentPrice) nextPrice = currentPrice + tickSize;
             nextPrice = nextPrice - (nextPrice % tickSize);
 
-            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice: nextPrice });
+            var flipPrice = (nextPrice * (FEE_DENOMINATOR + minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == nextPrice) {
+                flipPrice = nextPrice + tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            bids.push({ price: currentPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
@@ -483,7 +514,14 @@ export abstract class PositionViewer {
             if (nextPrice > endPrice) {
                 break;
             }
-            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice: currentPrice });
+
+            var flipPrice = (startPrice * (FEE_DENOMINATOR - minFeesBps)) / FEE_DENOMINATOR;
+            if (flipPrice == startPrice) {
+                flipPrice = startPrice - tickSize;
+            }
+            flipPrice = flipPrice - (flipPrice % tickSize);
+
+            asks.push({ price: nextPrice, liquidity: BigInt(0), flipPrice });
             currentPrice = nextPrice;
         }
 
