@@ -1,233 +1,110 @@
-import { io, Socket } from 'socket.io-client';
 import { ethers } from 'ethers';
+
 import * as KuruSdk from '../../src';
 import * as KuruConfig from '../config.json';
-import { OrderBookData, WssOrderEvent, WssCanceledOrderEvent, WssTradeEvent } from '../../src/types';
 
 const { rpcUrl, contractAddress } = KuruConfig;
-const WS_URL = `wss://ws.staging.kuru.io`;
 
-class OrderbookWatcher {
-    private socket: Socket;
-    private localOrderbook: OrderBookData | null = null;
-    private provider: ethers.providers.JsonRpcProvider;
-    private marketParams: any;
-    private lastProcessedBlock: number = 0;
+// Formatted orderbook watcher implementation
+class FormattedOrderbookWatcher {
+    private provider: ethers.JsonRpcProvider;
+    private intervalId?: NodeJS.Timeout;
+    private pollingInterval: number;
 
-    constructor() {
-        this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-        this.socket = io(WS_URL, {
-            query: { marketAddress: contractAddress },
-            transports: ['websocket'],
-        });
-        this.setupSocketListeners();
+    constructor(pollingInterval: number = 500) {
+        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        this.pollingInterval = pollingInterval;
     }
 
-    private async initialize() {
-        try {
-            this.marketParams = await KuruSdk.ParamFetcher.getMarketParams(this.provider, contractAddress);
-            await this.fetchAndUpdateOrderbook();
-        } catch (error) {
-            console.error('Initialization error:', error);
+    async startWatching() {
+        console.log(`Starting formatted orderbook watcher for ${contractAddress}`);
+        console.log(`Polling interval: ${this.pollingInterval}ms\n`);
+
+        // Initial fetch
+        await this.fetchAndDisplayFormattedOrderbook();
+
+        // Set up polling
+        this.intervalId = setInterval(async () => {
+            await this.fetchAndDisplayFormattedOrderbook();
+        }, this.pollingInterval);
+    }
+
+    stopWatching() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = undefined;
+            console.log('Formatted orderbook watcher stopped');
         }
     }
 
-    private async fetchAndUpdateOrderbook() {
+    private async fetchAndDisplayFormattedOrderbook() {
         try {
-            const fetchedOrderbook = await KuruSdk.OrderBook.getFormattedL2OrderBook(
+            const marketParams = await KuruSdk.ParamFetcher.getMarketParams(this.provider, contractAddress);
+            const l2OrderBook = await KuruSdk.OrderBook.getFormattedL2OrderBook(
                 this.provider,
                 contractAddress,
-                this.marketParams,
+                marketParams,
             );
-            this.localOrderbook = fetchedOrderbook;
+
+            console.clear();
+            console.log(`=== Formatted Orderbook for ${contractAddress} ===`);
+            console.log(`Timestamp: ${new Date().toLocaleTimeString()}\n`);
+
+            console.log('ASKS (Sell Orders) - Human Readable');
+            console.log('Price\t\tSize\t\tTotal Value');
+            console.log('─'.repeat(50));
+            l2OrderBook.asks
+                .slice(0, 5)
+                .reverse()
+                .forEach(([price, size]) => {
+                    console.log(`$${price.toFixed(6)}\t${size.toFixed(4)}\t$${(price * size).toFixed(2)}`);
+                });
+
+            console.log('\nBIDS (Buy Orders) - Human Readable');
+            console.log('Price\t\tSize\t\tTotal Value');
+            console.log('─'.repeat(50));
+            l2OrderBook.bids.slice(0, 5).forEach(([price, size]) => {
+                console.log(`$${price.toFixed(6)}\t${size.toFixed(4)}\t$${(price * size).toFixed(2)}`);
+            });
+
+            const spread = l2OrderBook.asks[0][0] - l2OrderBook.bids[0][0];
+            const spreadPercent = (spread / l2OrderBook.bids[0][0]) * 100;
+            const midPrice = (l2OrderBook.asks[0][0] + l2OrderBook.bids[0][0]) / 2;
+
+            console.log(`\n📊 Market Statistics:`);
+            console.log(`Mid Price: $${midPrice.toFixed(6)}`);
+            console.log(`Spread: $${spread.toFixed(6)} (${spreadPercent.toFixed(3)}%)`);
+            console.log(`Best Bid: $${l2OrderBook.bids[0][0].toFixed(6)}`);
+            console.log(`Best Ask: $${l2OrderBook.asks[0][0].toFixed(6)}`);
+
+            // Calculate total liquidity within 1% of mid price
+            const priceRange = midPrice * 0.01;
+            const bidLiquidity = l2OrderBook.bids
+                .filter(([price]) => price >= midPrice - priceRange)
+                .reduce((sum, [price, size]) => sum + price * size, 0);
+            const askLiquidity = l2OrderBook.asks
+                .filter(([price]) => price <= midPrice + priceRange)
+                .reduce((sum, [price, size]) => sum + price * size, 0);
+
+            console.log(`\n💧 Liquidity within 1% of mid:`);
+            console.log(`Bid Liquidity: $${bidLiquidity.toFixed(2)}`);
+            console.log(`Ask Liquidity: $${askLiquidity.toFixed(2)}`);
+            console.log(`Total Liquidity: $${(bidLiquidity + askLiquidity).toFixed(2)}`);
         } catch (error) {
-            console.error('Error fetching orderbook:', error);
-        }
-    }
-
-    private setupSocketListeners() {
-        this.socket.on('connect', async () => {
-            console.log('Socket connected');
-            await this.initialize();
-        });
-
-        this.socket.on('OrderCreated', async (event) => {
-            try {
-                if (!this.localOrderbook) return;
-
-                const orderEvent: WssOrderEvent = {
-                    orderId: event.orderId,
-                    owner: event.owner,
-                    size: ethers.BigNumber.from(event.size),
-                    price: ethers.BigNumber.from(event.price),
-                    isBuy: event.isBuy,
-                    blockNumber: ethers.BigNumber.from(event.blockNumber),
-                    transactionHash: event.transactionHash,
-                    triggerTime: event.triggerTime,
-                    marketAddress: event.marketAddress,
-                };
-
-                // Store the orderbook state before reconciliation
-                const beforeOrderbook = JSON.parse(JSON.stringify(this.localOrderbook));
-
-                await this.handleReconciliation(
-                    () =>
-                        (this.localOrderbook = KuruSdk.OrderBook.reconcileFormattedOrderCreated(
-                            this.localOrderbook!,
-                            this.marketParams,
-                            orderEvent,
-                        )),
-                );
-
-                // Compare and print changes after reconciliation
-                if (this.localOrderbook) {
-                    console.log('\n=== Order Created Updates ===');
-                    console.log(`New Order: ${orderEvent.size.toString()} @ ${orderEvent.price.toString()}`);
-
-                    console.log('Before orderbook first few entries:');
-                    console.log('Asks:', beforeOrderbook.asks.slice(-3));
-                    console.log('Bids:', beforeOrderbook.bids.slice(0, 3));
-
-                    console.log('After orderbook first few entries:');
-                    console.log('Asks:', this.localOrderbook.asks.slice(-3));
-                    console.log('Bids:', this.localOrderbook.bids.slice(0, 3));
-
-                    console.log('========================\n');
-                }
-            } catch (error) {
-                console.error('Error processing OrderCreated:', error);
-            }
-        });
-
-        this.socket.on('Trade', async (event) => {
-            try {
-                if (!this.localOrderbook) return;
-
-                const tradeEvent: WssTradeEvent = {
-                    orderId: event.orderId,
-                    makerAddress: event.makerAddress,
-                    isBuy: event.isBuy,
-                    price: event.price,
-                    updatedSize: event.updatedSize,
-                    takerAddress: event.takerAddress,
-                    filledSize: event.filledSize,
-                    blockNumber: event.blockNumber,
-                    transactionHash: event.transactionHash,
-                    triggerTime: event.triggerTime,
-                };
-
-                // Store the orderbook state before reconciliation
-                const beforeOrderbook = JSON.parse(JSON.stringify(this.localOrderbook));
-
-                this.localOrderbook = KuruSdk.OrderBook.reconcileFormattedTradeEvent(
-                    this.localOrderbook!,
-                    this.marketParams,
-                    tradeEvent,
-                );
-
-                // Compare and print changes after reconciliation
-                if (this.localOrderbook) {
-                    console.log('\n=== Trade Event Updates ===');
-                    console.log(`Trade: ${tradeEvent.filledSize} @ ${tradeEvent.price}`);
-
-                    // Debug logging
-                    console.log('Before orderbook first few entries:');
-                    console.log('Asks:', beforeOrderbook.asks.slice(-3));
-                    console.log('Bids:', beforeOrderbook.bids.slice(0, 3));
-
-                    console.log('After orderbook first few entries:');
-                    console.log('Asks:', this.localOrderbook.asks.slice(-3));
-                    console.log('Bids:', this.localOrderbook.bids.slice(0, 3));
-
-                    console.log('========================\n');
-                }
-            } catch (error) {
-                console.error('Error processing Trade:', error);
-            }
-        });
-
-        this.socket.on('OrdersCanceled', async (event) => {
-            try {
-                if (!this.localOrderbook) return;
-
-                const cancelEvent: WssCanceledOrderEvent = {
-                    orderIds: event.orderIds,
-                    makerAddress: event.makerAddress,
-                    canceledOrdersData: event.canceledOrdersData,
-                };
-
-                // Store the orderbook state before reconciliation
-                const beforeOrderbook = JSON.parse(JSON.stringify(this.localOrderbook));
-
-                await this.handleReconciliation(
-                    () =>
-                        (this.localOrderbook = KuruSdk.OrderBook.reconcileFormattedCanceledOrders(
-                            this.localOrderbook!,
-                            this.marketParams,
-                            cancelEvent,
-                        )),
-                );
-
-                // Compare and print changes after reconciliation
-                if (this.localOrderbook) {
-                    console.log('\n=== Orders Canceled Updates ===');
-                    console.log(`Canceled Orders: ${cancelEvent.orderIds.join(', ')}`);
-
-                    console.log('Before orderbook first few entries:');
-                    console.log('Asks:', beforeOrderbook.asks.slice(-3));
-                    console.log('Bids:', beforeOrderbook.bids.slice(0, 3));
-
-                    console.log('After orderbook first few entries:');
-                    console.log('Asks:', this.localOrderbook.asks.slice(-3));
-                    console.log('Bids:', this.localOrderbook.bids.slice(0, 3));
-
-                    console.log('========================\n');
-                }
-            } catch (error) {
-                console.error('Error processing OrdersCanceled:', error);
-            }
-        });
-
-        this.socket.on('disconnect', () => {
-            console.log('Socket disconnected');
-        });
-
-        this.socket.on('error', (error) => {
-            console.error('Socket error:', error);
-        });
-    }
-
-    private async handleReconciliation(reconcileFunc: () => OrderBookData) {
-        try {
-            // Execute the reconciliation once and store the result
-            const result = reconcileFunc();
-            const currentBlock = Number(result.blockNumber || 0);
-
-            // Update the orderbook immediately
-            this.localOrderbook = result;
-
-            if (currentBlock > this.lastProcessedBlock) {
-                this.lastProcessedBlock = currentBlock;
-            }
-        } catch (error) {
-            console.error('Error in reconciliation:', error);
-            await this.fetchAndUpdateOrderbook();
-        }
-    }
-
-    public disconnect() {
-        if (this.socket) {
-            this.socket.disconnect();
+            console.error('Error fetching formatted orderbook:', error);
         }
     }
 }
 
-// Start the watcher
-const watcher = new OrderbookWatcher();
+(async () => {
+    const watcher = new FormattedOrderbookWatcher();
 
-// Handle process termination
-process.on('SIGINT', () => {
-    console.log('Shutting down...');
-    watcher.disconnect();
-    process.exit();
-});
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+        console.log('\nShutting down formatted orderbook watcher...');
+        watcher.stopWatching();
+        process.exit(0);
+    });
+
+    await watcher.startWatching();
+})();

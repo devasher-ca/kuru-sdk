@@ -12,7 +12,7 @@ const sampleOHLCVData = [
 // Example parameters
 const defaultSlippageBps = 50; // 0.5% default slippage
 const tradeSize = 1000; // Size of trade
-const priceImpactBps = 200; // 0.2% estimated price impact
+const priceImpactBps = 200; // 2% estimated price impact
 
 // Calculate optimal slippage
 const optimalSlippageBps = calculateDynamicSlippage(defaultSlippageBps, tradeSize, priceImpactBps, sampleOHLCVData);

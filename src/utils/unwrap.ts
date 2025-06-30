@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from 'ethers';
+import { ethers } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from './errorExtractor';
@@ -16,12 +16,12 @@ import buildTransactionRequest from './txConfig';
 export async function constructWrapTransaction(
     signer: ethers.Signer,
     wrapperContractAddress: string,
-    amount: BigNumber,
+    amount: bigint,
     txOptions?: TransactionOptions,
-): Promise<ethers.providers.TransactionRequest> {
+): Promise<ethers.TransactionRequest> {
     try {
         const address = await signer.getAddress();
-        const wrapperContractInterface = new ethers.utils.Interface(wmonAbi);
+        const wrapperContractInterface = new ethers.Interface(wmonAbi);
         const data = wrapperContractInterface.encodeFunctionData('deposit');
 
         return buildTransactionRequest({
@@ -49,12 +49,12 @@ export async function constructWrapTransaction(
 export async function constructUnwrapTransaction(
     signer: ethers.Signer,
     wrapperContractAddress: string,
-    amount: BigNumber,
+    amount: bigint,
     txOptions?: TransactionOptions,
-): Promise<ethers.providers.TransactionRequest> {
+): Promise<ethers.TransactionRequest> {
     try {
         const address = await signer.getAddress();
-        const wrapperContractInterface = new ethers.utils.Interface(wmonAbi);
+        const wrapperContractInterface = new ethers.Interface(wmonAbi);
         const data = wrapperContractInterface.encodeFunctionData('withdraw', [amount]);
 
         return buildTransactionRequest({

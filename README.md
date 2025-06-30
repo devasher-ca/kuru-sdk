@@ -1,11 +1,13 @@
-# Kuru SDK Documentation
+# Kuru SDK Documentation (Ethers v6 Fork)
 
-The `@kuru-labs/kuru-sdk` provides various functionalities for interacting with the Kuru protocol. Below are examples of how to use the SDK for different operations.
+This is an Ethers v6 fork of the original `@kuru-labs/kuru-sdk` .
+
+> **Note**: This is a fork of the original Kuru SDK by Kuru Labs. Credits to the original authors for their excellent work.
 
 ## Installation
 
 ```bash
-npm install @kuru-labs/kuru-sdk
+npm install @devasher/kuru-sdk
 ```
 
 ## Configuration

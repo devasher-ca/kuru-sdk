@@ -1,11 +1,11 @@
 // ============ Internal Imports ============
-import { ethers } from 'ethers';
+import { ZeroAddress } from 'ethers';
 import { BaseToken, MarketResponse, Pool } from '../types/pool';
 import fetch from 'cross-fetch';
 
 // Define your most important base tokens
 const BASE_TOKENS: BaseToken[] = [
-    { symbol: 'MON', address: ethers.constants.AddressZero },
+    { symbol: 'MON', address: ZeroAddress },
     { symbol: 'WMON', address: '0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701' },
     { symbol: 'USDC', address: '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea' },
     { symbol: 'kuruUSDC', address: '0x6C15057930e0d8724886C09e940c5819fBE65465' },

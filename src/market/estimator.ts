@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber, ethers } from 'ethers';
+import { ethers, parseUnits, formatUnits, ZeroAddress } from 'ethers';
 
 // ============ Internal Imports ============
 import { MarketParams } from '../types';
@@ -20,12 +20,12 @@ export abstract class CostEstimator {
      * @returns A promise that resolves to the amount of quote tokens received.
      */
     static async estimateMarketSell(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         size: number,
-    ): Promise<{ output: number; estimatedGas: BigNumber }> {
-        const sizeInPrecision = ethers.utils.parseUnits(
+    ): Promise<{ output: number; estimatedGas: bigint }> {
+        const sizeInPrecision = parseUnits(
             size.toFixed(log10BigNumber(marketParams.sizePrecision)),
             log10BigNumber(marketParams.sizePrecision),
         );
@@ -38,7 +38,7 @@ export abstract class CostEstimator {
             );
 
             return {
-                output: Number(ethers.utils.formatUnits(output, marketParams.quoteAssetDecimals)),
+                output: Number(formatUnits(output, marketParams.quoteAssetDecimals)),
                 estimatedGas,
             };
         } catch (e: any) {
@@ -50,18 +50,18 @@ export abstract class CostEstimator {
     }
 
     static async returnMarketSellEstimate(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
-        size: BigNumber,
-    ): Promise<{ output: BigNumber; estimatedGas: BigNumber }> {
+        size: bigint,
+    ): Promise<{ output: bigint; estimatedGas: bigint }> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const [estimate, estimatedGas] = await Promise.all([
-            orderbook.callStatic.placeAndExecuteMarketSell(size, 0, false, false, {
-                from: ethers.constants.AddressZero,
+            orderbook.placeAndExecuteMarketSell.staticCall(size, 0, false, false, {
+                from: ZeroAddress,
             }),
-            orderbook.estimateGas.placeAndExecuteMarketSell(size, 0, false, false, {
-                from: ethers.constants.AddressZero,
+            orderbook.placeAndExecuteMarketSell.estimateGas(size, 0, false, false, {
+                from: ZeroAddress,
             }),
         ]);
 
@@ -77,14 +77,14 @@ export abstract class CostEstimator {
      * @returns A promise that resolves to the amount of base tokens required.
      */
     static async estimateRequiredBaseForSell(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         quoteAmount: number,
         l2Book: any,
         contractVaultParams: any,
     ): Promise<number> {
-        const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+        const takerFeeBps = Number(marketParams.takerFeeBps.toString()) / 10000;
         const grossQuoteAmount = quoteAmount / (1 - takerFeeBps);
 
         const l2OrderBook = await OrderBook.getL2OrderBook(
@@ -129,12 +129,12 @@ export abstract class CostEstimator {
      * @returns A promise that resolves to the amount of base tokens received.
      */
     static async estimateMarketBuy(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         quoteAmount: number,
-    ): Promise<{ output: number; estimatedGas: BigNumber }> {
-        const sizeInPrecision = ethers.utils.parseUnits(
+    ): Promise<{ output: number; estimatedGas: bigint }> {
+        const sizeInPrecision = parseUnits(
             quoteAmount.toFixed(log10BigNumber(marketParams.pricePrecision)),
             log10BigNumber(marketParams.pricePrecision),
         );
@@ -147,7 +147,7 @@ export abstract class CostEstimator {
             );
 
             return {
-                output: parseFloat(ethers.utils.formatUnits(output, marketParams.baseAssetDecimals)),
+                output: parseFloat(formatUnits(output, marketParams.baseAssetDecimals)),
                 estimatedGas,
             };
         } catch (e: any) {
@@ -159,18 +159,18 @@ export abstract class CostEstimator {
     }
 
     static async returnMarketBuyEstimate(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
-        size: BigNumber,
-    ): Promise<{ output: BigNumber; estimatedGas: BigNumber }> {
+        size: bigint,
+    ): Promise<{ output: bigint; estimatedGas: bigint }> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const [estimate, estimatedGas] = await Promise.all([
-            orderbook.callStatic.placeAndExecuteMarketBuy(size, 0, false, false, {
-                from: ethers.constants.AddressZero,
+            orderbook.placeAndExecuteMarketBuy.staticCall(size, 0, false, false, {
+                from: ZeroAddress,
             }),
-            orderbook.estimateGas.placeAndExecuteMarketBuy(size, 0, false, false, {
-                from: ethers.constants.AddressZero,
+            orderbook.placeAndExecuteMarketBuy.estimateGas(size, 0, false, false, {
+                from: ZeroAddress,
             }),
         ]);
 
@@ -186,14 +186,14 @@ export abstract class CostEstimator {
      * @returns A promise that resolves to the amount of quote tokens required.
      */
     static async estimateRequiredQuoteForBuy(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         baseTokenAmount: number,
         l2Book: any,
         contractVaultParams: any,
     ): Promise<number> {
-        const takerFeeBps = marketParams.takerFeeBps.toNumber() / 10000;
+        const takerFeeBps = Number(marketParams.takerFeeBps.toString()) / 10000;
         const grossBaseTokenAmount = baseTokenAmount / (1 - takerFeeBps);
 
         const l2OrderBook = await OrderBook.getL2OrderBook(

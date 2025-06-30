@@ -1,35 +1,35 @@
 import { ethers } from 'ethers';
+
+import * as KuruSdk from '../../src';
+import * as KuruConfig from '../config.json';
 import { PoolFetcher } from '../../src/pools/fetcher';
-import { BaseToken } from '../../src/types/pool';
 
-const kuruApi = 'https://api.staging.kuru.io:3001';
+const { rpcUrl } = KuruConfig;
 
-// Get command line arguments
-const args = process.argv.slice(2);
-const tokenInAddress = args[0];
-const tokenOutAddress = args[1];
-
-// Define custom base tokens
-const customBaseTokens: BaseToken[] = [
-    { symbol: 'ETH', address: ethers.constants.AddressZero },
-    { symbol: 'USDC', address: '0xb73472fF5a4799F7182CB8f60360de6Ec7BB9c94' },
-];
+const kuruApi = process.env.KURU_API;
 
 (async () => {
-    const poolFetcher = new PoolFetcher(kuruApi);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     try {
-        // Get all pools with custom base tokens
-        const pools = await poolFetcher.getAllPools(tokenInAddress, tokenOutAddress, customBaseTokens);
+        const pool = new PoolFetcher(kuruApi as string);
+        const result = await pool.getPoolsWithCustomBase(
+            '0x0000000000000000000000000000000000000000',
+            '0x6C15057930e0d8724886C09e940c5819fBE65465',
+            [
+                {
+                    symbol: 'MON',
+                    address: '0x0000000000000000000000000000000000000000',
+                },
+                {
+                    symbol: 'USDC',
+                    address: '0x6C15057930e0d8724886C09e940c5819fBE65465',
+                },
+            ],
+        );
 
-        console.log('Found pools:');
-        pools.forEach((pool, index) => {
-            console.log(`\nPool ${index + 1}:`);
-            console.log(`Base Token: ${pool.baseToken}`);
-            console.log(`Quote Token: ${pool.quoteToken}`);
-            console.log(`Orderbook: ${pool.orderbook}`);
-        });
+        console.log('Pools with custom base tokens:', result);
     } catch (error) {
-        console.error('Error finding pools:', error);
+        console.error('Error finding pools with custom base:', error);
     }
 })();

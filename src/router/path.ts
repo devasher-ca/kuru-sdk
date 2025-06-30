@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers } from 'ethers';
+import { ethers, ZeroAddress, formatUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { ParamFetcher, CostEstimator } from '../market';
@@ -11,7 +11,7 @@ import utilsAbi from '../../abi/KuruUtils.json';
 
 export abstract class PathFinder {
     static async findBestPath(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         tokenIn: string,
         tokenOut: string,
         amountIn: number,
@@ -82,7 +82,7 @@ export abstract class PathFinder {
 }
 
 async function calculatePriceImpact(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     estimatorContractAddress: string,
     route: RouteOutput,
     amountIn: number,
@@ -90,7 +90,7 @@ async function calculatePriceImpact(
     const estimatorContract = new ethers.Contract(estimatorContractAddress, utilsAbi.abi, providerOrSigner);
     const orderbookAddresses = route.route.path.map((pool) => pool.orderbook);
     const price = await estimatorContract.calculatePriceOverRoute(orderbookAddresses, route.isBuy);
-    const priceInUnits = parseFloat(ethers.utils.formatUnits(price, 18));
+    const priceInUnits = parseFloat(formatUnits(price, 18));
     const actualPrice = parseFloat((amountIn / route.output).toFixed(18));
     return parseFloat(((100 * actualPrice) / priceInUnits - 100).toFixed(2));
 }
@@ -123,7 +123,7 @@ function computeAllRoutes(
 }
 
 async function computeRouteInput(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     route: Route,
     amountOut: number,
     marketParamsMap?: Map<string, MarketParams>,
@@ -146,13 +146,13 @@ async function computeRouteInput(
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const l2Book = await orderbook.getL2Book({
-            from: ethers.constants.AddressZero,
+            from: ZeroAddress,
         });
         const vaultParams = await orderbook.getVaultParams({
-            from: ethers.constants.AddressZero,
+            from: ZeroAddress,
         });
 
-        currentToken === ethers.constants.AddressZero ? nativeSend.push(true) : nativeSend.push(false);
+        currentToken === ZeroAddress ? nativeSend.push(true) : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
             // If the current token is the base token, we are selling base for quote
             output = await CostEstimator.estimateRequiredBaseForSell(
@@ -179,7 +179,7 @@ async function computeRouteInput(
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(poolMarketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(poolMarketParams.takerFeeBps.toString());
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 
@@ -194,7 +194,7 @@ async function computeRouteInput(
 }
 
 async function computeRouteOutput(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     route: Route,
     amountIn: number,
     marketParamsMap?: Map<string, MarketParams>,
@@ -215,7 +215,7 @@ async function computeRouteOutput(
             poolMarketParams = await ParamFetcher.getMarketParams(providerOrSigner, orderbookAddress);
         }
 
-        currentToken === ethers.constants.AddressZero ? nativeSend.push(true) : nativeSend.push(false);
+        currentToken === ZeroAddress ? nativeSend.push(true) : nativeSend.push(false);
         if (currentToken === pool.baseToken) {
             // If the current token is the base token, we are selling base for quote
             output = (
@@ -232,7 +232,7 @@ async function computeRouteOutput(
             isBuy.push(true);
         }
 
-        const takerFeesBps = Number(poolMarketParams.takerFeeBps._hex);
+        const takerFeesBps = Number(poolMarketParams.takerFeeBps.toString());
         feeInBase = (feeInBase * takerFeesBps) / 10000;
     }
 

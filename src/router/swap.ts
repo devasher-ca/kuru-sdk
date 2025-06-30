@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ContractReceipt, ethers, BigNumber } from 'ethers';
+import { ethers, parseUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { TransactionOptions, SlippageOptions } from '../types';
@@ -24,16 +24,16 @@ export abstract class TokenSwap {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructSwapTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         routerAddress: string,
         routeOutput: RouteOutput,
-        tokenInAmount: BigNumber,
-        minTokenOutAmount: BigNumber,
+        tokenInAmount: bigint,
+        minTokenOutAmount: bigint,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const routerInterface = new ethers.utils.Interface(routerAbi.abi);
+        const routerInterface = new ethers.Interface(routerAbi.abi);
         const data = routerInterface.encodeFunctionData('anyToAnySwap', [
             routeOutput.route.path.map((pool) => pool.orderbook),
             routeOutput.isBuy,
@@ -44,7 +44,7 @@ export abstract class TokenSwap {
             minTokenOutAmount,
         ]);
 
-        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigNumber.from(0);
+        const value = routeOutput.nativeSend[0] ? tokenInAmount : BigInt(0);
 
         return buildTransactionRequest({
             to: routerAddress,
@@ -72,7 +72,7 @@ export abstract class TokenSwap {
      * @returns A promise that resolves to the transaction receipt.
      */
     static async swap(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         routerAddress: string,
         routeOutput: RouteOutput,
         amountIn: number,
@@ -83,13 +83,13 @@ export abstract class TokenSwap {
         approvalCallback: (txHash: string | null) => void,
         txOptions?: TransactionOptions,
         slippageOptions?: SlippageOptions,
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         try {
-            const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
+            // const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
 
             const tokenContract = new ethers.Contract(routeOutput.route.tokenIn, erc20Abi.abi, providerOrSigner);
 
-            const tokenInAmount = ethers.utils.parseUnits(amountIn.toString(), inTokenDecimals);
+            const tokenInAmount = parseUnits(amountIn.toString(), inTokenDecimals);
 
             slippageTolerance = slippageOptions
                 ? calculateDynamicSlippage(
@@ -104,7 +104,7 @@ export abstract class TokenSwap {
                 outTokenDecimals,
             );
 
-            const minTokenOutAmount = ethers.utils.parseUnits(clippedOutput.toString(), outTokenDecimals);
+            const minTokenOutAmount = parseUnits(clippedOutput.toString(), outTokenDecimals);
 
             if (approveTokens) {
                 const txHash = await approveToken(tokenContract, routerAddress, tokenInAmount, providerOrSigner);
@@ -114,8 +114,16 @@ export abstract class TokenSwap {
                 }
             }
 
+            // Extract signer from contract or use provider/signer directly
+            let signer: ethers.AbstractSigner;
+            if ('getAddress' in providerOrSigner) {
+                signer = providerOrSigner as ethers.AbstractSigner;
+            } else {
+                throw new Error('Provider must have a signer for transaction execution');
+            }
+
             const tx = await TokenSwap.constructSwapTransaction(
-                router.signer,
+                signer,
                 routerAddress,
                 routeOutput,
                 tokenInAmount,
@@ -124,8 +132,14 @@ export abstract class TokenSwap {
             );
             console.log(tx);
 
-            const transaction = await router.signer.sendTransaction(tx);
-            return await transaction.wait();
+            const transaction = await signer.sendTransaction(tx);
+            const receipt = await transaction.wait();
+
+            if (!receipt) {
+                throw new Error('Transaction receipt is null');
+            }
+
+            return receipt;
         } catch (e: any) {
             console.error({ e });
             if (!e.error) {
@@ -136,7 +150,7 @@ export abstract class TokenSwap {
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         routerAddress: string,
         routeOutput: RouteOutput,
         amountIn: number,
@@ -144,10 +158,10 @@ export abstract class TokenSwap {
         outTokenDecimals: number,
         slippageTolerance: number,
         approveTokens: boolean,
-    ): Promise<ethers.BigNumber> {
+    ): Promise<bigint> {
         try {
             const tokenContract = new ethers.Contract(routeOutput.route.tokenIn, erc20Abi.abi, providerOrSigner);
-            const tokenInAmount = ethers.utils.parseUnits(amountIn.toString(), inTokenDecimals);
+            const tokenInAmount = parseUnits(amountIn.toString(), inTokenDecimals);
 
             if (approveTokens) {
                 return estimateApproveGas(tokenContract, routerAddress, tokenInAmount);
@@ -155,12 +169,12 @@ export abstract class TokenSwap {
 
             const router = new ethers.Contract(routerAddress, routerAbi.abi, providerOrSigner);
 
-            const minTokenOutAmount = ethers.utils.parseUnits(
+            const minTokenOutAmount = parseUnits(
                 ((routeOutput.output * (100 - slippageTolerance)) / 100).toString(),
                 outTokenDecimals,
             );
 
-            const gasEstimate = await router.estimateGas.anyToAnySwap(
+            const gasEstimate = await router.anyToAnySwap.estimateGas(
                 routeOutput.route.path.map((pool) => pool.orderbook),
                 routeOutput.isBuy,
                 routeOutput.nativeSend,

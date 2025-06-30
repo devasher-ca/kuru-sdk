@@ -80,6 +80,31 @@ class OrderbookWatcher {
 }
 
 (async () => {
-    const watcher = new OrderbookWatcher();
-    watcher.startWatching(); // Default polling interval set to 500 milliseconds
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    try {
+        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
+
+        const l2OrderBook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+
+        console.log('L2 Order Book:');
+        console.log('\nBids (highest price first):');
+        l2OrderBook.bids.slice(0, 10).forEach(([price, size], index) => {
+            console.log(`  ${index + 1}. ${size.toFixed(4)} @ $${price.toFixed(6)}`);
+        });
+
+        console.log('\nAsks (lowest price first):');
+        l2OrderBook.asks.slice(0, 10).forEach(([price, size], index) => {
+            console.log(`  ${index + 1}. ${size.toFixed(4)} @ $${price.toFixed(6)}`);
+        });
+
+        const spread = l2OrderBook.asks[0][0] - l2OrderBook.bids[0][0];
+        const spreadPercent = (spread / l2OrderBook.bids[0][0]) * 100;
+
+        console.log(`\nSpread: $${spread.toFixed(6)} (${spreadPercent.toFixed(3)}%)`);
+        console.log(`Best Bid: $${l2OrderBook.bids[0][0].toFixed(6)}`);
+        console.log(`Best Ask: $${l2OrderBook.asks[0][0].toFixed(6)}`);
+    } catch (error) {
+        console.error('Error fetching L2 order book:', error);
+    }
 })();

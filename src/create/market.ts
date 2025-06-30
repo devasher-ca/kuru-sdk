@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers } from 'ethers';
+import { ethers, parseUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { TransactionOptions } from 'src/types';
@@ -13,24 +13,24 @@ export class ParamCreator {
     static DEFAULT_PRICE_PRECISION_DECIMALS = 4;
 
     static async constructDeployMarketTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         routerAddress: string,
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: ethers.BigNumber,
-        pricePrecision: ethers.BigNumber,
-        tickSize: ethers.BigNumber,
-        minSize: ethers.BigNumber,
-        maxSize: ethers.BigNumber,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: ethers.BigNumber,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const routerInterface = new ethers.utils.Interface(routerAbi.abi);
+        const routerInterface = new ethers.Interface(routerAbi.abi);
         const data = routerInterface.encodeFunctionData('deployProxy', [
             type,
             baseAssetAddress,
@@ -55,19 +55,19 @@ export class ParamCreator {
     }
 
     async deployMarket(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         routerAddress: string,
         type: number,
         baseAssetAddress: string,
         quoteAssetAddress: string,
-        sizePrecision: ethers.BigNumber,
-        pricePrecision: ethers.BigNumber,
-        tickSize: ethers.BigNumber,
-        minSize: ethers.BigNumber,
-        maxSize: ethers.BigNumber,
+        sizePrecision: bigint,
+        pricePrecision: bigint,
+        tickSize: bigint,
+        minSize: bigint,
+        maxSize: bigint,
         takerFeeBps: number,
         makerFeeBps: number,
-        kuruAmmSpread: ethers.BigNumber,
+        kuruAmmSpread: bigint,
         txOptions?: TransactionOptions,
     ): Promise<string> {
         const router = new ethers.Contract(routerAddress, routerAbi.abi, signer);
@@ -93,10 +93,14 @@ export class ParamCreator {
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
 
+            if (!receipt) {
+                throw new Error('Transaction failed');
+            }
+
             const marketRegisteredLog = receipt.logs.find((log) => {
                 try {
                     const parsedLog = router.interface.parseLog(log);
-                    return parsedLog.name === 'MarketRegistered';
+                    return parsedLog && parsedLog.name === 'MarketRegistered';
                 } catch {
                     return false;
                 }
@@ -107,6 +111,9 @@ export class ParamCreator {
             }
 
             const parsedLog = router.interface.parseLog(marketRegisteredLog);
+            if (!parsedLog) {
+                throw new Error('Failed to parse MarketRegistered event');
+            }
             return parsedLog.args.market;
         } catch (e: any) {
             console.log({ e });
@@ -194,25 +201,25 @@ export class ParamCreator {
         }
 
         // Use the fixed notation strings for further calculations
-        const pricePrecision = ethers.BigNumber.from(Math.pow(10, priceDecimals));
-        const tickSizeInPrecision = ethers.utils.parseUnits(tickStr, priceDecimals);
+        const pricePrecision = BigInt(Math.pow(10, priceDecimals));
+        const tickSizeInPrecision = parseUnits(tickStr, priceDecimals);
 
         // Calculate size precision based on max price * price precision
         const maxPriceWithPrecision = maxPrice * Math.pow(10, priceDecimals);
         const sizeDecimalsPower = Math.floor(Math.log10(maxPriceWithPrecision));
         const sizeDecimals = Math.max(this.countDecimals(minSize), sizeDecimalsPower);
-        const sizePrecision = ethers.BigNumber.from(Math.pow(10, sizeDecimals));
+        const sizePrecision = BigInt(Math.pow(10, sizeDecimals));
 
         const maxSizeInPrecision = this.getMaxSizeAtPrice(
-            ethers.utils.parseUnits(currentPrice.toFixed(priceDecimals), priceDecimals),
-            ethers.BigNumber.from(sizePrecision),
+            parseUnits(currentPrice.toFixed(priceDecimals), priceDecimals),
+            sizePrecision,
         );
-        const minSizeInPrecision = ethers.utils.parseUnits(minSize.toString(), sizeDecimals);
+        const minSizeInPrecision = parseUnits(minSize.toString(), sizeDecimals);
         return {
             pricePrecision: pricePrecision,
             sizePrecision: sizePrecision,
-            tickSize: tickSizeInPrecision,
-            minSize: minSizeInPrecision,
+            tickSize: BigInt(tickSizeInPrecision),
+            minSize: BigInt(minSizeInPrecision),
             maxSize: maxSizeInPrecision,
         };
     }
@@ -230,7 +237,7 @@ export class ParamCreator {
         return { precision: Math.pow(10, neededPrecision) };
     }
 
-    getSizePrecision(maxPriceInPricePrecision: ethers.BigNumber): { precision: number } | { error: string } {
+    getSizePrecision(maxPriceInPricePrecision: bigint): { precision: number } | { error: string } {
         const numDigits = maxPriceInPricePrecision.toString().length;
 
         return { precision: Math.pow(10, numDigits) };
@@ -246,14 +253,14 @@ export class ParamCreator {
         return { minPrice, maxPrice };
     }
 
-    getMaxSizeAtPrice(price: ethers.BigNumber, sizePrecision: ethers.BigNumber): ethers.BigNumber {
-        const UINT32_MAX = ethers.BigNumber.from(2).pow(32).sub(1);
-        const rawMaxSize = UINT32_MAX.mul(sizePrecision).div(price);
+    getMaxSizeAtPrice(price: bigint, sizePrecision: bigint): bigint {
+        const UINT32_MAX = BigInt(2) ** BigInt(32) - BigInt(1);
+        const rawMaxSize = (UINT32_MAX * sizePrecision) / price;
         // Convert to string to count digits
         const numDigits = rawMaxSize.toString().length;
 
         // Calculate nearest power of 10 (rounding down)
-        const maxSize = ethers.BigNumber.from(10).pow(numDigits - 1);
+        const maxSize = BigInt(10) ** BigInt(numDigits - 1);
 
         return maxSize;
     }

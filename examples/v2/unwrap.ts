@@ -1,45 +1,34 @@
 import { ethers } from 'ethers';
-import { constructWrapTransaction, constructUnwrapTransaction } from '../../src/utils/unwrap';
 
-async function main() {
-    // Connect to provider and wallet
-    const provider = new ethers.providers.JsonRpcProvider('RPC_URL');
-    const signer = new ethers.Wallet('PRIVATE_KEY', provider);
+import * as KuruSdk from '../../src';
+import * as KuruConfig from '../config.json';
 
-    const WETH_ADDRESS = '0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701'; // WMON
+const { rpcUrl } = KuruConfig;
 
-    const amount = ethers.utils.parseEther('1');
+const privateKey = process.env.PRIVATE_KEY as string;
+
+const args = process.argv.slice(2);
+const amount = parseFloat(args[0]);
+
+(async () => {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
 
     try {
-        // Construct and send wrap transaction
-        console.log('Constructing wrap transaction...');
-        const wrapTx = await constructWrapTransaction(signer, WETH_ADDRESS, amount);
-        console.log('Wrap transaction constructed:', wrapTx);
+        const receipt = await KuruSdk.WrapperUtils.unwrap(
+            signer,
+            '0x6C15057930e0d8724886C09e940c5819fBE65465', // WMON address
+            amount.toString(),
+            18,
+            {
+                priorityFee: 0.001,
+                gasPrice: ethers.parseUnits('1', 'gwei'),
+                gasLimit: 100000n,
+            },
+        );
 
-        const wrapResponse = await signer.sendTransaction(wrapTx);
-        console.log('Wrap transaction sent! Waiting for confirmation...');
-        await wrapResponse.wait();
-        console.log('Wrap transaction confirmed!', wrapResponse.hash);
-
-        // Wait a bit before unwrapping
-        console.log('\nWaiting 10 seconds before unwrapping...');
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-
-        // Construct and send unwrap transaction
-        console.log('Constructing unwrap transaction...');
-        const unwrapTx = await constructUnwrapTransaction(signer, WETH_ADDRESS, amount);
-        console.log('Unwrap transaction constructed:', unwrapTx);
-
-        const unwrapResponse = await signer.sendTransaction(unwrapTx);
-        console.log('Unwrap transaction sent! Waiting for confirmation...');
-        await unwrapResponse.wait();
-        console.log('Unwrap transaction confirmed!', unwrapResponse.hash);
+        console.log('Transaction hash:', receipt.hash);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error unwrapping:', error);
     }
-}
-
-main().catch((error) => {
-    console.error(error);
-    process.exit(1);
-});
+})();

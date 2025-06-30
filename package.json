@@ -1,45 +1,62 @@
 {
-  "name": "@kuru-labs/kuru-sdk",
-  "version": "0.0.57",
-  "description": "SDK to interact with Kuru",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "compilerOptions": {
-    "module": "CommonJS"
-  },
-  "scripts": {
-    "test": "jest",
-    "build": "npx tsc",
-    "prepare": "husky install",
-    "lint": "lint-staged"
-  },
-  "keywords": [],
-  "author": "Kuru Labs",
-  "license": "ISC",
-  "dependencies": {
-    "cross-fetch": "^4.0.0",
-    "ethers": "5.7.1",
-    "lint-staged": "^16.0.0"
-  },
-  "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.10.5",
-    "@types/pg": "^8.10.9",
-    "husky": "^9.1.7",
-    "jest": "^29.7.0",
-    "prettier": "^3.5.3",
-    "socket.io-client": "^4.8.1",
-    "ts-jest": "^29.2.5",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node"
-  },
-  "lint-staged": {
-    "*.{jsx,tsx,js,ts}": [
-      "prettier --write"
-    ]
-  }
+    "name": "@devasher/kuru-sdk",
+    "version": "1.0.0",
+    "description": "Ethers v6 SDK to interact with Kuru (forked from @kuru-labs/kuru-sdk)",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/devasher-ca/kuru-sdk.git"
+    },
+    "homepage": "https://github.com/devasher-ca/kuru-sdk",
+    "bugs": {
+        "url": "https://github.com/devasher-ca/kuru-sdk/issues"
+    },
+    "compilerOptions": {
+        "module": "CommonJS"
+    },
+    "scripts": {
+        "test": "jest",
+        "build": "npx tsc",
+        "build:watch": "npx tsc --watch",
+        "prepare": "husky install",
+        "lint": "lint-staged",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "kuru",
+        "sdk",
+        "defi",
+        "trading",
+        "monad",
+        "dex"
+    ],
+    "author": "Your Name <your.email@example.com>",
+    "license": "ISC",
+    "dependencies": {
+        "cross-fetch": "^4.0.0",
+        "ethers": "^6.14.4",
+        "lint-staged": "^16.0.0"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.14",
+        "@types/node": "^20.10.5",
+        "@types/pg": "^8.10.9",
+        "husky": "^9.1.7",
+        "jest": "^29.7.0",
+        "prettier": "^3.5.3",
+        "socket.io-client": "^4.8.1",
+        "ts-jest": "^29.2.5",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    },
+    "jest": {
+        "preset": "ts-jest",
+        "testEnvironment": "node"
+    },
+    "lint-staged": {
+        "*.{jsx,tsx,js,ts}": [
+            "prettier --write"
+        ]
+    }
 }

@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { BigNumber, ContractReceipt, ethers } from 'ethers';
+import { TransactionReceipt, ethers, ZeroAddress, parseUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage, approveToken, estimateApproveGas } from '../utils';
@@ -12,7 +12,7 @@ import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class MarginDeposit {
     static async deposit(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
@@ -20,21 +20,28 @@ export abstract class MarginDeposit {
         decimals: number,
         approveTokens: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
+    ): Promise<TransactionReceipt> {
+        console.log('typeof providerOrSigner', typeof providerOrSigner);
+        console.log('providerOrSigner', providerOrSigner instanceof ethers.AbstractSigner);
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
 
-            if (approveTokens && tokenAddress !== ethers.constants.AddressZero) {
-                await approveToken(
-                    tokenContract,
-                    marginAccountAddress,
-                    ethers.utils.parseUnits(amount, decimals),
-                    providerOrSigner,
-                );
+            if (approveTokens && tokenAddress !== ZeroAddress) {
+                await approveToken(tokenContract, marginAccountAddress, parseUnits(amount, decimals), providerOrSigner);
             }
-            const formattedAmount = ethers.utils.parseUnits(amount, decimals);
+            const formattedAmount = parseUnits(amount, decimals);
+
+            let signer;
+            try {
+                signer = (await (providerOrSigner as any).getAddress())
+                    ? providerOrSigner
+                    : await (providerOrSigner as any).getSigner();
+            } catch {
+                signer = await (providerOrSigner as any).getSigner();
+            }
+
             const tx = await MarginDeposit.constructDepositTransaction(
-                tokenContract.signer,
+                signer,
                 marginAccountAddress,
                 userAddress,
                 tokenAddress,
@@ -42,9 +49,12 @@ export abstract class MarginDeposit {
                 txOptions,
             );
 
-            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
             const transaction = await signer.sendTransaction(tx);
-            return await transaction.wait();
+            const receipt = await transaction.wait();
+            if (!receipt) {
+                throw new Error('Transaction failed');
+            }
+            return receipt;
         } catch (e: any) {
             if (!e.error) {
                 throw e;
@@ -54,19 +64,19 @@ export abstract class MarginDeposit {
     }
 
     static async constructDepositTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
-        amount: BigNumber,
+        amount: bigint,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
+        const marginAccountInterface = new ethers.Interface(marginAccountAbi.abi);
 
         const data = marginAccountInterface.encodeFunctionData('deposit', [userAddress, tokenAddress, amount]);
 
-        const value = tokenAddress === ethers.constants.AddressZero ? amount : BigNumber.from(0);
+        const value = tokenAddress === ZeroAddress ? amount : BigInt(0);
 
         return buildTransactionRequest({
             to: marginAccountAddress,
@@ -79,23 +89,23 @@ export abstract class MarginDeposit {
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         marginAccountAddress: string,
         userAddress: string,
         tokenAddress: string,
         amount: string,
         decimals: number,
         approveTokens: boolean,
-    ): Promise<BigNumber> {
+    ): Promise<bigint> {
         try {
             const tokenContract = new ethers.Contract(tokenAddress, erc20Abi.abi, providerOrSigner);
             const marginAccount = new ethers.Contract(marginAccountAddress, marginAccountAbi.abi, providerOrSigner);
 
-            const formattedAmount = ethers.utils.parseUnits(amount, decimals);
+            const formattedAmount = parseUnits(amount, decimals);
 
-            let gasEstimate: BigNumber;
-            if (tokenAddress === ethers.constants.AddressZero) {
-                gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount, {
+            let gasEstimate: bigint;
+            if (tokenAddress === ZeroAddress) {
+                gasEstimate = await marginAccount.deposit.estimateGas(userAddress, tokenAddress, formattedAmount, {
                     value: formattedAmount,
                 });
             } else {
@@ -103,10 +113,10 @@ export abstract class MarginDeposit {
                     gasEstimate = await estimateApproveGas(
                         tokenContract,
                         marginAccountAddress,
-                        ethers.utils.parseUnits(amount, decimals),
+                        parseUnits(amount, decimals),
                     );
                 } else {
-                    gasEstimate = await marginAccount.estimateGas.deposit(userAddress, tokenAddress, formattedAmount);
+                    gasEstimate = await marginAccount.deposit.estimateGas(userAddress, tokenAddress, formattedAmount);
                 }
             }
 

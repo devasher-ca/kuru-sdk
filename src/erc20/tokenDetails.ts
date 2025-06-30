@@ -12,7 +12,7 @@ export abstract class TokenDetailsReader {
      * @returns Promise resolving to an array of TokenInfo objects
      */
     static async getTokensInfo(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.Signer,
         kuruUtilsAddress: string,
         tokens: string[],
         holder: string,

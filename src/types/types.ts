@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumberish } from 'ethers';
 
 export interface OrderBookData {
     asks: number[][];
@@ -14,10 +14,10 @@ export interface OrderBookData {
 export interface WssOrderEvent {
     orderId: number;
     owner: string;
-    size: BigNumber;
-    price: BigNumber;
+    size: BigNumberish;
+    price: BigNumberish;
     isBuy: boolean;
-    blockNumber: BigNumber;
+    blockNumber: BigNumberish;
     transactionHash: string;
     triggerTime: number;
     marketAddress: string;
@@ -56,7 +56,7 @@ export interface WssTradeEvent {
 }
 
 export interface ActiveOrders {
-    orderIds: BigNumber[];
+    orderIds: BigNumberish[];
     blockNumber: number;
 }
 
@@ -70,51 +70,51 @@ export interface Order {
 }
 
 export interface MarketParams {
-    pricePrecision: BigNumber;
-    sizePrecision: BigNumber;
+    pricePrecision: BigNumberish;
+    sizePrecision: BigNumberish;
     baseAssetAddress: string;
-    baseAssetDecimals: BigNumber;
+    baseAssetDecimals: BigNumberish;
     quoteAssetAddress: string;
-    quoteAssetDecimals: BigNumber;
-    tickSize: BigNumber;
-    minSize: BigNumber;
-    maxSize: BigNumber;
-    takerFeeBps: BigNumber;
-    makerFeeBps: BigNumber;
+    quoteAssetDecimals: BigNumberish;
+    tickSize: BigNumberish;
+    minSize: BigNumberish;
+    maxSize: BigNumberish;
+    takerFeeBps: BigNumberish;
+    makerFeeBps: BigNumberish;
 }
 
 export interface VaultParams {
     kuruAmmVault: string;
-    vaultBestBid: BigNumber;
-    bidPartiallyFilledSize: BigNumber;
-    vaultBestAsk: BigNumber;
-    askPartiallyFilledSize: BigNumber;
-    vaultBidOrderSize: BigNumber;
-    vaultAskOrderSize: BigNumber;
-    spread: BigNumber;
+    vaultBestBid: BigNumberish;
+    bidPartiallyFilledSize: BigNumberish;
+    vaultBestAsk: BigNumberish;
+    askPartiallyFilledSize: BigNumberish;
+    vaultBidOrderSize: BigNumberish;
+    vaultAskOrderSize: BigNumberish;
+    spread: BigNumberish;
 }
 
 export interface OrderEvent {
-    orderId: BigNumber;
+    orderId: BigNumberish;
     ownerAddress: string;
-    size: BigNumber;
-    price: BigNumber;
+    size: BigNumberish;
+    price: BigNumberish;
     isBuy: boolean;
 }
 
 export interface TradeEvent {
-    orderId: BigNumber;
+    orderId: BigNumberish;
     isBuy: boolean;
-    price: BigNumber;
-    updatedSize: BigNumber;
+    price: BigNumberish;
+    updatedSize: BigNumberish;
     takerAddress: string;
-    filledSize: BigNumber;
+    filledSize: BigNumberish;
 }
 
 export interface TokenInfo {
     name: string;
     symbol: string;
-    balance: string;
+    balance: BigNumberish;
     decimals: number;
-    totalSupply: string;
+    totalSupply: BigNumberish;
 }

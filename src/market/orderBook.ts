@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber } from 'ethers';
+import { ethers, ZeroAddress, formatUnits, MaxUint256 } from 'ethers';
 
 // ============ Internal Imports ============
 import {
@@ -24,7 +24,7 @@ export abstract class OrderBook {
      * @returns A promise that resolves to the order book data.
      */
     static async getL2OrderBook(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         l2Book?: any,
@@ -34,7 +34,7 @@ export abstract class OrderBook {
 
         let data = l2Book;
         if (!data) {
-            data = await orderbook.getL2Book({ from: ethers.constants.AddressZero });
+            data = await orderbook.getL2Book({ from: ZeroAddress });
         }
 
         let offset = 66; // Start reading after the block number
@@ -45,31 +45,31 @@ export abstract class OrderBook {
 
         // Decode bids
         while (offset < data.length) {
-            const price = BigNumber.from('0x' + data.slice(offset, offset + 64));
+            const price = BigInt('0x' + data.slice(offset, offset + 64));
             offset += 64; // Skip over padding
-            if (price.isZero()) {
+            if (price === BigInt(0)) {
                 break; // Stop reading if price is zero
             }
-            const size = BigNumber.from('0x' + data.slice(offset, offset + 64));
+            const size = BigInt('0x' + data.slice(offset, offset + 64));
             offset += 64; // Skip over padding
             manualBids.push([
-                parseFloat(ethers.utils.formatUnits(price, log10BigNumber(marketParams.pricePrecision))),
-                parseFloat(ethers.utils.formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
+                parseFloat(formatUnits(price, log10BigNumber(marketParams.pricePrecision))),
+                parseFloat(formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
             ]);
         }
 
         // Decode asks
         while (offset < data.length) {
-            const price = BigNumber.from('0x' + data.slice(offset, offset + 64));
+            const price = BigInt('0x' + data.slice(offset, offset + 64));
             offset += 64; // Skip over padding
-            if (price.isZero()) {
+            if (price === BigInt(0)) {
                 break; // Stop reading if price is zero
             }
-            const size = BigNumber.from('0x' + data.slice(offset, offset + 64));
+            const size = BigInt('0x' + data.slice(offset, offset + 64));
             offset += 64; // Skip over padding
             manualAsks.push([
-                parseFloat(ethers.utils.formatUnits(price, log10BigNumber(marketParams.pricePrecision))),
-                parseFloat(ethers.utils.formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
+                parseFloat(formatUnits(price, log10BigNumber(marketParams.pricePrecision))),
+                parseFloat(formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
             ]);
         }
 
@@ -117,12 +117,8 @@ export abstract class OrderBook {
         };
 
         // Convert size and price to floating-point numbers
-        const orderSize = parseFloat(
-            ethers.utils.formatUnits(orderEvent.size, log10BigNumber(marketParams.sizePrecision)),
-        );
-        const orderPrice = parseFloat(
-            ethers.utils.formatUnits(orderEvent.price, log10BigNumber(marketParams.pricePrecision)),
-        );
+        const orderSize = parseFloat(formatUnits(orderEvent.size, log10BigNumber(marketParams.sizePrecision)));
+        const orderPrice = parseFloat(formatUnits(orderEvent.price, log10BigNumber(marketParams.pricePrecision)));
 
         // Determine which side of the book to update
         const sideToUpdate = orderEvent.isBuy ? newOrderBook.manualOrders.bids : newOrderBook.manualOrders.asks;
@@ -160,7 +156,7 @@ export abstract class OrderBook {
         newOrderBook.asks = combinedAsks;
 
         // Update the block number
-        newOrderBook.blockNumber = orderEvent.blockNumber.toNumber();
+        newOrderBook.blockNumber = Number(orderEvent.blockNumber.toString());
 
         return newOrderBook;
     }
@@ -181,11 +177,9 @@ export abstract class OrderBook {
 
         for (const canceledOrder of canceledOrderEvent.canceledOrdersData) {
             // Convert size and price to floating-point numbers
-            const orderSize = parseFloat(
-                ethers.utils.formatUnits(canceledOrder.size, log10BigNumber(marketParams.sizePrecision)),
-            );
+            const orderSize = parseFloat(formatUnits(canceledOrder.size, log10BigNumber(marketParams.sizePrecision)));
             const orderPrice = parseFloat(
-                ethers.utils.formatUnits(canceledOrder.price, log10BigNumber(marketParams.pricePrecision)),
+                formatUnits(canceledOrder.price, log10BigNumber(marketParams.pricePrecision)),
             );
 
             // Determine which side of the book to update
@@ -241,92 +235,92 @@ export abstract class OrderBook {
             },
         };
 
-        const tradePrice = parseFloat(ethers.utils.formatUnits(tradeEvent.price, 18));
+        const tradePrice = parseFloat(formatUnits(tradeEvent.price, 18));
 
         if (tradeEvent.orderId === 0) {
             // Trade involves AMM order
-            const spreadConstant = newOrderBook.vaultParams.spread.div(BigNumber.from(10));
+            const spreadConstant = BigInt(newOrderBook.vaultParams.spread.toString()) / BigInt(10);
 
-            const updatedSizeBN = BigNumber.from(tradeEvent.updatedSize);
+            const updatedSizeBN = BigInt(tradeEvent.updatedSize);
 
             if (tradeEvent.isBuy) {
                 // Trader is buying, AMM is selling (ask side)
 
-                if (updatedSizeBN.isZero()) {
+                if (updatedSizeBN === BigInt(0)) {
                     // Move to next price level and create new orders
                     newOrderBook.vaultParams.vaultBestAsk = mulDivRound(
                         newOrderBook.vaultParams.vaultBestAsk,
-                        BigNumber.from(1000).add(spreadConstant),
-                        BigNumber.from(1000),
+                        BigInt(1000) + spreadConstant,
+                        BigInt(1000),
                     );
 
                     // Update bid price based on new ask price
                     newOrderBook.vaultParams.vaultBestBid = mulDivRound(
                         newOrderBook.vaultParams.vaultBestAsk,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
 
                     // Update order sizes
                     newOrderBook.vaultParams.vaultAskOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultAskOrderSize,
-                        BigNumber.from(2000),
-                        BigNumber.from(2000).add(spreadConstant),
+                        BigInt(2000),
+                        BigInt(2000) + spreadConstant,
                     );
                     newOrderBook.vaultParams.vaultBidOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultAskOrderSize,
-                        BigNumber.from(2000).add(spreadConstant),
-                        BigNumber.from(2000),
+                        BigInt(2000) + spreadConstant,
+                        BigInt(2000),
                     );
 
                     // Reset partially filled sizes for new price level
-                    newOrderBook.vaultParams.askPartiallyFilledSize = BigNumber.from(0);
+                    newOrderBook.vaultParams.askPartiallyFilledSize = BigInt(0);
                     newOrderBook.vaultParams.bidPartiallyFilledSize = mulDivRound(
                         newOrderBook.vaultParams.bidPartiallyFilledSize,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
                 } else {
                     // Update partially filled size for current price level
                     newOrderBook.vaultParams.askPartiallyFilledSize =
-                        newOrderBook.vaultParams.vaultAskOrderSize.sub(updatedSizeBN);
+                        BigInt(newOrderBook.vaultParams.vaultAskOrderSize.toString()) - updatedSizeBN;
                 }
             } else {
                 // Trader is selling, AMM is buying (bid side)
 
-                if (updatedSizeBN.isZero()) {
+                if (updatedSizeBN === BigInt(0)) {
                     // Move to next price level and create new orders
                     newOrderBook.vaultParams.vaultBestBid = mulDivRound(
                         newOrderBook.vaultParams.vaultBestBid,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
 
                     // Update ask price based on new bid price
                     newOrderBook.vaultParams.vaultBestAsk = mulDivRound(
                         newOrderBook.vaultParams.vaultBestBid,
-                        BigNumber.from(1000).add(spreadConstant),
-                        BigNumber.from(1000),
+                        BigInt(1000) + spreadConstant,
+                        BigInt(1000),
                     );
 
                     // Update order sizes
                     newOrderBook.vaultParams.vaultBidOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultBidOrderSize,
-                        BigNumber.from(2000).add(spreadConstant),
-                        BigNumber.from(2000),
+                        BigInt(2000) + spreadConstant,
+                        BigInt(2000),
                     );
                     newOrderBook.vaultParams.vaultAskOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultBidOrderSize,
-                        BigNumber.from(2000),
-                        BigNumber.from(2000).add(spreadConstant),
+                        BigInt(2000),
+                        BigInt(2000) + spreadConstant,
                     );
 
                     // Reset partially filled sizes for new price level
-                    newOrderBook.vaultParams.bidPartiallyFilledSize = BigNumber.from(0);
+                    newOrderBook.vaultParams.bidPartiallyFilledSize = BigInt(0);
                 } else {
                     // Update partially filled size for current price level
                     newOrderBook.vaultParams.bidPartiallyFilledSize =
-                        newOrderBook.vaultParams.vaultBidOrderSize.sub(updatedSizeBN);
+                        BigInt(newOrderBook.vaultParams.vaultBidOrderSize.toString()) - updatedSizeBN;
                 }
             }
 
@@ -348,7 +342,7 @@ export abstract class OrderBook {
             // Trade involves manual order
             // Convert filled size to float for manual orders
             const filledSize = parseFloat(
-                ethers.utils.formatUnits(tradeEvent.filledSize, log10BigNumber(marketParams.sizePrecision)),
+                formatUnits(tradeEvent.filledSize, log10BigNumber(marketParams.sizePrecision)),
             );
 
             // Determine which side of the book to update
@@ -390,7 +384,7 @@ export abstract class OrderBook {
     }
 
     static async getFormattedL2OrderBook(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         l2Book?: any,
@@ -489,85 +483,85 @@ export abstract class OrderBook {
 
         if (tradeEvent.orderId === 0) {
             // Handle AMM trade
-            const spreadConstant = newOrderBook.vaultParams.spread.div(BigNumber.from(10));
-            const updatedSizeBN = BigNumber.from(tradeEvent.updatedSize);
+            const spreadConstant = BigInt(newOrderBook.vaultParams.spread.toString()) / BigInt(10);
+            const updatedSizeBN = BigInt(tradeEvent.updatedSize);
 
             if (tradeEvent.isBuy) {
                 // AMM is selling (ask side)
-                if (updatedSizeBN.isZero()) {
+                if (updatedSizeBN === BigInt(0)) {
                     // Move to next price level and create new orders
                     newOrderBook.vaultParams.vaultBestAsk = mulDivRound(
                         newOrderBook.vaultParams.vaultBestAsk,
-                        BigNumber.from(1000).add(spreadConstant),
-                        BigNumber.from(1000),
+                        BigInt(1000) + spreadConstant,
+                        BigInt(1000),
                     );
 
                     // Update bid price based on new ask price
                     newOrderBook.vaultParams.vaultBestBid = mulDivRound(
                         newOrderBook.vaultParams.vaultBestAsk,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
 
                     // Update order sizes
                     newOrderBook.vaultParams.vaultAskOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultAskOrderSize,
-                        BigNumber.from(2000),
-                        BigNumber.from(2000).add(spreadConstant),
+                        BigInt(2000),
+                        BigInt(2000) + spreadConstant,
                     );
                     newOrderBook.vaultParams.vaultBidOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultAskOrderSize,
-                        BigNumber.from(2000).add(spreadConstant),
-                        BigNumber.from(2000),
+                        BigInt(2000) + spreadConstant,
+                        BigInt(2000),
                     );
 
                     // Reset partially filled sizes for new price level
-                    newOrderBook.vaultParams.askPartiallyFilledSize = BigNumber.from(0);
+                    newOrderBook.vaultParams.askPartiallyFilledSize = BigInt(0);
                     newOrderBook.vaultParams.bidPartiallyFilledSize = mulDivRound(
                         newOrderBook.vaultParams.bidPartiallyFilledSize,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
                 } else {
                     // Update partially filled size for current price level
                     newOrderBook.vaultParams.askPartiallyFilledSize =
-                        newOrderBook.vaultParams.vaultAskOrderSize.sub(updatedSizeBN);
+                        BigInt(newOrderBook.vaultParams.vaultAskOrderSize.toString()) - updatedSizeBN;
                 }
             } else {
                 // AMM is buying (bid side)
-                if (updatedSizeBN.isZero()) {
+                if (updatedSizeBN === BigInt(0)) {
                     // Move to next price level and create new orders
                     newOrderBook.vaultParams.vaultBestBid = mulDivRound(
                         newOrderBook.vaultParams.vaultBestBid,
-                        BigNumber.from(1000),
-                        BigNumber.from(1000).add(spreadConstant),
+                        BigInt(1000),
+                        BigInt(1000) + spreadConstant,
                     );
 
                     // Update ask price based on new bid price
                     newOrderBook.vaultParams.vaultBestAsk = mulDivRound(
                         newOrderBook.vaultParams.vaultBestBid,
-                        BigNumber.from(1000).add(spreadConstant),
-                        BigNumber.from(1000),
+                        BigInt(1000) + spreadConstant,
+                        BigInt(1000),
                     );
 
                     // Update order sizes
                     newOrderBook.vaultParams.vaultBidOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultBidOrderSize,
-                        BigNumber.from(2000).add(spreadConstant),
-                        BigNumber.from(2000),
+                        BigInt(2000) + spreadConstant,
+                        BigInt(2000),
                     );
                     newOrderBook.vaultParams.vaultAskOrderSize = mulDivRound(
                         newOrderBook.vaultParams.vaultBidOrderSize,
-                        BigNumber.from(2000),
-                        BigNumber.from(2000).add(spreadConstant),
+                        BigInt(2000),
+                        BigInt(2000) + spreadConstant,
                     );
 
                     // Reset partially filled sizes for new price level
-                    newOrderBook.vaultParams.bidPartiallyFilledSize = BigNumber.from(0);
+                    newOrderBook.vaultParams.bidPartiallyFilledSize = BigInt(0);
                 } else {
                     // Update partially filled size for current price level
                     newOrderBook.vaultParams.bidPartiallyFilledSize =
-                        newOrderBook.vaultParams.vaultBidOrderSize.sub(updatedSizeBN);
+                        BigInt(newOrderBook.vaultParams.vaultBidOrderSize.toString()) - updatedSizeBN;
                 }
             }
 
@@ -596,11 +590,11 @@ export abstract class OrderBook {
         } else {
             // Handle manual order trade
             const filledSize = parseFloat(
-                ethers.utils.formatUnits(tradeEvent.filledSize, log10BigNumber(marketParams.sizePrecision)),
+                formatUnits(tradeEvent.filledSize, log10BigNumber(marketParams.sizePrecision)),
             );
 
             // Convert trade price to formatted number
-            const rawTradePrice = parseFloat(ethers.utils.formatUnits(tradeEvent.price, 18));
+            const rawTradePrice = parseFloat(formatUnits(tradeEvent.price, 18));
             const formattedTradePrice = formatPrice(rawTradePrice, tradeEvent.isBuy);
 
             // Update the appropriate side of the book
@@ -678,12 +672,8 @@ export abstract class OrderBook {
 
         for (const canceledOrder of canceledOrderEvent.canceledOrdersData) {
             // Convert size and price to floating-point numbers
-            const orderSize = parseFloat(
-                ethers.utils.formatUnits(canceledOrder.size, log10BigNumber(marketParams.sizePrecision)),
-            );
-            const rawPrice = parseFloat(
-                ethers.utils.formatUnits(canceledOrder.price, log10BigNumber(marketParams.pricePrecision)),
-            );
+            const orderSize = parseFloat(formatUnits(canceledOrder.size, log10BigNumber(marketParams.sizePrecision)));
+            const rawPrice = parseFloat(formatUnits(canceledOrder.price, log10BigNumber(marketParams.pricePrecision)));
 
             // Format the price according to tick size
             const formattedPrice = formatPrice(rawPrice, !canceledOrder.isbuy);
@@ -762,12 +752,8 @@ export abstract class OrderBook {
         };
 
         // Convert size and price to floating-point numbers
-        const orderSize = parseFloat(
-            ethers.utils.formatUnits(orderEvent.size, log10BigNumber(marketParams.sizePrecision)),
-        );
-        const rawPrice = parseFloat(
-            ethers.utils.formatUnits(orderEvent.price, log10BigNumber(marketParams.pricePrecision)),
-        );
+        const orderSize = parseFloat(formatUnits(orderEvent.size, log10BigNumber(marketParams.sizePrecision)));
+        const rawPrice = parseFloat(formatUnits(orderEvent.price, log10BigNumber(marketParams.pricePrecision)));
 
         // Format the price according to tick size
         const formattedPrice = formatPrice(rawPrice, !orderEvent.isBuy);
@@ -810,7 +796,7 @@ export abstract class OrderBook {
         newOrderBook.manualOrders.asks = groupAndFormatOrders(newOrderBook.manualOrders.asks, true);
 
         // Update the block number
-        newOrderBook.blockNumber = orderEvent.blockNumber.toNumber();
+        newOrderBook.blockNumber = Number(orderEvent.blockNumber.toString());
 
         return newOrderBook;
     }
@@ -824,10 +810,10 @@ export abstract class OrderBook {
  * @returns A promise that resolves to the AMM prices data.
  */
 async function getAmmPrices(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     orderbookAddress: string,
     marketParams: MarketParams,
-    blockNumber: number,
+    _: number,
     contractVaultParams: any,
 ): Promise<{
     ammPrices: { bids: number[][]; asks: number[][] };
@@ -838,27 +824,24 @@ async function getAmmPrices(
     let vaultParamsData = contractVaultParams;
 
     if (!vaultParamsData) {
-        vaultParamsData = await providerOrSigner.call(
-            {
-                to: orderbookAddress,
-                data: orderbook.interface.encodeFunctionData('getVaultParams'),
-                from: ethers.constants.AddressZero,
-            },
-            blockNumber,
-        );
+        vaultParamsData = await providerOrSigner.call({
+            to: orderbookAddress,
+            data: orderbook.interface.encodeFunctionData('getVaultParams'),
+            from: ZeroAddress,
+        });
 
         vaultParamsData = orderbook.interface.decodeFunctionResult('getVaultParams', vaultParamsData);
     }
 
     const vaultParams: VaultParams = {
         kuruAmmVault: vaultParamsData[0],
-        vaultBestBid: BigNumber.from(vaultParamsData[1]),
-        bidPartiallyFilledSize: BigNumber.from(vaultParamsData[2]),
-        vaultBestAsk: BigNumber.from(vaultParamsData[3]),
-        askPartiallyFilledSize: BigNumber.from(vaultParamsData[4]),
-        vaultBidOrderSize: BigNumber.from(vaultParamsData[5]),
-        vaultAskOrderSize: BigNumber.from(vaultParamsData[6]),
-        spread: BigNumber.from(vaultParamsData[7]),
+        vaultBestBid: BigInt(vaultParamsData[1].toString()),
+        bidPartiallyFilledSize: BigInt(vaultParamsData[2].toString()),
+        vaultBestAsk: BigInt(vaultParamsData[3].toString()),
+        askPartiallyFilledSize: BigInt(vaultParamsData[4].toString()),
+        vaultBidOrderSize: BigInt(vaultParamsData[5].toString()),
+        vaultAskOrderSize: BigInt(vaultParamsData[6].toString()),
+        spread: BigInt(vaultParamsData[7].toString()),
     };
 
     const ammPrices = getAmmPricesFromVaultParams(vaultParams, marketParams);
@@ -889,55 +872,55 @@ function getAmmPricesFromVaultParams(
     let bids: number[][] = [];
     let asks: number[][] = [];
 
-    if (vaultBidOrderSize.isZero() || vaultParams.kuruAmmVault === ethers.constants.AddressZero) {
+    if (BigInt(vaultBidOrderSize.toString()) === BigInt(0) || vaultParams.kuruAmmVault === ZeroAddress) {
         return { bids, asks };
     }
 
-    const spreadConstant = spread.div(BigNumber.from(10));
+    const spreadConstant = BigInt(spread.toString()) / BigInt(10);
 
     // Calculate remaining sizes at current price levels
-    const firstBidOrderSize = vaultBidOrderSize.sub(bidPartiallyFilledSize);
-    const firstAskOrderSize = vaultAskOrderSize.sub(askPartiallyFilledSize);
+    const firstBidOrderSize = BigInt(vaultBidOrderSize.toString()) - BigInt(bidPartiallyFilledSize.toString());
+    const firstAskOrderSize = BigInt(vaultAskOrderSize.toString()) - BigInt(askPartiallyFilledSize.toString());
 
-    let currentBidPrice = vaultBestBid;
-    let currentAskPrice = vaultBestAsk;
-    let currentBidSize = vaultBidOrderSize;
-    let currentAskSize = vaultAskOrderSize;
+    let currentBidPrice = BigInt(vaultBestBid.toString());
+    let currentAskPrice = BigInt(vaultBestAsk.toString());
+    let currentBidSize = BigInt(vaultBidOrderSize.toString());
+    let currentAskSize = BigInt(vaultAskOrderSize.toString());
 
     // Add vault bid orders to AMM prices
     for (let i = 0; i < 300; i++) {
-        if (currentBidPrice.isZero()) break;
+        if (currentBidPrice === BigInt(0)) break;
 
         const size = i === 0 ? firstBidOrderSize : currentBidSize;
 
         bids.push([
-            parseFloat(ethers.utils.formatUnits(currentBidPrice, 18)),
-            parseFloat(ethers.utils.formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
+            parseFloat(formatUnits(currentBidPrice, 18)),
+            parseFloat(formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
         ]);
 
         // Next bid price = currentPrice * 1000 / (1000 + spreadConstant)
-        currentBidPrice = mulDivRound(currentBidPrice, BigNumber.from(1000), BigNumber.from(1000).add(spreadConstant));
+        currentBidPrice = mulDivRound(currentBidPrice, BigInt(1000), BigInt(1000) + spreadConstant);
 
         // Next bid size = currentSize * (2000 + spreadConstant) / 2000
-        currentBidSize = mulDivRound(currentBidSize, BigNumber.from(2000).add(spreadConstant), BigNumber.from(2000));
+        currentBidSize = mulDivRound(currentBidSize, BigInt(2000) + spreadConstant, BigInt(2000));
     }
 
     // Add vault ask orders to AMM prices
     for (let i = 0; i < 300; i++) {
-        if (currentAskPrice.gte(ethers.constants.MaxUint256)) break;
+        if (currentAskPrice >= MaxUint256) break;
 
         const size = i === 0 ? firstAskOrderSize : currentAskSize;
 
         asks.push([
-            parseFloat(ethers.utils.formatUnits(currentAskPrice, 18)),
-            parseFloat(ethers.utils.formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
+            parseFloat(formatUnits(currentAskPrice, 18)),
+            parseFloat(formatUnits(size, log10BigNumber(marketParams.sizePrecision))),
         ]);
 
         // Next ask price = currentPrice * (1000 + spreadConstant) / 1000
-        currentAskPrice = mulDivRound(currentAskPrice, BigNumber.from(1000).add(spreadConstant), BigNumber.from(1000));
+        currentAskPrice = mulDivRound(currentAskPrice, BigInt(1000) + spreadConstant, BigInt(1000));
 
         // Next ask size = currentSize * 2000 / (2000 + spreadConstant)
-        currentAskSize = mulDivRound(currentAskSize, BigNumber.from(2000), BigNumber.from(2000).add(spreadConstant));
+        currentAskSize = mulDivRound(currentAskSize, BigInt(2000), BigInt(2000) + spreadConstant);
     }
 
     return { bids, asks };

@@ -14,13 +14,16 @@ class OrderbookWatcher {
     private marketParams: any;
     private eventQueue: Map<number, (() => OrderBookData)[]> = new Map();
     private lastProcessedBlock: number = 0;
+    private intervalId?: NodeJS.Timeout;
+    private pollingInterval: number;
 
-    constructor() {
+    constructor(pollingInterval: number = 500) {
         this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         this.socket = io(WS_URL, {
             query: { marketAddress: contractAddress },
             transports: ['websocket'],
         });
+        this.pollingInterval = pollingInterval;
         this.setupSocketListeners();
     }
 
@@ -261,14 +264,75 @@ class OrderbookWatcher {
             this.socket.disconnect();
         }
     }
+
+    async startWatching() {
+        console.log(`Starting orderbook watcher for ${contractAddress}`);
+        console.log(`Polling interval: ${this.pollingInterval}ms\n`);
+
+        // Initial fetch
+        await this.fetchAndDisplayOrderbook();
+
+        // Set up polling
+        this.intervalId = setInterval(async () => {
+            await this.fetchAndDisplayOrderbook();
+        }, this.pollingInterval);
+    }
+
+    stopWatching() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = undefined;
+            console.log('Orderbook watcher stopped');
+        }
+    }
+
+    private async fetchAndDisplayOrderbook() {
+        try {
+            const marketParams = await KuruSdk.ParamFetcher.getMarketParams(this.provider, contractAddress);
+            const l2OrderBook = await KuruSdk.OrderBook.getL2OrderBook(this.provider, contractAddress, marketParams);
+
+            console.clear();
+            console.log(`=== Orderbook for ${contractAddress} ===`);
+            console.log(`Timestamp: ${new Date().toLocaleTimeString()}\n`);
+
+            console.log('ASKS (Sell Orders)');
+            console.log('Price\t\tSize\t\tTotal');
+            console.log('─'.repeat(40));
+            l2OrderBook.asks
+                .slice(0, 5)
+                .reverse()
+                .forEach(([price, size]) => {
+                    console.log(`${price.toFixed(6)}\t${size.toFixed(4)}\t${(price * size).toFixed(2)}`);
+                });
+
+            console.log('\nBIDS (Buy Orders)');
+            console.log('Price\t\tSize\t\tTotal');
+            console.log('─'.repeat(40));
+            l2OrderBook.bids.slice(0, 5).forEach(([price, size]) => {
+                console.log(`${price.toFixed(6)}\t${size.toFixed(4)}\t${(price * size).toFixed(2)}`);
+            });
+
+            const spread = l2OrderBook.asks[0][0] - l2OrderBook.bids[0][0];
+            const spreadPercent = (spread / l2OrderBook.bids[0][0]) * 100;
+
+            console.log(`\nSpread: $${spread.toFixed(6)} (${spreadPercent.toFixed(3)}%)`);
+            console.log(`Best Bid: $${l2OrderBook.bids[0][0].toFixed(6)}`);
+            console.log(`Best Ask: $${l2OrderBook.asks[0][0].toFixed(6)}`);
+        } catch (error) {
+            console.error('Error fetching orderbook:', error);
+        }
+    }
 }
 
-// Start the watcher
-const watcher = new OrderbookWatcher();
+(async () => {
+    const watcher = new OrderbookWatcher();
 
-// Handle process termination
-process.on('SIGINT', () => {
-    console.log('Shutting down...');
-    watcher.disconnect();
-    process.exit();
-});
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+        console.log('\nShutting down orderbook watcher...');
+        watcher.stopWatching();
+        process.exit(0);
+    });
+
+    await watcher.startWatching();
+})();

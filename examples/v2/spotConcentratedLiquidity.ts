@@ -5,6 +5,13 @@ import * as KuruConfig from '../config.json';
 
 const { rpcUrl, contractAddress } = KuruConfig;
 
+const privateKey = process.env.PRIVATE_KEY as string;
+
+const args = process.argv.slice(2);
+const startPrice = parseFloat(args[0]) || 0.95;
+const endPrice = parseFloat(args[1]) || 1.05;
+const quoteLiquidity = parseFloat(args[2]) || 1000;
+
 // Helper function to create ASCII bar graph
 function createAsciiGraph(data: number[], maxBars: number = 50): string {
     const max = Math.max(...data);
@@ -18,131 +25,125 @@ function createAsciiGraph(data: number[], maxBars: number = 50): string {
 }
 
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
 
     try {
+        console.log('Starting spot concentrated liquidity example...');
+        console.log(`Price range: $${startPrice} - $${endPrice}`);
+        console.log(`Quote liquidity: ${quoteLiquidity}`);
+
         // Get market parameters
         const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
+        console.log('\nMarket parameters:');
+        console.log('Base asset:', marketParams.baseAssetAddress);
+        console.log('Quote asset:', marketParams.quoteAssetAddress);
+        console.log('Price precision:', marketParams.pricePrecision.toString());
+        console.log('Size precision:', marketParams.sizePrecision.toString());
+
         // Get current orderbook to determine best ask price
-        // const orderbook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+        const l2OrderBook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+        const bestAskPrice = l2OrderBook.asks[0] ? l2OrderBook.asks[0][0] : 1.0;
 
-        // Extract best ask price from orderbook
-        const bestAskPrice = BigInt(6941420);
+        console.log(`\nCurrent best ask: $${bestAskPrice.toFixed(6)}`);
 
-        if (bestAskPrice === BigInt(0)) {
-            throw new Error('Could not determine best ask price from orderbook');
+        // Calculate concentrated liquidity positions
+        const batchDetails = await KuruSdk.PositionViewer.getSpotBatchLPDetails(
+            BigInt(100), // 1% minimum fees (100 bps)
+            ethers.parseUnits(startPrice.toString(), 18), // Start price
+            ethers.parseUnits(endPrice.toString(), 18), // End price
+            ethers.parseUnits(bestAskPrice.toString(), 18), // Best ask price
+            marketParams.pricePrecision,
+            marketParams.sizePrecision,
+            marketParams.quoteAssetDecimals,
+            marketParams.baseAssetDecimals,
+            marketParams.tickSize,
+            marketParams.minSize,
+            ethers.parseUnits(quoteLiquidity.toString(), Number(marketParams.quoteAssetDecimals)), // Quote liquidity
+        );
+
+        console.log('\n=== Calculated Liquidity Positions ===');
+        console.log(
+            `Total quote liquidity: ${ethers.formatUnits(batchDetails.quoteLiquidity, Number(marketParams.quoteAssetDecimals))}`,
+        );
+        console.log(
+            `Total base liquidity: ${ethers.formatUnits(batchDetails.baseLiquidity, Number(marketParams.baseAssetDecimals))}`,
+        );
+
+        console.log(`\nBid positions (${batchDetails.bids.length}):`);
+        batchDetails.bids.slice(0, 5).forEach((bid, index) => {
+            const price = ethers.formatUnits(bid.price, Number(marketParams.pricePrecision));
+            const size = ethers.formatUnits(bid.liquidity, Number(marketParams.sizePrecision));
+            console.log(`  ${index + 1}. Size: ${parseFloat(size).toFixed(4)} @ $${parseFloat(price).toFixed(6)}`);
+        });
+
+        console.log(`\nAsk positions (${batchDetails.asks.length}):`);
+        batchDetails.asks.slice(0, 5).forEach((ask, index) => {
+            const price = ethers.formatUnits(ask.price, Number(marketParams.pricePrecision));
+            const size = ethers.formatUnits(ask.liquidity, Number(marketParams.sizePrecision));
+            console.log(`  ${index + 1}. Size: ${parseFloat(size).toFixed(4)} @ $${parseFloat(price).toFixed(6)}`);
+        });
+
+        // Example: Place the first few positions
+        console.log('\n=== Placing Sample Positions ===');
+
+        // Place first bid
+        if (batchDetails.bids.length > 0) {
+            const firstBid = batchDetails.bids[0];
+            const bidPrice = ethers.formatUnits(firstBid.price, Number(marketParams.pricePrecision));
+            const bidSize = ethers.formatUnits(firstBid.liquidity, Number(marketParams.sizePrecision));
+
+            try {
+                const bidReceipt = await KuruSdk.GTC.placeLimit(signer, contractAddress, marketParams, {
+                    price: bidPrice,
+                    size: bidSize,
+                    isBuy: true,
+                    postOnly: true,
+                    txOptions: {
+                        priorityFee: 0.001,
+                        gasPrice: ethers.parseUnits('1', 'gwei'),
+                        gasLimit: 300000n,
+                    },
+                });
+
+                console.log(
+                    `Bid placed: ${parseFloat(bidSize).toFixed(4)} @ $${parseFloat(bidPrice).toFixed(6)} - Hash: ${bidReceipt.hash}`,
+                );
+            } catch (error) {
+                console.error('Error placing bid:', error);
+            }
         }
 
-        // Define price range for concentrated liquidity
-        const minFeesBps = BigInt(30); // 0.3% fee
-        const startPrice = BigInt(6293270);
-        const endPrice = BigInt(7791200);
+        // Place first ask
+        if (batchDetails.asks.length > 0) {
+            const firstAsk = batchDetails.asks[0];
+            const askPrice = ethers.formatUnits(firstAsk.price, Number(marketParams.pricePrecision));
+            const askSize = ethers.formatUnits(firstAsk.liquidity, Number(marketParams.sizePrecision));
 
-        console.log(`
-End Price:      ${ethers.utils.formatUnits(endPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
-Best Ask Price: ${ethers.utils.formatUnits(bestAskPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
-Start Price:    ${ethers.utils.formatUnits(startPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}
-`);
+            try {
+                const askReceipt = await KuruSdk.GTC.placeLimit(signer, contractAddress, marketParams, {
+                    price: askPrice,
+                    size: askSize,
+                    isBuy: false,
+                    postOnly: true,
+                    txOptions: {
+                        priorityFee: 0.001,
+                        gasPrice: ethers.parseUnits('1', 'gwei'),
+                        gasLimit: 300000n,
+                    },
+                });
 
-        // Get concentrated liquidity positions
-        console.time('getSpotBatchLPDetails');
-        const batchLPDetails = await KuruSdk.PositionViewer.getSpotBatchLPDetails(
-            minFeesBps,
-            startPrice,
-            endPrice,
-            bestAskPrice,
-            BigInt(marketParams.pricePrecision.toString()),
-            BigInt(marketParams.sizePrecision.toString()),
-            BigInt(marketParams.quoteAssetDecimals.toString()),
-            BigInt(marketParams.baseAssetDecimals.toString()),
-            BigInt(marketParams.tickSize.toString()),
-            BigInt(marketParams.minSize.toString()),
-            undefined,
-            BigInt(100) * BigInt(10) ** BigInt(marketParams.baseAssetDecimals.toString()),
-        );
-        console.timeEnd('getSpotBatchLPDetails');
+                console.log(
+                    `Ask placed: ${parseFloat(askSize).toFixed(4)} @ $${parseFloat(askPrice).toFixed(6)} - Hash: ${askReceipt.hash}`,
+                );
+            } catch (error) {
+                console.error('Error placing ask:', error);
+            }
+        }
 
-        // Display results
-        console.log('Concentrated Liquidity Positions:');
-        console.log('\nBid Positions:');
-        batchLPDetails.bids.forEach((position, index) => {
-            console.log(`Position ${index + 1}:`);
-            console.log(
-                `  Price: ${ethers.utils.formatUnits(position.price.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}`,
-            );
-            console.log(
-                `  Flip Price: ${ethers.utils.formatUnits(position.flipPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}`,
-            );
-            console.log(
-                `  Liquidity: ${ethers.utils.formatUnits(
-                    position.liquidity.toString(),
-                    KuruSdk.log10BigNumber(marketParams.sizePrecision),
-                )}`,
-            );
-        });
-
-        console.log('\nAsk Positions:');
-        batchLPDetails.asks.forEach((position, index) => {
-            console.log(`Position ${index + 1}:`);
-            console.log(
-                `  Price: ${ethers.utils.formatUnits(position.price.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}`,
-            );
-            console.log(
-                `  Flip Price: ${ethers.utils.formatUnits(position.flipPrice.toString(), KuruSdk.log10BigNumber(marketParams.pricePrecision))}`,
-            );
-            console.log(
-                `  Liquidity: ${ethers.utils.formatUnits(
-                    position.liquidity.toString(),
-                    KuruSdk.log10BigNumber(marketParams.sizePrecision),
-                )}`,
-            );
-        });
-
-        console.log(
-            `\nQuote Liquidity: ${ethers.utils.formatUnits(batchLPDetails.quoteLiquidity.toString(), marketParams.quoteAssetDecimals)}`,
-        );
-        console.log(
-            `Base Liquidity: ${ethers.utils.formatUnits(batchLPDetails.baseLiquidity.toString(), marketParams.baseAssetDecimals)}`,
-        );
-
-        // Add graphs at the end
-        console.log('\nAsk Positions Graph (Size * Price):');
-        const askValues = batchLPDetails.asks.map((position) => {
-            const size = parseFloat(
-                ethers.utils.formatUnits(
-                    position.liquidity.toString(),
-                    KuruSdk.log10BigNumber(marketParams.sizePrecision),
-                ),
-            );
-            const price = parseFloat(
-                ethers.utils.formatUnits(
-                    position.price.toString(),
-                    KuruSdk.log10BigNumber(marketParams.pricePrecision),
-                ),
-            );
-            return size * price;
-        });
-        console.log(createAsciiGraph(askValues));
-
-        console.log('\nBid Positions Graph (Size/Price):');
-        const bidValues = batchLPDetails.bids.map((position) => {
-            const size = parseFloat(
-                ethers.utils.formatUnits(
-                    position.liquidity.toString(),
-                    KuruSdk.log10BigNumber(marketParams.sizePrecision),
-                ),
-            );
-            const price = parseFloat(
-                ethers.utils.formatUnits(
-                    position.price.toString(),
-                    KuruSdk.log10BigNumber(marketParams.pricePrecision),
-                ),
-            );
-            return size * price;
-        });
-        console.log(createAsciiGraph(bidValues));
+        console.log('\nSpot concentrated liquidity example completed!');
     } catch (error) {
-        console.error('Error retrieving concentrated liquidity positions:', error);
+        console.error('Error in spot concentrated liquidity:', error);
     }
 })();

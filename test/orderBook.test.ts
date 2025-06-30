@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { ethers } from 'ethers';
+import { ethers, ZeroAddress } from 'ethers';
 import * as KuruSdk from '../src';
 import { WssTradeEvent } from '../src/types';
 
@@ -10,13 +10,13 @@ describe('OrderBook', () => {
 
     const mockVaultParams = [
         '0x7d43103f26323c075B4D983F7F516b21592e2512',
-        { type: 'BigNumber', hex: '0x0d49dc7e16fd5bee0e' },
-        { type: 'BigNumber', hex: '0x030d40' },
-        { type: 'BigNumber', hex: '0x0d4d435e78cdff1805' },
-        { type: 'BigNumber', hex: '0x00' },
-        { type: 'BigNumber', hex: '0x078e83' },
-        { type: 'BigNumber', hex: '0x078d8b' },
-        { type: 'BigNumber', hex: '0x0a' },
+        BigInt('0x0d49dc7e16fd5bee0e'),
+        BigInt('0x030d40'),
+        BigInt('0x0d4d435e78cdff1805'),
+        BigInt('0x00'),
+        BigInt('0x078e83'),
+        BigInt('0x078d8b'),
+        BigInt('0x0a'),
     ];
 
     // Update mock provider
@@ -30,22 +30,22 @@ describe('OrderBook', () => {
         _isProvider: true,
         // Add any other methods that ethers might call
         getBlockNumber: () => Promise.resolve(1),
-        getGasPrice: () => Promise.resolve(ethers.BigNumber.from(1)),
-        estimateGas: () => Promise.resolve(ethers.BigNumber.from(1)),
+        getGasPrice: () => Promise.resolve(BigInt(1)),
+        estimateGas: () => Promise.resolve(BigInt(1)),
     } as any;
 
     const mockMarketParams = {
-        pricePrecision: ethers.BigNumber.from('0x2710'),
-        sizePrecision: ethers.BigNumber.from('0x0f4240'),
+        pricePrecision: BigInt('0x2710'),
+        sizePrecision: BigInt('0x0f4240'),
         baseAssetAddress: '0xf4f7ca3c361cA2B457Ca6AC9E393B2dad5C6b78b',
-        baseAssetDecimals: ethers.BigNumber.from('0x12'),
+        baseAssetDecimals: BigInt('0x12'),
         quoteAssetAddress: '0x34084eAEbe9Cbc209A85FFe22fa387223CDFB3e8',
-        quoteAssetDecimals: ethers.BigNumber.from('0x12'),
-        tickSize: ethers.BigNumber.from('0x0a'),
-        minSize: ethers.BigNumber.from('0x64'),
-        maxSize: ethers.BigNumber.from('0xe8d4a51000'),
-        takerFeeBps: ethers.BigNumber.from('0x1e'),
-        makerFeeBps: ethers.BigNumber.from('0x14'),
+        quoteAssetDecimals: BigInt('0x12'),
+        tickSize: BigInt('0x0a'),
+        minSize: BigInt('0x64'),
+        maxSize: BigInt('0xe8d4a51000'),
+        takerFeeBps: BigInt('0x1e'),
+        makerFeeBps: BigInt('0x14'),
     };
 
     it('should correctly fetch and reconcile L2 orderbook', async () => {
@@ -91,14 +91,14 @@ describe('OrderBook', () => {
     it('should handle empty orderbook', async () => {
         const emptyL2BookData = '0x0000000000000000000000000000000000000000000000000000000000000000';
         const emptyVaultParams = [
-            ethers.constants.AddressZero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
-            ethers.constants.Zero,
+            ZeroAddress,
+            BigInt(0),
+            BigInt(0),
+            BigInt(0),
+            BigInt(0),
+            BigInt(0),
+            BigInt(0),
+            BigInt(0),
         ];
 
         const l2Book = await KuruSdk.OrderBook.getL2OrderBook(

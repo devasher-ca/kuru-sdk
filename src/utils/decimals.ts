@@ -1,13 +1,13 @@
 // ============ External Imports ============
-import { ethers } from 'ethers';
+import { ethers, ZeroAddress } from 'ethers';
 // ============ Internal Imports ============
 import erc20Abi from '../../abi/IERC20.json';
 
 export async function getTokenDecimals(
     tokenAddress: string,
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
 ): Promise<number> {
-    if (tokenAddress === ethers.constants.AddressZero) {
+    if (tokenAddress === ZeroAddress) {
         return 18;
     }
 

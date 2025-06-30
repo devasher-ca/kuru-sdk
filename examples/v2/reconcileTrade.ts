@@ -1,47 +1,97 @@
 import { ethers } from 'ethers';
+
 import * as KuruSdk from '../../src';
 import * as KuruConfig from '../config.json';
-import { WssTradeEvent } from '../../src/types';
 
 const { rpcUrl, contractAddress } = KuruConfig;
 
+const privateKey = process.env.PRIVATE_KEY as string;
+
 (async () => {
-    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-    const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(privateKey, provider);
 
-    // Get initial orderbook
-    let l2Book = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+    try {
+        console.log('Starting trade reconciliation example...');
 
-    // Print initial best bid
-    if (l2Book.bids.length > 0) {
-        console.log('Initial Best Bid Price:', l2Book.bids[0][0]);
-        console.log('Initial Best Bid Size:', l2Book.bids[0][1]);
-    } else {
-        console.log('No initial bids');
-    }
+        // Get market parameters
+        const marketParams = await KuruSdk.ParamFetcher.getMarketParams(provider, contractAddress);
 
-    // Example trade event
-    const tradeEvent: WssTradeEvent = {
-        orderId: 0,
-        makerAddress: '0x7d43103f26323c075B4D983F7F516b21592e2512',
-        isBuy: false,
-        price: '245129940455074295310',
-        updatedSize: '395235',
-        takerAddress: '0xecc442E88Cd6B71FCcb256A5Fc838AdeE941a97e',
-        filledSize: '100000',
-        blockNumber: '2685299',
-        transactionHash: '0xd22a6fd138d0723a9c8a9b631d2fdbc3b2903cad6b3ce7800e76403784cc7949',
-        triggerTime: 100,
-    };
+        console.log('Market parameters retrieved');
+        console.log('Base asset:', marketParams.baseAssetAddress);
+        console.log('Quote asset:', marketParams.quoteAssetAddress);
 
-    // Reconcile the trade
-    l2Book = KuruSdk.OrderBook.reconcileTradeEvent(l2Book, marketParams, tradeEvent);
+        // Get initial orderbook state
+        console.log('\n1. Getting initial orderbook...');
+        let l2OrderBook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
 
-    // Print final best bid
-    if (l2Book.bids.length > 0) {
-        console.log('\nFinal Best Bid Price:', l2Book.bids[0][0]);
-        console.log('Final Best Bid Size:', l2Book.bids[0][1]);
-    } else {
-        console.log('\nNo final bids');
+        console.log('Initial orderbook:');
+        console.log(
+            'Best Bid:',
+            l2OrderBook.bids[0]
+                ? `${l2OrderBook.bids[0][1].toFixed(4)} @ $${l2OrderBook.bids[0][0].toFixed(6)}`
+                : 'None',
+        );
+        console.log(
+            'Best Ask:',
+            l2OrderBook.asks[0]
+                ? `${l2OrderBook.asks[0][1].toFixed(4)} @ $${l2OrderBook.asks[0][0].toFixed(6)}`
+                : 'None',
+        );
+
+        // Example: Execute a market buy trade
+        console.log('\n2. Executing market buy trade...');
+        const tradeReceipt = await KuruSdk.IOC.placeMarket(signer, contractAddress, marketParams, {
+            size: '1.0',
+            isBuy: true,
+            minAmountOut: '0.9',
+            isMargin: false,
+            fillOrKill: false,
+            txOptions: {
+                priorityFee: 0.001,
+                gasPrice: ethers.parseUnits('1', 'gwei'),
+                gasLimit: 500000n,
+            },
+        });
+
+        console.log('Trade executed. Hash:', tradeReceipt.hash);
+
+        // Wait for the transaction to be mined
+        console.log('\n3. Waiting for trade confirmation...');
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+
+        // Get updated orderbook state
+        console.log('\n4. Getting updated orderbook after trade...');
+        const updatedOrderBook = await KuruSdk.OrderBook.getL2OrderBook(provider, contractAddress, marketParams);
+
+        console.log('Updated orderbook:');
+        console.log(
+            'Best Bid:',
+            updatedOrderBook.bids[0]
+                ? `${updatedOrderBook.bids[0][1].toFixed(4)} @ $${updatedOrderBook.bids[0][0].toFixed(6)}`
+                : 'None',
+        );
+        console.log(
+            'Best Ask:',
+            updatedOrderBook.asks[0]
+                ? `${updatedOrderBook.asks[0][1].toFixed(4)} @ $${updatedOrderBook.asks[0][0].toFixed(6)}`
+                : 'None',
+        );
+
+        // Compare the orderbooks
+        console.log('\n5. Trade impact analysis:');
+        if (l2OrderBook.bids[0] && updatedOrderBook.bids[0]) {
+            const bidPriceChange = updatedOrderBook.bids[0][0] - l2OrderBook.bids[0][0];
+            console.log(`Bid price change: ${bidPriceChange > 0 ? '+' : ''}${bidPriceChange.toFixed(6)}`);
+        }
+
+        if (l2OrderBook.asks[0] && updatedOrderBook.asks[0]) {
+            const askPriceChange = updatedOrderBook.asks[0][0] - l2OrderBook.asks[0][0];
+            console.log(`Ask price change: ${askPriceChange > 0 ? '+' : ''}${askPriceChange.toFixed(6)}`);
+        }
+
+        console.log('\nTrade reconciliation completed successfully!');
+    } catch (error) {
+        console.error('Error in trade reconciliation:', error);
     }
 })();

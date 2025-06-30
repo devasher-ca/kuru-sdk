@@ -1,4 +1,4 @@
-import { ethers, ContractReceipt } from 'ethers';
+import { ethers, ContractTransactionResponse } from 'ethers';
 import { BatchLPDetails } from './positionViewer';
 import { TransactionOptions } from '../types';
 import orderbookAbi from '../../abi/OrderBook.json';
@@ -16,7 +16,7 @@ export abstract class PositionProvider {
         signer: ethers.Signer,
         contractAddress: string,
         batchDetails: BatchLPDetails,
-    ): Promise<ContractReceipt> {
+    ): Promise<ContractTransactionResponse> {
         // Create contract instance
         const contract = new ethers.Contract(contractAddress, orderbookAbi.abi, signer);
 
@@ -62,7 +62,7 @@ export abstract class PositionProvider {
         contractAddress: string,
         batchDetails: BatchLPDetails,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
         const prices: bigint[] = [];
@@ -86,7 +86,7 @@ export abstract class PositionProvider {
             isBuy.push(false);
         }
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('batchProvisionLiquidity', [
             prices,
             flipPrices,

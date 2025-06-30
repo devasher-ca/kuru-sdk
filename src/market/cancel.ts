@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { ethers, TransactionReceipt } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from '../utils';
@@ -19,14 +19,14 @@ export abstract class OrderCanceler {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructCancelOrdersTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         orderbookAddress: string,
-        orderIds: BigNumber[],
+        orderIds: bigint[],
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('batchCancelOrders', [orderIds]);
 
         return buildTransactionRequest({
@@ -47,23 +47,36 @@ export abstract class OrderCanceler {
      * @returns A promise that resolves when the transaction is confirmed.
      */
     static async cancelOrders(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
-        orderIds: BigNumber[],
+        orderIds: bigint[],
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
+    ): Promise<TransactionReceipt> {
         try {
-            const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+            // const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
+
+            // Get signer from provider if needed
+            let signer;
+            try {
+                signer = (await (providerOrSigner as any).getAddress())
+                    ? providerOrSigner
+                    : await (providerOrSigner as any).getSigner();
+            } catch {
+                signer = await (providerOrSigner as any).getSigner();
+            }
 
             const tx = await OrderCanceler.constructCancelOrdersTransaction(
-                orderbook.signer,
+                signer,
                 orderbookAddress,
                 orderIds,
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
+            if (!receipt) {
+                throw new Error('Transaction failed');
+            }
 
             return receipt;
         } catch (e: any) {
@@ -76,14 +89,14 @@ export abstract class OrderCanceler {
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
-        orderIds: BigNumber[],
-    ): Promise<BigNumber> {
+        orderIds: bigint[],
+    ): Promise<bigint> {
         try {
             const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
-            const gasEstimate = await orderbook.estimateGas.batchCancelOrders(orderIds);
+            const gasEstimate = await orderbook.batchCancelOrders.estimateGas(orderIds);
             return gasEstimate;
         } catch (e: any) {
             console.log({ e });

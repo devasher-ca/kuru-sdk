@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ContractReceipt, ethers } from 'ethers';
+import { TransactionReceipt, ethers, parseUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage } from '../utils';
@@ -11,17 +11,24 @@ import buildTransactionRequest from '../utils/txConfig';
 
 export abstract class MarginWithdraw {
     static async withdraw(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         marginAccountAddress: string,
         tokenAddress: string,
         amount: number,
         decimals: number,
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
+    ): Promise<TransactionReceipt> {
         try {
-            const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
+            let signer;
+            try {
+                signer = (await (providerOrSigner as any).getAddress())
+                    ? providerOrSigner
+                    : await (providerOrSigner as any).getSigner();
+            } catch {
+                signer = await (providerOrSigner as any).getSigner();
+            }
 
-            const formattedAmount = ethers.utils.parseUnits(amount.toString(), decimals);
+            const formattedAmount = parseUnits(amount.toString(), decimals);
 
             const tx = await MarginWithdraw.constructWithdrawTransaction(
                 signer,
@@ -32,7 +39,11 @@ export abstract class MarginWithdraw {
             );
 
             const transaction = await signer.sendTransaction(tx);
-            return await transaction.wait();
+            const receipt = await transaction.wait();
+            if (!receipt) {
+                throw new Error('Transaction failed');
+            }
+            return receipt;
         } catch (e: any) {
             if (!e.error) {
                 throw e;
@@ -42,14 +53,14 @@ export abstract class MarginWithdraw {
     }
 
     static async constructWithdrawTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         marginAccountAddress: string,
         tokenAddress: string,
         amount: string,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
+        const marginAccountInterface = new ethers.Interface(marginAccountAbi.abi);
 
         const data = marginAccountInterface.encodeFunctionData('withdraw', [amount, tokenAddress]);
 
@@ -63,12 +74,19 @@ export abstract class MarginWithdraw {
     }
 
     static async batchClaimMaxTokens(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         marginAccountAddress: string,
         tokens: string[],
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
-        const signer = providerOrSigner instanceof ethers.Signer ? providerOrSigner : providerOrSigner.getSigner();
+    ): Promise<TransactionReceipt> {
+        let signer;
+        try {
+            signer = (await (providerOrSigner as any).getAddress())
+                ? providerOrSigner
+                : await (providerOrSigner as any).getSigner();
+        } catch {
+            signer = await (providerOrSigner as any).getSigner();
+        }
 
         const tx = await MarginWithdraw.constructBatchClaimMaxTokensTransaction(
             signer,
@@ -78,17 +96,21 @@ export abstract class MarginWithdraw {
         );
 
         const transaction = await signer.sendTransaction(tx);
-        return await transaction.wait();
+        const receipt = await transaction.wait();
+        if (!receipt) {
+            throw new Error('Transaction failed');
+        }
+        return receipt;
     }
 
     static async constructBatchClaimMaxTokensTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         marginAccountAddress: string,
         tokens: string[],
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
-        const marginAccountInterface = new ethers.utils.Interface(marginAccountAbi.abi);
+        const marginAccountInterface = new ethers.Interface(marginAccountAbi.abi);
 
         const data = marginAccountInterface.encodeFunctionData('batchClaimMaxTokens', [tokens]);
 

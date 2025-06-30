@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { ethers, parseUnits } from 'ethers';
 
 // ============ Internal Imports ============
 import { clipToDecimals, extractErrorMessage, log10BigNumber } from '../utils';
@@ -20,37 +20,37 @@ export abstract class GTC {
      * @returns A promise that resolves to a boolean indicating success or failure.
      */
     static async placeLimit(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: LIMIT,
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
         const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
-        const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
+        const priceBn: bigint = parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: bigint = parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
-            ? GTC.addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions)
-            : GTC.addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions);
+            ? GTC.addBuyOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions, providerOrSigner)
+            : GTC.addSellOrder(orderbook, priceBn, sizeBn, order.postOnly, order.txOptions, providerOrSigner);
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: LIMIT,
-    ): Promise<BigNumber> {
+    ): Promise<bigint> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const clippedPrice = clipToDecimals(order.price, log10BigNumber(marketParams.pricePrecision));
         const clippedSize = clipToDecimals(order.size, log10BigNumber(marketParams.sizePrecision));
 
-        const priceBn: BigNumber = ethers.utils.parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
-        const sizeBn: BigNumber = ethers.utils.parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
+        const priceBn: bigint = parseUnits(clippedPrice, log10BigNumber(marketParams.pricePrecision));
+        const sizeBn: bigint = parseUnits(clippedSize, log10BigNumber(marketParams.sizePrecision));
 
         return order.isBuy
             ? estimateGasBuy(orderbook, priceBn, sizeBn, order.postOnly)
@@ -68,16 +68,16 @@ export abstract class GTC {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructBuyOrderTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         orderbookAddress: string,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addBuyOrder', [price, size, postOnly]);
 
         return buildTransactionRequest({
@@ -100,16 +100,16 @@ export abstract class GTC {
      * @returns A promise that resolves to the transaction request object.
      */
     static async constructSellOrderTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         orderbookAddress: string,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
 
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
         const data = orderbookInterface.encodeFunctionData('addSellOrder', [price, size, postOnly]);
 
         return buildTransactionRequest({
@@ -126,23 +126,31 @@ export abstract class GTC {
      */
     static async addBuyOrder(
         orderbook: ethers.Contract,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
+        providerOrSigner?: ethers.JsonRpcProvider | ethers.AbstractSigner,
+    ): Promise<ethers.TransactionReceipt> {
         try {
+            // Extract signer from contract or use provider/signer directly
+            const signer = providerOrSigner as ethers.AbstractSigner;
+
             const tx = await GTC.constructBuyOrderTransaction(
-                orderbook.signer,
-                orderbook.address,
+                signer,
+                await orderbook.getAddress(),
                 price,
                 size,
                 postOnly,
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
+
+            if (!receipt) {
+                throw new Error('Transaction receipt is null');
+            }
 
             return receipt;
         } catch (e: any) {
@@ -159,23 +167,31 @@ export abstract class GTC {
      */
     static async addSellOrder(
         orderbook: ethers.Contract,
-        price: BigNumber,
-        size: BigNumber,
+        price: bigint,
+        size: bigint,
         postOnly: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ContractReceipt> {
+        providerOrSigner?: ethers.JsonRpcProvider | ethers.AbstractSigner,
+    ): Promise<ethers.TransactionReceipt> {
         try {
+            // Extract signer from contract or use provider/signer directly
+            const signer = providerOrSigner as ethers.AbstractSigner;
+
             const tx = await GTC.constructSellOrderTransaction(
-                orderbook.signer,
-                orderbook.address,
+                signer,
+                await orderbook.getAddress(),
                 price,
                 size,
                 postOnly,
                 txOptions,
             );
 
-            const transaction = await orderbook.signer.sendTransaction(tx);
+            const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait(1);
+
+            if (!receipt) {
+                throw new Error('Transaction receipt is null');
+            }
 
             return receipt;
         } catch (e: any) {
@@ -192,12 +208,12 @@ export abstract class GTC {
 
 async function estimateGasBuy(
     orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
+    price: bigint,
+    size: bigint,
     postOnly: boolean,
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addBuyOrder(price, size, postOnly);
+        const gasEstimate = await orderbook.addBuyOrder.estimateGas(price, size, postOnly);
         return gasEstimate;
     } catch (e: any) {
         if (!e.error) {
@@ -209,12 +225,12 @@ async function estimateGasBuy(
 
 async function estimateGasSell(
     orderbook: ethers.Contract,
-    price: BigNumber,
-    size: BigNumber,
+    price: bigint,
+    size: bigint,
     postOnly: boolean,
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.addSellOrder(price, size, postOnly);
+        const gasEstimate = await orderbook.addSellOrder.estimateGas(price, size, postOnly);
         return gasEstimate;
     } catch (e: any) {
         if (!e.error) {

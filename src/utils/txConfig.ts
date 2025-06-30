@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { ethers, parseUnits } from 'ethers';
 import { TransactionOptions } from 'src/types';
 
 export default async function buildTransactionRequest({
@@ -11,12 +11,12 @@ export default async function buildTransactionRequest({
 }: {
     from: string;
     to: string;
-    signer: ethers.Signer;
+    signer: ethers.AbstractSigner;
     data: string;
-    value?: ethers.BigNumber;
+    value?: ethers.BigNumberish;
     txOptions?: TransactionOptions;
 }) {
-    const tx: ethers.providers.TransactionRequest = {
+    const tx: ethers.TransactionRequest = {
         to,
         from,
         data,
@@ -32,14 +32,19 @@ export default async function buildTransactionRequest({
         }),
     };
 
+    console.log('estimateGas', tx.gasLimit);
+    console.log('gasPrice', tx.gasPrice);
+
     const [gasLimit, baseGasPrice] = await Promise.all([
         !tx.gasLimit
             ? signer.estimateGas({
                   ...tx,
-                  gasPrice: ethers.utils.parseUnits('1', 'gwei'),
+                  gasPrice: parseUnits('1', 'gwei'),
               })
             : Promise.resolve(tx.gasLimit),
-        !tx.gasPrice && !tx.maxFeePerGas ? signer.provider!.getGasPrice() : Promise.resolve(undefined),
+        !tx.gasPrice && !tx.maxFeePerGas && signer.provider
+            ? (signer.provider as ethers.JsonRpcProvider).getFeeData().then((fee) => fee.gasPrice)
+            : Promise.resolve(undefined),
     ]);
 
     if (!tx.gasLimit) {
@@ -48,8 +53,8 @@ export default async function buildTransactionRequest({
 
     if (!tx.gasPrice && !tx.maxFeePerGas && baseGasPrice) {
         if (txOptions?.priorityFee) {
-            const priorityFeeWei = ethers.utils.parseUnits(txOptions.priorityFee.toString(), 'gwei');
-            tx.gasPrice = baseGasPrice.add(priorityFeeWei);
+            const priorityFeeWei = parseUnits(txOptions.priorityFee.toString(), 'gwei');
+            tx.gasPrice = baseGasPrice + priorityFeeWei;
         } else {
             tx.gasPrice = baseGasPrice;
         }

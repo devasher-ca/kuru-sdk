@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { ethers, parseUnits, TransactionReceipt } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber } from '../utils';
@@ -19,18 +19,18 @@ export abstract class OrderBatcher {
      * @returns A promise that resolves when the transaction is confirmed.
      */
     static async batchUpdate(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.Signer,
         orderbookAddress: string,
         marketParams: MarketParams,
         batchUpdate: BATCH,
-    ): Promise<ContractReceipt> {
+    ): Promise<TransactionReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         // Initialize arrays for buy and sell prices and sizes
-        const buyPrices: BigNumber[] = [];
-        const buySizes: BigNumber[] = [];
-        const sellPrices: BigNumber[] = [];
-        const sellSizes: BigNumber[] = [];
+        const buyPrices: bigint[] = [];
+        const buySizes: bigint[] = [];
+        const sellPrices: bigint[] = [];
+        const sellSizes: bigint[] = [];
 
         // Separate the limit orders into buy and sell arrays
         for (const order of batchUpdate.limitOrders) {
@@ -41,8 +41,8 @@ export abstract class OrderBatcher {
             const priceStr = Number(order.price).toFixed(pricePrecision);
             const sizeStr = Number(order.size).toFixed(sizePrecision);
 
-            const priceBn: BigNumber = ethers.utils.parseUnits(priceStr, pricePrecision);
-            const sizeBn: BigNumber = ethers.utils.parseUnits(sizeStr, sizePrecision);
+            const priceBn: bigint = parseUnits(priceStr, pricePrecision);
+            const sizeBn: bigint = parseUnits(sizeStr, sizePrecision);
 
             if (order.isBuy) {
                 buyPrices.push(priceBn);
@@ -54,7 +54,7 @@ export abstract class OrderBatcher {
         }
 
         try {
-            const signer = orderbook.signer;
+            const signer = providerOrSigner as ethers.AbstractSigner;
             const address = await signer.getAddress();
 
             const data = orderbook.interface.encodeFunctionData('batchUpdate', [
@@ -67,7 +67,7 @@ export abstract class OrderBatcher {
             ]);
 
             const tx = await buildTransactionRequest({
-                to: orderbook.address,
+                to: orderbookAddress,
                 from: address,
                 data,
                 txOptions: batchUpdate.txOptions,
@@ -77,6 +77,9 @@ export abstract class OrderBatcher {
             const transaction = await signer.sendTransaction(tx);
             const receipt = await transaction.wait();
 
+            if (!receipt) {
+                throw new Error('Transaction failed');
+            }
             return receipt;
         } catch (e: any) {
             if (!e.error) {

@@ -1,5 +1,5 @@
 // ============ External Imports ============
-import { ethers, BigNumber, ContractReceipt } from 'ethers';
+import { ethers, parseUnits, ZeroAddress } from 'ethers';
 
 // ============ Internal Imports ============
 import { extractErrorMessage, log10BigNumber, approveToken, estimateApproveGas } from '../utils';
@@ -20,11 +20,11 @@ export abstract class IOC {
      * @returns A promise that resolves to the credited size.
      */
     static async placeMarket(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: MARKET,
-    ): Promise<ContractReceipt> {
+    ): Promise<ethers.TransactionReceipt> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         return order.isBuy
@@ -55,12 +55,12 @@ export abstract class IOC {
     }
 
     static async estimateGas(
-        providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+        providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         order: MARKET,
         slippageTolerance: number,
-    ): Promise<BigNumber> {
+    ): Promise<bigint> {
         const orderbook = new ethers.Contract(orderbookAddress, orderbookAbi.abi, providerOrSigner);
 
         const size = (Number(order.size) * (100 - slippageTolerance)) / 100;
@@ -69,7 +69,7 @@ export abstract class IOC {
             return estimateApproveGas(
                 new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, providerOrSigner),
                 orderbookAddress,
-                ethers.utils.parseUnits(size.toString(), marketParams.quoteAssetDecimals),
+                parseUnits(size.toString(), marketParams.quoteAssetDecimals),
             );
         }
 
@@ -104,7 +104,7 @@ export abstract class IOC {
      * @param txOptions - Optional transaction parameters like gas price and nonce.
      */
     static async constructMarketBuyTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         quoteSize: string,
@@ -112,23 +112,20 @@ export abstract class IOC {
         isMargin: boolean,
         isFillOrKill: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
 
         const data = orderbookInterface.encodeFunctionData('placeAndExecuteMarketBuy', [
-            ethers.utils.parseUnits(quoteSize, log10BigNumber(marketParams.pricePrecision)),
+            parseUnits(quoteSize, log10BigNumber(marketParams.pricePrecision)),
             minAmountOut,
             isMargin,
             isFillOrKill,
         ]);
 
-        const parsedQuoteSize = ethers.utils.parseUnits(quoteSize, marketParams.quoteAssetDecimals);
+        const parsedQuoteSize = parseUnits(quoteSize, marketParams.quoteAssetDecimals);
 
-        const value =
-            !isMargin && marketParams.quoteAssetAddress === ethers.constants.AddressZero
-                ? parsedQuoteSize
-                : BigNumber.from(0);
+        const value = !isMargin && marketParams.quoteAssetAddress === ZeroAddress ? parsedQuoteSize : BigInt(0);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -148,7 +145,7 @@ export abstract class IOC {
      * @param minAmountOut - The minimum amount of quote asset to receive.
      */
     static async constructMarketSellTransaction(
-        signer: ethers.Signer,
+        signer: ethers.AbstractSigner,
         orderbookAddress: string,
         marketParams: MarketParams,
         size: string,
@@ -156,23 +153,20 @@ export abstract class IOC {
         isMargin: boolean,
         isFillOrKill: boolean,
         txOptions?: TransactionOptions,
-    ): Promise<ethers.providers.TransactionRequest> {
+    ): Promise<ethers.TransactionRequest> {
         const address = await signer.getAddress();
-        const orderbookInterface = new ethers.utils.Interface(orderbookAbi.abi);
+        const orderbookInterface = new ethers.Interface(orderbookAbi.abi);
 
         const data = orderbookInterface.encodeFunctionData('placeAndExecuteMarketSell', [
-            ethers.utils.parseUnits(size, log10BigNumber(marketParams.sizePrecision)),
+            parseUnits(size, log10BigNumber(marketParams.sizePrecision)),
             minAmountOut,
             isMargin,
             isFillOrKill,
         ]);
 
-        const parsedSize = ethers.utils.parseUnits(size, marketParams.baseAssetDecimals);
+        const parsedSize = parseUnits(size, marketParams.baseAssetDecimals);
 
-        const value =
-            !isMargin && marketParams.baseAssetAddress === ethers.constants.AddressZero
-                ? parsedSize
-                : BigNumber.from(0);
+        const value = !isMargin && marketParams.baseAssetAddress === ZeroAddress ? parsedSize : BigInt(0);
 
         return buildTransactionRequest({
             to: orderbookAddress,
@@ -202,7 +196,7 @@ export abstract class IOC {
  * @returns A promise that resolves to the transaction receipt.
  */
 async function placeAndExecuteMarketBuy(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     orderbook: ethers.Contract,
     marketAddress: string,
     marketParams: MarketParams,
@@ -212,20 +206,28 @@ async function placeAndExecuteMarketBuy(
     isMargin: boolean,
     isFillOrKill: boolean,
     txOptions?: TransactionOptions,
-): Promise<ContractReceipt> {
-    const parsedQuoteSize = ethers.utils.parseUnits(quoteSize, marketParams.quoteAssetDecimals);
+): Promise<ethers.TransactionReceipt> {
+    const parsedQuoteSize = parseUnits(quoteSize, marketParams.quoteAssetDecimals);
 
-    const parsedMinAmountOut = ethers.utils.parseUnits(minAmountOut, marketParams.baseAssetDecimals);
+    const parsedMinAmountOut = parseUnits(minAmountOut, marketParams.baseAssetDecimals);
 
-    if (approveTokens && marketParams.quoteAssetAddress !== ethers.constants.AddressZero && !isMargin) {
+    if (approveTokens && marketParams.quoteAssetAddress !== ZeroAddress && !isMargin) {
         const tokenContract = new ethers.Contract(marketParams.quoteAssetAddress, erc20Abi.abi, providerOrSigner);
         await approveToken(tokenContract, marketAddress, parsedQuoteSize, providerOrSigner);
     }
 
     try {
+        // Extract signer from contract or use provider/signer directly
+        let signer: ethers.AbstractSigner;
+        if ('getAddress' in providerOrSigner) {
+            signer = providerOrSigner as ethers.AbstractSigner;
+        } else {
+            throw new Error('Provider must have a signer for transaction execution');
+        }
+
         const tx = await IOC.constructMarketBuyTransaction(
-            orderbook.signer,
-            orderbook.address,
+            signer,
+            await orderbook.getAddress(),
             marketParams,
             quoteSize,
             parsedMinAmountOut.toString(),
@@ -233,8 +235,12 @@ async function placeAndExecuteMarketBuy(
             isFillOrKill,
             txOptions,
         );
-        const transaction = await orderbook.signer.sendTransaction(tx);
+        const transaction = await signer.sendTransaction(tx);
         const receipt = await transaction.wait(1);
+
+        if (!receipt) {
+            throw new Error('Transaction receipt is null');
+        }
 
         return receipt;
     } catch (e: any) {
@@ -253,10 +259,10 @@ async function estimateGasBuy(
     minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean,
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.placeAndExecuteMarketBuy(
-            ethers.utils.parseUnits(quoteSize, log10BigNumber(marketParams.pricePrecision)),
+        const gasEstimate = await orderbook.placeAndExecuteMarketBuy.estimateGas(
+            parseUnits(quoteSize, log10BigNumber(marketParams.pricePrecision)),
             minAmountOut,
             isMargin,
             isFillOrKill,
@@ -285,7 +291,7 @@ async function estimateGasBuy(
  * @returns A promise that resolves to the transaction receipt.
  */
 async function placeAndExecuteMarketSell(
-    providerOrSigner: ethers.providers.JsonRpcProvider | ethers.Signer,
+    providerOrSigner: ethers.JsonRpcProvider | ethers.AbstractSigner,
     orderbook: ethers.Contract,
     marketAddress: string,
     marketParams: MarketParams,
@@ -295,20 +301,28 @@ async function placeAndExecuteMarketSell(
     isMargin: boolean,
     isFillOrKill: boolean,
     txOptions?: TransactionOptions,
-): Promise<ContractReceipt> {
-    const parsedSize = ethers.utils.parseUnits(size, marketParams.baseAssetDecimals);
+): Promise<ethers.TransactionReceipt> {
+    const parsedSize = parseUnits(size, marketParams.baseAssetDecimals);
 
-    const parsedMinAmountOut = ethers.utils.parseUnits(minAmountOut, marketParams.quoteAssetDecimals);
+    const parsedMinAmountOut = parseUnits(minAmountOut, marketParams.quoteAssetDecimals);
 
-    if (approveTokens && marketParams.baseAssetAddress !== ethers.constants.AddressZero && !isMargin) {
+    if (approveTokens && marketParams.baseAssetAddress !== ZeroAddress && !isMargin) {
         const tokenContract = new ethers.Contract(marketParams.baseAssetAddress, erc20Abi.abi, providerOrSigner);
         await approveToken(tokenContract, marketAddress, parsedSize, providerOrSigner);
     }
 
     try {
+        // Extract signer from contract or use provider/signer directly
+        let signer: ethers.AbstractSigner;
+        if ('getAddress' in providerOrSigner) {
+            signer = providerOrSigner as ethers.AbstractSigner;
+        } else {
+            throw new Error('Provider must have a signer for transaction execution');
+        }
+
         const tx = await IOC.constructMarketSellTransaction(
-            orderbook.signer,
-            orderbook.address,
+            signer,
+            await orderbook.getAddress(),
             marketParams,
             size,
             parsedMinAmountOut.toString(),
@@ -317,8 +331,12 @@ async function placeAndExecuteMarketSell(
             txOptions,
         );
 
-        const transaction = await orderbook.signer.sendTransaction(tx);
+        const transaction = await signer.sendTransaction(tx);
         const receipt = await transaction.wait();
+
+        if (!receipt) {
+            throw new Error('Transaction receipt is null');
+        }
 
         return receipt;
     } catch (e: any) {
@@ -337,10 +355,10 @@ async function estimateGasSell(
     minAmountOut: string,
     isMargin: boolean,
     isFillOrKill: boolean,
-): Promise<BigNumber> {
+): Promise<bigint> {
     try {
-        const gasEstimate = await orderbook.estimateGas.placeAndExecuteMarketSell(
-            ethers.utils.parseUnits(size, log10BigNumber(marketParams.sizePrecision)),
+        const gasEstimate = await orderbook.placeAndExecuteMarketSell.estimateGas(
+            parseUnits(size, log10BigNumber(marketParams.sizePrecision)),
             minAmountOut,
             isMargin,
             isFillOrKill,

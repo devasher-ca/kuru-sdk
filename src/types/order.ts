@@ -1,11 +1,11 @@
-import { BigNumber } from 'ethers';
+import { BigNumberish } from 'ethers';
 
 export interface TransactionOptions {
     nonce?: number;
-    gasPrice?: BigNumber;
-    gasLimit?: BigNumber;
-    maxFeePerGas?: BigNumber;
-    maxPriorityFeePerGas?: BigNumber;
+    gasPrice?: BigNumberish;
+    gasLimit?: BigNumberish;
+    maxFeePerGas?: BigNumberish;
+    maxPriorityFeePerGas?: BigNumberish;
     priorityFee?: number;
 }
 
@@ -29,7 +29,7 @@ export interface MARKET {
 
 export interface BATCH {
     limitOrders: LIMIT[];
-    cancelOrders: BigNumber[];
+    cancelOrders: BigNumberish[];
     postOnly: boolean;
     txOptions?: TransactionOptions;
 }
